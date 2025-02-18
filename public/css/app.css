@@ -1,0 +1,139 @@
+/* Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Body */
+body {
+    font-family: Arial, sans-serif;
+    background: #f0f0f0;
+    min-height: 100vh;
+    background: url('../img/bg.png') no-repeat center center fixed;
+    background-size: cover;
+    margin: 0;
+    padding: 0;
+}
+
+/* Container */
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+/* Card */
+.login-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 2rem;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.login-card h2 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    color: #333;
+}
+
+/* Form */
+.login-card form .form-group {
+    margin-bottom: 1.2rem;
+}
+
+.login-card form label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+    color: #555;
+}
+
+/* Include text inputs along with email and password */
+.login-card form input[type="text"],
+.login-card form input[type="email"],
+.login-card form input[type="password"] {
+    width: 100%;
+    padding: 0.7rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    transition: border-color 0.3s;
+}
+
+.login-card form input:focus {
+    border-color: #4c4cff;
+    outline: none;
+}
+
+/* Style for disabled inputs (like Referral Code) */
+.login-card form input:disabled {
+    background-color: #eee;
+    cursor: not-allowed;
+}
+
+/* Error Message */
+.error-msg {
+    color: #d00;
+    font-size: 0.85rem;
+    margin-top: 0.3rem;
+}
+
+/* Checkbox */
+.checkbox-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+    color: #555;
+}
+
+.checkbox-container input {
+    width: auto;
+    margin: 0;
+}
+
+/* Button */
+.btn-primary {
+    background: #4c4cff;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 0.7rem 1.2rem;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    width: 100%;
+}
+
+.btn-primary:hover {
+    background: #6a6aff;
+}
+
+/* Forgot Link */
+.forgot-link {
+    text-align: right;
+    margin-top: 0.8rem;
+}
+
+.forgot-link a {
+    font-size: 0.85rem;
+    color: #4c4cff;
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+.forgot-link a:hover {
+    color: #6a6aff;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .login-card {
+        padding: 1.5rem;
+    }
+}

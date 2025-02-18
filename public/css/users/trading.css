@@ -1,0 +1,169 @@
+/* -------------------------
+   Global Dark Theme
+-------------------------*/
+body {
+  background-color: #1E1E2A !important;
+  color: #FFF  !important;
+}
+a {
+  color: #bbb;
+  text-decoration: none;
+}
+a:hover {
+  color: #fff;
+}
+/* -------------------------
+   Sidebar & Navbar
+-------------------------*/
+.bg-panel {
+  background-color: #2A2A3D;
+}
+.btn-accent {
+  background-color: #5E5AC8;
+  border: none;
+  color: #fff;
+  transition: background 0.3s;
+}
+.btn-accent:hover {
+  background-color: #6F6BE0;
+}
+
+/* -------------------------
+   Force Cards to have Dark BG
+-------------------------*/
+.card {
+  background-color: #2A2A3D !important;
+  border: 1px solid #3B3B51 !important;
+}
+.card-header,
+.card-footer {
+  background-color: #2F2F45 !important;
+  border-bottom: 1px solid #3B3B51 !important;
+}
+.card-body {
+    background-color: #2A2A3D;
+}
+.card-text {
+    color:white;
+}
+/* -------------------------
+   Buttons & Panels
+-------------------------*/
+.bg-panel {
+  background-color: #2A2A3D;
+}
+.btn-accent {
+  background-color: #5E5AC8;
+  border: none;
+  color: #fff;
+  transition: background 0.3s;
+}
+.btn-accent:hover {
+  background-color: #6F6BE0;
+}
+
+
+/* -------------------------
+   Table Styling
+-------------------------*/
+.custom-table {
+  background: #2A2A3D;
+  border-radius: 8px;
+  border-collapse: separate;
+  --bs-table-bg: #2A2A3D !important;
+}
+.custom-table thead {
+  background: #2F2F45;
+}
+.custom-table th,
+.custom-table td {
+  border-color: #3B3B51 !important;
+  color: #ccc !important;
+  vertical-align: middle;
+}
+/* -------------------------
+   Offcanvas (Trade Details) Styling
+-------------------------*/
+.offcanvas-dark {
+  background-color: #1E1E2A;
+  color: #fff;
+  width: 500px !important;
+  transition: transform 0.3s ease-in-out;
+}
+.offcanvas-dark .offcanvas-header {
+  background: #2A2A3D;
+}
+.offcanvas-dark .offcanvas-body {
+ background: #2A2A3D;
+}
+/* -------------------------
+   Modern Trade Details Enhancements
+-------------------------*/
+.trade-header {
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+  color: white;
+}
+.trade-info-card {
+    background: rgb(24, 26, 32);
+    border: none;
+    border-color: white;
+    border-width: thin;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+.trade-info-card h6 {
+  margin-bottom: 0.5rem;
+}
+.chart-container {
+  position: relative;
+  height: 200px;
+}
+.recent-trades {
+  max-height: 150px;
+  overflow-y: auto;
+}
+.recent-trades li {
+  border-bottom: 1px solid #3B3B51;
+  padding: 0.5rem 0;
+}
+/* -------------------------
+   Notification Popout Styling
+-------------------------*/
+#tradeNotification {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #2F2F45;
+  color: #fff;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity 0.5s;
+  z-index: 1050;
+}
+
+.nav-link.active {
+  color: #fff !important;
+  font-weight: bold;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+}
+
+.h1, .h2, .h3, .h4, .h5, .h6,
+h1, h2, h3, h4, h5, h6, p, label, strong, span {
+  color: white !important;
+}
+
+/* Instead of using .nav-link.active globally, scope it: */
+#offcanvasTrade .nav-tabs .nav-link.active {
+  color: #fff !important;
+  font-weight: bold;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+padding: 10px;
+}
