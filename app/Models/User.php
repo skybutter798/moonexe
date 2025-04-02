@@ -21,6 +21,8 @@ class User extends Authenticatable
         'referral',
         'referral_code',
         'referral_link',
+        'package',
+        'bonus',
     ];
     
     protected $hidden = [
@@ -59,4 +61,17 @@ class User extends Authenticatable
     {
         return $this->role === 'admin';
     }
+    
+    public function packageModel()
+    {
+        return $this->belongsTo(DirectRange::class, 'package');
+    }
+    
+    public function promotion()
+    {
+        return $this->hasOne(\App\Models\Promotion::class, 'code', 'bonus');
+    }
+
+
+
 }

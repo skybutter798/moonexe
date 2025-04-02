@@ -20,7 +20,7 @@
     
     <!-- Navbar -->
     <nav class="navbar navbar-dark bg-panel px-3">
-        <span class="navbar-brand mb-0 h1">MOONPAY</span>
+        <span class="navbar-brand mb-0 h1">MoonExe</span>
         <!-- Right-aligned container for avatar and logout -->
         <div class="d-flex align-items-center ms-auto">
             <!-- Logout Form (using POST method for Laravel's logout route) -->

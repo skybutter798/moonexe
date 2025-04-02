@@ -1,93 +1,123 @@
-@extends('layouts.users.app')
+<x-base-layout :scrollspy="false">
+  <x-slot:pageTitle>
+    Profile
+  </x-slot:pageTitle>
 
-@section('title', 'Account')
+  <x-slot:headerFiles>
+    <!-- Additional header files if needed -->
+  </x-slot:headerFiles>
 
-@section('content')
-<div class="container py-4">
-  <!-- Account Header -->
-  <div class="card mb-4">
-    <div class="card-body d-flex align-items-center">
-      <div class="me-3">
-        <!-- Avatar placeholder -->
-        <div class="rounded" style="width:80px; height:80px; background-color:#101012;"></div>
+  <div class="container py-4">
+    <!-- Account Header -->
+    <div class="card mb-4">
+      <div class="card-body d-flex align-items-center">
+        <div class="me-3">
+          <!-- Avatar placeholder -->
+          <div class="rounded" style="width:80px; height:80px; background-color:#101012;"></div>
+        </div>
+        <div>
+          @if($user->packageModel)
+            <span class="badge bg-dark text-white">{{ $user->packageModel->name }}</span>
+          @else
+            <span class="badge bg-secondary">None</span>
+          @endif
+          <h3 class="mb-0">{{ $user->name }}</h3>
+          <p class="mb-0">Email: {{ $user->email }} • <span class="text-success">Verified</span></p>
+        </div>
       </div>
-      <div>
-        <span class="badge bg-warning text-dark">Gold</span>
-        <h3 class="mb-0">SKYBUTTER</h3>
-        <p class="mb-0">UID: 0000001 • <span class="text-success">Verified</span></p>
-      </div>
+      <div class="d-block d-md-nonep-3 bg-light text-center">
+            <form action="{{ route('logout') }}" method="POST">
+              @csrf
+              <button type="submit" class="btn btn-danger btn-block w-100">Logout</button>
+            </form>
+          </div>
     </div>
-  </div>
 
-  <!-- Upgrade & Verification Levels -->
-  <div class="row mb-4">
-    <!-- Upgrade Box -->
-    <div class="col-md-8">
-      <div class="card mb-3">
-        <div class="card-body">
-          <p>
-            Upgrade to <strong>xxx package</strong> to increase your trading limits to
-            <strong>xxx USD Daily</strong>.
-          </p>
-          <p>
-            Required:<br>
-            - Proof of address
-          </p>
-          <button class="btn btn-success btn-sm">Get Package</button>
+    <div class="row">
+      <!-- Personal Information Column -->
+      <div class="col-12 col-md-6 d-flex">
+        <div class="card mb-4 flex-fill">
+          <div class="card-body">
+            <h4 class="card-title">Personal Information</h4>
+            <div class="mb-3">
+              <label class="form-label">Status</label>
+              <div>
+                @if($user->status == 1)
+                  <span class="badge bg-success">Active</span>
+                @else
+                  <span class="badge bg-warning">Holding</span>
+                @endif
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Name</label>
+              <input type="text" class="form-control" value="{{ $user->name }}" disabled>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Email</label>
+              <input type="email" class="form-control" value="{{ $user->email }}" disabled>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Last Login</label>
+              <input type="text" class="form-control" value="{{ $user->last_login ?? 'Never' }}" disabled>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Account Created</label>
+              <input type="text" class="form-control" value="{{ $user->created_at }}" disabled>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Last Updated</label>
+              <input type="text" class="form-control" value="{{ $user->updated_at }}" disabled>
+            </div>
+          </div>
+        </div>
+        
+      </div>
+    
+      <!-- Combined Change Password and Newsletter Subscription Column -->
+      <div class="col-12 col-md-6 d-flex">
+        <div class="card mb-4 flex-fill">
+          <div class="card-body">
+            <!-- Change Password Section -->
+            <h4 class="card-title">Change Password</h4>
+            <form action="{{ route('user.changePassword') }}" method="POST">
+              @csrf
+              <div class="mb-3">
+                <label for="current_password" class="form-label">Current Password</label>
+                <input type="password" class="form-control" id="current_password" name="current_password" required>
+              </div>
+              <div class="mb-3">
+                <label for="new_password" class="form-label">New Password</label>
+                <input type="password" class="form-control" id="new_password" name="new_password" required>
+              </div>
+              <div class="mb-3">
+                <label for="new_password_confirmation" class="form-label">Confirm New Password</label>
+                <input type="password" class="form-control" id="new_password_confirmation" name="new_password_confirmation" required>
+              </div>
+              <button type="submit" class="btn btn-primary mb-3">Change Password</button>
+            </form>
+
+            <hr>
+
+            <!-- Subscribe to Newsletter Section -->
+            <h4 class="card-title">Subscribe to our Newsletter</h4>
+            <form action="" method="POST">
+              @csrf
+              <div class="mb-3">
+                <label for="newsletterEmail" class="form-label">Email address</label>
+                <input type="email" class="form-control" id="newsletterEmail" name="email" value="{{ $user->email }}" required>
+              </div>
+              <button type="submit" class="btn btn-primary">Subscribe</button>
+            </form>
+          </div>
         </div>
       </div>
     </div>
-    <!-- Verification Levels -->
-    <div class="col-md-4">
-      <div class="card mb-3">
-        <div class="card-body">
-          <h4 class="card-title mb-3">Verification Levels</h4>
-          <div class="form-check mb-2">
-            <input class="form-check-input" type="radio" name="verification" id="verified" checked>
-            <label class="form-check-label" for="verified">
-              <strong>Verified</strong> (Limit of 80K USD Daily)
-            </label>
-          </div>
-          <div class="form-check mb-2">
-            <input class="form-check-input" type="radio" name="verification" id="packageA">
-            <label class="form-check-label" for="packageA">
-              <strong>Package A</strong> (Limit of 200K USD Daily)
-            </label>
-          </div>
-          <div class="form-check">
-            <input class="form-check-input" type="radio" name="verification" id="packageB">
-            <label class="form-check-label" for="packageB">
-              <strong>Package B</strong> (Limit of 300K USD Daily)
-            </label>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 
-  <!-- Account Limits -->
-  <div class="card mb-4">
-    <div class="card-body">
-      <h4 class="card-title">Account Limits</h4>
-      <ul class="list-unstyled mb-0">
-        <li><strong>Deposit &amp; Withdrawal Limits:</strong> <span>80K USD Daily</span></li>
-        <li><strong>Package Limit:</strong> <span>30K Daily</span></li>
-        <li><strong>Trading Limit:</strong> <span>Unlimited</span></li>
-        <li><strong>Transaction Limit:</strong><span>Unlimited</span></li>
-      </ul>
-    </div>
-  </div>
+  
 
-  <!-- Personal Information -->
-  <div class="card mb-4">
-    <div class="card-body">
-      <h4 class="card-title">Personal Information</h4>
-      <p><strong>Legal Name:</strong> LIM LI XIANG</p>
-      <p><strong>Date of Birth:</strong> 1988-05-12</p>
-      <p><strong>Identification Documents:</strong> 8805******15</p>
-      <p><strong>Email Address:</strong> li***@gmail.com</p>
-      <p><strong>Country:</strong> Malaysia</p>
-    </div>
-  </div>
-</div>
-@endsection
+  <x-slot:footerFiles>
+    <!-- Include any additional footer scripts if needed -->
+  </x-slot:footerFiles>
+</x-base-layout>

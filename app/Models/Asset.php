@@ -20,4 +20,10 @@ class Asset extends Model
     {
         return $this->belongsTo(User::class);
     }
+    
+    public function currencyData()
+    {
+        return $this->belongsTo(\App\Models\Currency::class, 'currency');
+    }
+
 }

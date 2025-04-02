@@ -1,6 +1,45 @@
 @extends('layouts.guest')
 
 @section('content')
+<script>
+    console.log("Script loaded");
+</script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        var promotionInput = document.getElementById('promotion_code');
+        var promotionInfo = document.getElementById('promotionInfo');
+    
+        // Debounce the input to avoid too many API calls
+        let debounceTimer;
+        promotionInput.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            var code = this.value.trim();
+            if (code.length === 0) {
+                promotionInfo.style.display = 'none';
+                return;
+            }
+            debounceTimer = setTimeout(function() {
+                // Fetch promotion info from API
+                fetch('/api/promotion-info?code=' + encodeURIComponent(code))
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Promotion code not found');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        promotionInfo.textContent = " Code left: " + data.left;
+                        promotionInfo.style.display = 'block';
+                    })
+                    .catch(error => {
+                        promotionInfo.textContent = error.message;
+                        promotionInfo.style.display = 'block';
+                    });
+            }, 500); // wait 500ms after the user stops typing
+        });
+    });
+</script>
 <div class="login-container">
     <div class="login-card">
         <h2>{{ __('Register') }}</h2>
@@ -9,7 +48,7 @@
 
             <!-- Name Field -->
             <div class="form-group">
-                <label for="name">{{ __('Name') }}</label>
+                <label for="name">{{ __('Username') }}</label>
                 <input id="name" type="text" name="name" value="{{ old('name') }}" required autofocus>
                 @error('name')
                     <div class="error-msg">{{ $message }}</div>
@@ -40,11 +79,25 @@
                 <input id="password_confirmation" type="password" name="password_confirmation" required>
             </div>
 
-            <!-- Referral Code Field (Disabled) -->
+            <!-- Referral Code Field -->
             <div class="form-group">
                 <label for="referral_code">{{ __('Referral Code') }}</label>
-                <input id="referral_code" type="text" name="referral_code" value="{{ old('referral_code') }}" disabled>
+                <input id="referral_code" type="text" name="referral_code" value="{{ old('referral_code', request('ref')) }}" required>
+                @error('referral_code')
+                    <div class="error-msg">{{ $message }}</div>
+                @enderror
             </div>
+
+            <!-- Promotion Code Field (Optional) -->
+            <div class="form-group">
+                <label for="promotion_code">{{ __('Promotion Code (Optional)') }}</label>
+                <input id="promotion_code" type="text" name="promotion_code" value="{{ old('promotion_code') }}">
+                <small id="promotionInfo" style="display: none; color: red; margin-top:8px; margin-left:5px"></small>
+                @error('promotion_code')
+                    <div class="error-msg">{{ $message }}</div>
+                @enderror
+            </div>
+
 
             <!-- Submit Button -->
             <button type="submit" class="btn-primary">
@@ -52,7 +105,7 @@
             </button>
         </form>
 
-        <!-- Modern link to login -->
+        <!-- Link to Login -->
         <div class="switch-auth" style="text-align:center; margin-top: 1rem;font-size: small;">
             <span>{{ __('Already have an account?') }}</span>
             <a href="{{ route('login') }}" style="color: #4c4cff; text-decoration: none; font-weight: 600;">
@@ -61,4 +114,37 @@
         </div>
     </div>
 </div>
+
+<!-- Referral Code Error Modal -->
+@if($errors->has('referral_code'))
+<div class="modal fade" id="referralModal" tabindex="-1" aria-labelledby="referralModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="referralModalLabel">Referral Code Error</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        The referral code provided is either incorrect or missing. Please contact <a href="mailto:support@moonexe.con">support@moonexe.con</a> to obtain a valid referral code.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+@endif
+
+@endsection
+
+@section('scripts')
+
+@if($errors->has('referral_code'))
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        var referralModal = new bootstrap.Modal(document.getElementById('referralModal'));
+        referralModal.show();
+    });
+</script>
+@endif
 @endsection

@@ -18,8 +18,16 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no">
+    <meta name="format-detection" content="telephone=no">
+
     <title>{{ $pageTitle }}</title>
-    <link rel="icon" type="image/png" href="{{ asset('img/fav.png') }}">
+    <!-- Favicon and Touch Icons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('apple-touch-icon.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}">
+    <link rel="manifest" href="{{ asset('site.webmanifest') }}">
+    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
+    <link rel="stylesheet" href="{{ asset('/css/users/mobile-menu_v2.css') }}">
     @vite(['resources/scss/layouts/modern-light-menu/light/loader.scss'])
 
     @if (Request::is('modern-light-menu/*'))
@@ -59,9 +67,6 @@
         <link rel="stylesheet" type="text/css" href="{{ asset('plugins/highlight/styles/monokai-sublime.css') }}">
         @vite([ 'resources/scss/light/plugins/perfect-scrollbar/perfect-scrollbar.scss'])
 
-        {{-- 
-            Force Horizontal Dark Menu styles for all /user-dashboard routes 
-        --}}
         @if (Request::is('user-dashboard/*'))
             @vite([
                 'resources/scss/layouts/horizontal-dark-menu/light/structure.scss',
@@ -104,6 +109,8 @@
     <!-- BEGIN GLOBAL MANDATORY STYLES -->
     {{$headerFiles}}
     <!-- END GLOBAL MANDATORY STYLES -->
+    
+    <link rel="stylesheet" href="{{ asset('css/custom_v2.css') }}">
 </head>
 <body @class([
         // 'layout-dark' => $isDark,
@@ -143,13 +150,13 @@
         )
 
         @if (!Request::routeIs('blank'))
-
-            {{-- 
-                Force Horizontal Dark Menu navbar on /user-dashboard routes 
-            --}}
             @if (Request::is('user-dashboard/*'))
-                <!--  BEGIN NAVBAR for Horizontal Dark Menu -->
-                <x-navbar.style-horizontal-menu/>
+                <!-- Desktop Navbar -->
+                <x-navbar.style-horizontal-menu class="desktop-menu"/>
+                <!-- Mobile Header -->
+                <x-mobile-header/>
+                <!-- Mobile Menu -->
+                <x-user-mobile-menu_v2/>
             @elseif (Request::is('modern-light-menu/*'))
                 <!--  BEGIN NAVBAR  -->
                 <x-navbar.style-vertical-menu classes="{{ ($isBoxed ? 'container-xxl' : '') }}"/>
@@ -176,13 +183,9 @@
             <!--  END LOADER  -->
 
             @if (!Request::routeIs('blank')) 
-
-                {{-- 
-                    Force Horizontal Dark Menu sidebar on /user-dashboard routes 
-                --}}
                 @if (Request::is('user-dashboard/*'))
                     <!--  BEGIN SIDEBAR for Horizontal Dark Menu -->
-                    <x-menu.horizontal-menu/>
+                    <x-menu.horizontal-menu class="desktop-menu"/>
                     <!--  END SIDEBAR  --> 
                 @elseif (Request::is('modern-light-menu/*'))
                     <x-menu.vertical-menu/>

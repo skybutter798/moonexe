@@ -15,5 +15,12 @@ class Package extends Model
         'max_payout',
         'profit',
         'status',
+        'remark',
     ];
+    
+    public function packageDetail()
+    {
+        // Adjust the foreign key if needed. For example, if the column is named 'package_id':
+        return $this->belongsTo(Package::class, 'package');
+    }
 }

@@ -1,23 +1,26 @@
 /* -------------------------
-   Global Dark Theme
+   Global Light Theme
 -------------------------*/
 body {
-  background-color: #1E1E2A !important;
-  color: #FFF  !important;
+  background-color: #fff !important;
+  color: #333 !important;
 }
+
 a {
-  color: #bbb;
+  color: #007bff;
   text-decoration: none;
 }
 a:hover {
-  color: #fff;
+  color: #0056b3;
 }
+
 /* -------------------------
    Sidebar & Navbar
 -------------------------*/
 .bg-panel {
-  background-color: #2A2A3D;
+  background-color: #f8f9fa;
 }
+
 .btn-accent {
   background-color: #5E5AC8;
   border: none;
@@ -29,92 +32,77 @@ a:hover {
 }
 
 /* -------------------------
-   Force Cards to have Dark BG
+   Cards Styling for Light Theme
 -------------------------*/
 .card {
-  background-color: #2A2A3D !important;
-  border: 1px solid #3B3B51 !important;
+  background-color: #fff !important;
+  border: 1px solid #ddd !important;
 }
 .card-header,
 .card-footer {
-  background-color: #2F2F45 !important;
-  border-bottom: 1px solid #3B3B51 !important;
+  background-color: #f8f9fa !important;
+  border-bottom: 1px solid #ddd !important;
 }
 .card-body {
-    background-color: #2A2A3D;
+  background-color: #fff;
 }
 .card-text {
-    color:white;
+  color: #333;
 }
-/* -------------------------
-   Buttons & Panels
--------------------------*/
-.bg-panel {
-  background-color: #2A2A3D;
-}
-.btn-accent {
-  background-color: #5E5AC8;
-  border: none;
-  color: #fff;
-  transition: background 0.3s;
-}
-.btn-accent:hover {
-  background-color: #6F6BE0;
-}
-
 
 /* -------------------------
    Table Styling
 -------------------------*/
 .custom-table {
-  background: #2A2A3D;
+  background: #fff;
   border-radius: 8px;
   border-collapse: separate;
-  --bs-table-bg: #2A2A3D !important;
+  --bs-table-bg: #fff !important;
 }
 .custom-table thead {
-  background: #2F2F45;
+  background: #e9ecef;
 }
 .custom-table th,
 .custom-table td {
-  border-color: #3B3B51 !important;
-  color: #ccc !important;
+  border-color: #ddd !important;
+  color: #333 !important;
   vertical-align: middle;
 }
+
 /* -------------------------
    Offcanvas (Trade Details) Styling
 -------------------------*/
-.offcanvas-dark {
-  background-color: #1E1E2A;
-  color: #fff;
+.offcanvas-light {
+  background-color: #fff;
+  color: #333;
   width: 500px !important;
   transition: transform 0.3s ease-in-out;
 }
-.offcanvas-dark .offcanvas-header {
-  background: #2A2A3D;
+.offcanvas-light .offcanvas-header {
+  background: #f8f9fa;
 }
-.offcanvas-dark .offcanvas-body {
- background: #2A2A3D;
+.offcanvas-light .offcanvas-body {
+  background: #fff;
 }
+
 /* -------------------------
    Modern Trade Details Enhancements
 -------------------------*/
 .trade-header {
   font-size: 1.25rem;
   margin-bottom: 1rem;
-  color: white;
+  color: #333;
 }
 .trade-info-card {
-    background: rgb(24, 26, 32);
-    border: none;
-    border-color: white;
-    border-width: thin;
-    border-radius: 8px;
-    padding: 1rem;
-    margin-bottom: 1rem;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
 }
 .trade-info-card h6 {
   margin-bottom: 0.5rem;
+  color: #333;
 }
 .chart-container {
   position: relative;
@@ -125,9 +113,10 @@ a:hover {
   overflow-y: auto;
 }
 .recent-trades li {
-  border-bottom: 1px solid #3B3B51;
+  border-bottom: 1px solid #ddd;
   padding: 0.5rem 0;
 }
+
 /* -------------------------
    Notification Popout Styling
 -------------------------*/
@@ -136,34 +125,39 @@ a:hover {
   bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
-  background-color: #2F2F45;
-  color: #fff;
+  background-color: #e9ecef;
+  color: #333;
   padding: 0.75rem 1.5rem;
   border-radius: 8px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
   opacity: 0;
   transition: opacity 0.5s;
   z-index: 1050;
 }
 
 .nav-link.active {
-  color: #fff !important;
+  color: #333 !important;
   font-weight: bold;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.05);
   border-radius: 4px;
   padding: 0.25rem 0.5rem;
 }
 
 .h1, .h2, .h3, .h4, .h5, .h6,
 h1, h2, h3, h4, h5, h6, p, label, strong, span {
-  color: white !important;
+  color: #333 !important;
 }
 
-/* Instead of using .nav-link.active globally, scope it: */
+/* Scoped Active Nav Link for Offcanvas Trade */
 #offcanvasTrade .nav-tabs .nav-link.active {
-  color: #fff !important;
+  color: #333 !important;
   font-weight: bold;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.05);
   border: none;
-padding: 10px;
+  padding: 10px;
+}
+
+.table-gap {
+  border-collapse: separate;
+  border-spacing: 0 10px;  /* 10px gap between rows */
 }

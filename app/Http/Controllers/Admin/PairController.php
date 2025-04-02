@@ -10,9 +10,7 @@ use Carbon\Carbon;
 
 class PairController extends Controller
 {
-    /**
-     * List all currency pairs.
-     */
+    
     public function index()
     {
         // Eager load the related currencies for display.
@@ -20,41 +18,44 @@ class PairController extends Controller
         return view('admin.pairs.index', compact('pairs'));
     }
 
-    /**
-     * Show form to create a new pair.
-     */
     public function create()
     {
-        // Get all currencies to populate our dropdown selects.
+        // Get all currencies for dropdowns.
         $currencies = Currency::orderBy('c_name')->get();
-        return view('admin.pairs.create', compact('currencies'));
+        
+        // Get the total cash wallet balance from all users.
+        $totalBalance = \DB::table('wallets')->sum('trading_wallet');
+        $totalCash = \DB::table('wallets')->sum('cash_wallet');
+    
+        return view('admin.pairs.create', compact('currencies', 'totalBalance', 'totalCash'));
     }
-
-    /**
-     * Store a newly created currency pair.
-     */
+    
     public function store(Request $request)
     {
-        // Validate inputs. We use an HTML5 datetime-local input so we expect a format like 2025-02-10T14:30.
+        // Validate inputs including end_time which must be one of 1,2,3,4,5,6.
         $request->validate([
-            'currency_id' => 'required|exists:currencies,id',
-            'pair_id'     => 'required|exists:currencies,id',
-            'rate'        => 'required|numeric',
+            'currency_id' => 'required|exists:currencies,id|not_in:1',
+            'pair_id'     => 'required|exists:currencies,id|in:1',
+            'min_rate'    => 'required|numeric',
+            'earning_gap' => 'required|numeric', // Use earning_gap instead of rate
             'volume'      => 'required|numeric',
-            'gate_time'   => 'required|date_format:Y-m-d\TH:i',
+            'gate_time'   => 'required|integer',
+            'end_time'    => 'required|in:6,12,18,24,30,36', // Match form values
         ]);
-
-        // Convert the gate_time input into a Carbon instance.
-        $gate_time = Carbon::createFromFormat('Y-m-d\TH:i', $request->gate_time);
+    
+        $max_rate = $request->min_rate + $request->earning_gap;
 
         Pair::create([
             'currency_id' => $request->currency_id,
             'pair_id'     => $request->pair_id,
-            'rate'        => $request->rate,
+            'min_rate'    => $request->min_rate,
+            'rate'        => $request->earning_gap, // Use earning_gap instead of rate
+            'max_rate'    => $max_rate,
             'volume'      => $request->volume,
-            'gate_time'   => $gate_time,
+            'gate_time'   => $request->gate_time,
+            'end_time'    => $request->end_time,
         ]);
-
+    
         return redirect()->route('admin.pairs.index')
                          ->with('success', 'Currency pair created successfully.');
     }

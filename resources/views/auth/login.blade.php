@@ -8,9 +8,9 @@
             @csrf
 
             <div class="form-group">
-                <label for="email">{{ __('Email Address') }}</label>
-                <input id="email" type="email" name="email" value="{{ old('email') }}" required autofocus>
-                @error('email')
+                <label for="login">{{ __('Email or Username') }}</label>
+                <input id="login" type="text" name="login" value="{{ old('login') }}" required autofocus>
+                @error('login')
                     <div class="error-msg">{{ $message }}</div>
                 @enderror
             </div>
@@ -40,7 +40,7 @@
         </form>
 
         <!-- Modern link to registration -->
-        <div class="switch-auth" style="text-align:center; margin-top: 1rem;font-size: small;">
+        <div class="switch-auth" style="text-align:center; margin-top: 1rem; font-size: small;">
             <span>{{ __("Don't have an account yet?") }}</span>
             <a href="{{ route('register') }}" style="color: #4c4cff; text-decoration: none; font-weight: 600;">
                 {{ __('Click here to register') }}

@@ -15,19 +15,22 @@ class Pair extends Model
         'rate',
         'volume',
         'gate_time',
+        'min_rate',
+        'max_rate',
+        'end_time'
     ];
 
     // Cast the gate_time attribute to a datetime instance.
     protected $casts = [
-        'gate_time' => 'datetime',
+        'gate_time' => 'integer',
     ];
 
     // If you want an accessor for remaining volume:
-    public function getRemainingVolumeAttribute()
+    /*public function getRemainingVolumeAttribute()
     {
         // For demo purposes, assume 90% of the total volume is still available.
         return round($this->volume * 0.9, 2);
-    }
+    }*/
     
     public function getTradedVolumeAttribute()
     {

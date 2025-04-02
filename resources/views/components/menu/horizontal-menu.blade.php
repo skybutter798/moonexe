@@ -15,7 +15,13 @@
   <meta charset="UTF-8">
   <title>User Horizontal Menu</title>
   <style>
-    /* Basic styles for horizontal menu layout */
+    @media (min-width: 992px) {
+        /* Hide mobile header on desktop screens */
+        .mobile-header {
+            display: none;
+        }
+    }
+
     .sidebar-wrapper {
       background: #fff;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
@@ -65,13 +71,13 @@
       <div class="navbar-nav theme-brand flex-row text-center">
         <div class="nav-logo">
           <div class="nav-item theme-logo">
-            <a href="{{ getRouterValue() }}/dashboard/analytics">
-              <img src="{{ asset('img/dark_logo.png') }}" class="navbar-logo logo-dark" alt="logo">
-              <img src="{{ asset('img/logo.png') }}" class="navbar-logo logo-light" alt="logo">
+            <a href="{{ route('user.dashboard') }}">
+              <img src="{{ asset('img/MoonExe_logo_white.png') }}" class="navbar-logo logo-dark" alt="logo">
+              <img src="{{ asset('img/MoonExe_logo_black.png') }}" class="navbar-logo logo-light" alt="logo">
             </a>
           </div>
           <div class="nav-item theme-text">
-            <a href="{{ route('dashboard') }}" class="nav-link">MOONEXE</a>
+            <a href="{{ route('user.dashboard') }}" class="nav-link">MOONEXE</a>
           </div>
         </div>
         <div class="nav-item sidebar-toggle">
@@ -89,8 +95,8 @@
       <!-- USER MENU ITEMS -->
       <ul class="list-unstyled menu-categories" id="accordionExample">
         <!-- Dashboard (User) -->
-        <li class="menu {{ Request::routeIs('dashboard') ? 'active' : '' }}">
-          <a href="{{ route('dashboard') }}" aria-expanded="false" class="dropdown-toggle">
+        <li class="menu {{ Request::routeIs('user.dashboard') ? 'active' : '' }}">
+          <a href="{{ route('user.dashboard') }}" aria-expanded="false" class="dropdown-toggle">
             <div>
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -98,7 +104,7 @@
                 <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
                 <polyline points="9 22 9 12 15 12 15 22"></polyline>
               </svg>
-              <span>Dashboard</span>
+              <span>Home</span>
             </div>
           </a>
         </li>
@@ -118,20 +124,16 @@
           </a>
         </li>
 
-        <!-- Orders -->
         <li class="menu {{ Request::routeIs('user.order') ? 'active' : '' }}">
           <a href="{{ route('user.order') }}" aria-expanded="false" class="dropdown-toggle">
             <div>
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                   class="feather feather-shopping-bag">
-                <path d="M6 2l.01 4"></path>
-                <path d="M18 2l-.01 4"></path>
-                <path d="M2 7h20l-1.34 14.36A2 2 0 0 1 18.67 23H5.33
-                         a2 2 0 0 1-1.98-1.64L2 7z"></path>
-                <path d="M16 11a4 4 0 0 1-8 0"></path>
+                   class="feather feather-trending-up">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                <polyline points="17 6 23 6 23 12"></polyline>
               </svg>
-              <span>Orders</span>
+              <span>Trade</span>
             </div>
           </a>
         </li>
@@ -164,12 +166,42 @@
                 <path d="M20 21v-2a4 4 0 0 0-3-3.87"></path>
                 <circle cx="12" cy="7" r="4"></circle>
               </svg>
-              <span>Account</span>
+              <span>Profile</span>
             </div>
           </a>
         </li>
+        
+        <!-- Tutorial 
+        <li class="menu">
+          <a href="" aria-expanded="false" class="dropdown-toggle">
+            <div>
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
+                   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                   class="feather feather-book-open">
+                <path d="M2 7a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7z"></path>
+                <path d="M22 7a2 2 0 0 0-2-2h-6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V7z"></path>
+              </svg>
+              <span>Tutorial</span>
+            </div>
+          </a>
+        </li>
+        
+        <!-- Media 
+        <li class="menu">
+          <a href="" aria-expanded="false" class="dropdown-toggle">
+            <div>
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
+                   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                   class="feather feather-video">
+                <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+              </svg>
+              <span>Media</span>
+            </div>
+          </a>
+        </li>-->
 
-        <!-- Setting -->
+        <!-- Setting 
         <li class="menu">
           <a href="#" aria-expanded="false" class="dropdown-toggle">
             <div>
@@ -192,7 +224,7 @@
               <span>Setting</span>
             </div>
           </a>
-        </li>
+        </li>-->
       </ul>
     </nav>
   </div>

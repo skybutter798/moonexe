@@ -1,277 +1,353 @@
-@extends('layouts.users.app')
+<x-base-layout :scrollspy="false">
+  <x-slot:pageTitle>
+    Assets
+  </x-slot:pageTitle>
 
-@section('title', $title ?? 'User Assets')
+  <x-slot:headerFiles>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <style>
+      body {
+        background-color: white;
+      }
+      .table-title {
+        background-color: #0d6efd; /* Bootstrap primary */
+        color: #fff;
+        font-size: 0.9rem;
+        padding: 0.5rem 1rem;
+        margin-bottom: 0;
+      }
+      .custom-table {
+        font-size: 0.9rem;
+      }
+      .custom-table thead th {
+        white-space: nowrap;
+      }
+      /* Smaller wallet cards */
+      .wallet-card .card {
+        padding: 0.5rem;
+      }
+      .wallet-card .card-title {
+        font-size: 0.8rem;
+        margin-bottom: 0.25rem;
+      }
+      .wallet-card .sub-wallet-amount {
+        font-size: 1rem;
+        font-weight: bold;
+      }
+      .page-link {
+          color:#888ea8;
+      }
+      
+      table thead tr {
+         white-space: nowrap;
+      }
 
-@section('content')
-<div class="container-fluid py-4">
-  <!-- Flash Messages -->
-  @if(session('success'))
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-      {{ session('success') }}
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-  @endif
 
-  @if($errors->any())
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-      <ul class="mb-0">
-        @foreach($errors->all() as $error)
-          <li>{{ $error }}</li>
-        @endforeach
-      </ul>
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-  @endif
+    </style>
+  </x-slot:headerFiles>
 
-  <!-- Custom style to make all table header titles the same size -->
-  <style>
-    .custom-table thead th {
-      font-size: 1rem; /* Adjust the value as needed */
-    }
-  </style>
+  <div class="container-fluid py-4">
+    <!-- Flash Messages -->
+    @if(session('success'))
+      <div class="alert alert-success alert-dismissible fade show" role="alert">
+        {{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    @endif
 
-  <!-- Estimated Balance + PnL + Actions -->
-  <div class="card shadow-sm mb-4">
-    <div class="card-body">
-      <div class="d-flex justify-content-between align-items-center flex-wrap">
-        <!-- Left side: Balance and PnL -->
-        <div class="mb-3 mb-md-0">
-          <h2 class="mb-1">
-            {{ number_format($total_balance, 2) }} <small>USDT</small>
-          </h2>
-          <small class="text-white">≈ ${{ number_format($total_balance, 2) }}</small>
-          <div>
-            <span class="text-danger">
-              Today’s PnL (Estimate): - $58.59 (-17.54%)
-            </span>
+    @if($errors->any())
+      <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <ul class="mb-0">
+          @foreach($errors->all() as $error)
+            <li>{{ $error }}</li>
+          @endforeach
+        </ul>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    @endif
+    
+    <!-- Title for Assets Section -->
+    <h2 class="mb-4">Assets</h2>
+
+    <!-- Wallet Cards Section -->
+    <div class="row mb-4 wallet-card">
+      <div class="col-6 col-md-3 mb-3">
+        <div class="card h-100 text-center">
+          <div class="card-body">
+            <h6 class="card-title">USDT Wallet</h6>
+            <p class="sub-wallet-amount mb-0">
+              {{ number_format($wallets->cash_wallet, 4) }}
+            </p>
           </div>
         </div>
-        <!-- Right side: Buttons -->
-        <div>
-          <button class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#depositModal">Deposit</button>
-          <button class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#withdrawalModal">Withdrawal</button>
-          <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#transferModal">Transfer</button>
+      </div>
+      <div class="col-6 col-md-3 mb-3">
+        <div class="card h-100 text-center">
+          <div class="card-body">
+            <h6 class="card-title">Trade Margin</h6>
+            <p class="sub-wallet-amount mb-0">
+              {{ number_format($wallets->trading_wallet, 4) }}
+            </p>
+          </div>
         </div>
       </div>
-    </div>
-  </div>
-  <!-- End Estimated Balance + PnL + Actions -->
+      @if(!is_null($user->bonus))
+        <!-- Bonus Margin Card -->
+        <div class="col-6 col-md-3 mb-3">
+            <div id="bonusWalletCard" class="card h-100 text-center p-2">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">Bonus Margin</h5>
+                    <p class="sub-wallet-amount mb-0 flex-grow-1">
+                        {{ number_format($wallets->bonus_wallet, 2) }}
+                    </p>
+                </div>
+            </div>
+        </div>
+    @endif
 
-  <!-- Sub-Wallets (Cash, Trading, Earning, Affiliates) -->
-  <div class="row">
-    <!-- USDT Wallet -->
-    <div class="col-sm-6 col-md-3 mb-3">
-      <div class="card text-center p-2 bg-panel">
-        <div class="card-body">
-          <h5 class="card-title text-white">USDT Wallet</h5>
-          <p class="sub-wallet-amount mb-0 text-white">
-            {{ number_format($wallets->cash_wallet, 2) }}
-          </p>
+      <div class="col-6 col-md-3 mb-3">
+        <div class="card h-100 text-center">
+          <div class="card-body">
+            <h6 class="card-title">Trading Profit</h6>
+            <p class="sub-wallet-amount mb-0">
+              {{ number_format($wallets->earning_wallet, 4) }}
+            </p>
+          </div>
         </div>
       </div>
-    </div>
-    <!-- Trading Wallet -->
-    <div class="col-sm-6 col-md-3 mb-3">
-      <div class="card text-center p-2 bg-panel">
-        <div class="card-body">
-          <h5 class="card-title text-white">Trading Wallet</h5>
-          <p class="sub-wallet-amount mb-0 text-white">
-            {{ number_format($wallets->trading_wallet, 2) }}
-          </p>
+      <div class="col-6 col-md-3 mb-3">
+        <div class="card h-100 text-center">
+          <div class="card-body">
+            <h6 class="card-title">Affiliates</h6>
+            <p class="sub-wallet-amount mb-0">
+              {{ number_format($wallets->affiliates_wallet, 4) }}
+            </p>
+          </div>
         </div>
       </div>
-    </div>
-    <!-- Earning Wallet -->
-    <div class="col-sm-6 col-md-3 mb-3">
-      <div class="card text-center p-2 bg-panel">
-        <div class="card-body">
-          <h5 class="card-title text-white">Earning Wallet</h5>
-          <p class="sub-wallet-amount mb-0 text-white">
-            {{ number_format($wallets->earning_wallet, 2) }}
-          </p>
-        </div>
-      </div>
-    </div>
-    <!-- Affiliates Wallet -->
-    <div class="col-sm-6 col-md-3 mb-3">
-      <div class="card text-center p-2 bg-panel">
-        <div class="card-body">
-          <h5 class="card-title text-white">Affiliates Wallet</h5>
-          <p class="sub-wallet-amount mb-0 text-white">
-            {{ number_format($wallets->affiliates_wallet, 2) }}
-          </p>
-        </div>
-      </div>
-    </div>
-  </div>
-  <!-- End Sub-Wallets -->
-
-  <!-- Assets Section (Dark-Themed Card, Replacing the old Spot section) -->
-<div class="card shadow-sm mb-4 bg-panel">
-  <!-- Darker header row -->
-  <div class="card-header d-flex justify-content-between align-items-center" style="background: #2F2F45;">
-    <h5 class="mb-0 text-white">Assets</h5>
-  </div>
-  <div class="card-body p-0">
-    <div class="table-responsive">
-      <table class="table custom-table table-sm mb-0">
-        <thead>
-          <tr>
-            <th>Currency</th>
-            <th>Amount</th>
-            <th>Price/Cost</th>
-            <th>24H Change</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          @if($assets->count())
-            @foreach($assets as $asset)
-              <tr>
-                <td>{{ $asset->currency }}</td>
-                <td>{{ number_format($asset->amount, 2) }}</td>
-                <!-- If you have price/cost or change information, display them here.
-                     Otherwise, use placeholders such as "N/A" -->
-                <td>N/A</td>
-                <td>N/A</td>
-                <td>{{ ucfirst($asset->status) }}</td>
-              </tr>
-            @endforeach
-          @else
-            <tr>
-              <td colspan="5" class="text-center">No assets found.</td>
-            </tr>
-          @endif
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
-<!-- End Assets Section -->
-
-  <!-- (Optional) Recent Transactions & Payout Record Sections -->
-  <div class="row">
-    <div class="col-lg-6 mb-4">
-      <!-- Recent Transactions Section -->
-<div class="card recent-transactions shadow-sm mb-4">
-  <div class="card-header">
-    <h4 class="mb-0">Recent Transactions</h4>
-  </div>
-  <div class="card-body p-0">
-    <div class="table-responsive">
-      <table class="table custom-table table-sm mb-0">
-        <thead>
-          <tr>
-            <th>Transaction</th>
-            <th>Txid</th>
-            <th>Amount</th>
-            <th>Date</th>
-          </tr>
-        </thead>
-        <tbody>
-          @forelse($transactions as $transaction)
-            <tr>
-              <td>{{ $transaction->transaction_description }}</td>
-              <td>{{ $transaction->txid }}</td>
-              <td>{{ $transaction->transaction_amount }}</td>
-              <td>{{ $transaction->created_at->format('Y-m-d') }}</td>
-            </tr>
-          @empty
-            <tr>
-              <td colspan="4" class="text-center">No transactions found.</td>
-            </tr>
-          @endforelse
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
     </div>
     
-    <!-- Payout Record Section -->
-    <div class="col-lg-6 mb-4">
-      <div class="card payout-record shadow-sm">
-        <div class="card-header">
-          <h4 class="mb-0">Payout Record</h4>
-        </div>
-        <div class="card-body p-0">
-          <div class="table-responsive">
-            <table class="table custom-table table-sm mb-0">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Amount</th>
-                  <th>Date</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>#1001</td>
-                  <td>+250</td>
-                  <td>2025-01-25</td>
-                  <td>Completed</td>
-                </tr>
-                <tr>
-                  <td>#1002</td>
-                  <td>+300</td>
-                  <td>2025-01-23</td>
-                  <td>Processing</td>
-                </tr>
-                <tr>
-                  <td>#1003</td>
-                  <td>+150</td>
-                  <td>2025-01-21</td>
-                  <td>Failed</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <!-- End Recent Transactions & Payout Record Sections -->
-
-  <!-- Deposit/Withdrawal Request Section -->
-  <div class="card shadow-sm mb-4 bg-panel">
-    <div class="card-header d-flex justify-content-between align-items-center" style="background: #2F2F45;">
-      <h5 class="mb-0 text-white">Deposit/Withdrawal Request</h5>
-    </div>
-    <div class="card-body p-0">
+    <!-- Trading Record Section -->
+    <div class="mb-4">
+      <h6 class="">My Trading Record</h6>
       <div class="table-responsive">
-        <table class="table custom-table table-sm mb-0">
-          <thead>
+        <table class="table table-bordered table-sm mb-0">
+          <thead class="bg-primary text-white">
             <tr>
-              <th>Type</th>
-              <th>Transaction ID</th>
-              <th>Amount</th>
-              <th>TRC20 Address</th>
-              <th>Status</th>
-              <th>Created At</th>
+              <th>Order Pair</th>
+              <th>Txid</th>
+              <th>Total Payout</th>
+              <th>Actual Earning</th>
+              <th>Date</th>
             </tr>
           </thead>
           <tbody>
-            <!-- Display Deposit Requests -->
+            @forelse($roiRecords as $roi)
+                <tr>
+                    <td>{{ $roi->cname }}</td>
+                    <td>{{ $roi->txid }}</td>
+                    <td>{{ number_format($roi->total, 4) }}</td>
+                    <td>{{ isset($roi->actual) ? number_format($roi->actual, 4) : '-' }}</td>
+                    <td>{{ $roi->created_at ? \Carbon\Carbon::parse($roi->created_at)->format('Y-m-d H:i') : '-' }}</td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="4" class="text-center">No Trading records found.</td>
+                </tr>
+            @endforelse
+
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+
+    <!-- Payout Record Section -->
+    <div class="mb-4">
+      <h6 class="">Payout Record</h6>
+      <div class="table-responsive">
+        <table class="table table-bordered table-sm mb-0">
+          <thead class="bg-primary text-white">
+            <!-- Date moved to last column -->
+            <tr>
+              <th>Order ID</th>
+              <th>Total Payout</th>
+              <th>Actual Earning</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            @forelse($payoutRecords as $payout)
+              @php
+                if ($payout->type === 'direct') {
+                  $displayTxid = $payout->deposit_txid;
+                } else {
+                  $order = \App\Models\Order::find(optional($payout->order)->id);
+                  $displayTxid = $order ? $order->txid : 'N/A';
+                  $buy = $order ? $order->buy : 0;
+                  $earning = $order ? $order->earning : 0;
+                  $ownOrder = ($order && $order->user_id == auth()->id());
+                }
+              @endphp
+              <tr>
+                <td>
+                  <a href="#"
+                   class="payout-detail-link"
+                   data-bs-toggle="modal"
+                   data-bs-target="#payoutDetailModal"
+                   @if($payout->type === 'direct')
+                       data-payout-type="{{ $payout->type }}"
+                       data-deposit-txid="{{ $payout->deposit_txid }}"
+                       data-deposit-amount="{{ $payout->deposit_amount }}"
+                       data-direct-percentage="{{ $payout->direct_percentage }}"
+                       data-total-payout="{{ $payout->total }}"
+                   @else
+                       data-payout-type="{{ $payout->type }}"
+                       data-txid="{{ $displayTxid }}"
+                       data-buy="{{ number_format($buy, 4) }}"
+                       data-earning="{{ number_format($earning, 4) }}"
+                       data-actual="{{ number_format($payout->actual, 4) }}"
+                       data-profit-sharing="0.25"
+                       data-own-order="{{ $ownOrder ? 'true' : 'false' }}"
+                       data-wallet="{{ $payout->wallet }}"
+                   @endif>
+                   {{ $payout->type === 'direct' ? $payout->deposit_txid : $displayTxid }}
+                </a>
+
+
+                </td>
+                <td>{{ number_format($payout->total, 4) }}</td>
+                <td>{{ isset($payout->actual) ? number_format($payout->actual, 4) : '-' }}</td>
+                <td>{{ $payout->wallet }}</td>
+                <td>
+                  @if($payout->status == 1)
+                    <span class="badge bg-success">Completed</span>
+                  @else
+                    <span class="badge bg-danger">Failed</span>
+                  @endif
+                </td>
+                <td>{{ $payout->created_at ? \Carbon\Carbon::parse($payout->created_at)->format('Y-m-d H:i') : '-' }}</td>
+              </tr>
+            @empty
+              <tr>
+                <td colspan="6" class="text-center">No payout records found.</td>
+              </tr>
+            @endforelse
+          </tbody>
+        </table>
+        <!-- Pagination Links -->
+        <div class="mt-3">
+            {{ $payoutRecords->links('vendor.pagination.bootstrap-5') }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Transactions Section -->
+    <div class="mb-4 mt-4">
+      <h6 class="">Recent Transactions</h6>
+      <div class="table-responsive">
+        <table class="table table-bordered table-sm custom-table mb-0">
+          <thead class="bg-primary text-white">
+            <!-- Date is already last -->
+            <tr>
+              <th>Order ID</th>
+              <th>Remark</th>
+              <th>Amount</th>
+              <th>Type</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            @forelse($transactions as $transaction)
+              <tr>
+                <td>{{ $transaction->txid }}</td>
+                <td>{{ $transaction->transaction_description }}</td>
+                <td>{{ $transaction->transaction_amount }}</td>
+                <td>
+                  @if(isset($transaction->type))
+                    @if($transaction->type == 'Deposit')
+                      <span class="badge bg-success">Deposit</span>
+                    @elseif($transaction->type == 'Withdrawal')
+                      <span class="badge bg-danger">Withdraw</span>
+                    @elseif($transaction->type == 'Transfer')
+                      <span class="badge bg-info">Transfer</span>
+                    @else
+                      <span class="badge bg-secondary">{{ $transaction->type }}</span>
+                    @endif
+                  @else
+                    <span class="badge bg-secondary">N/A</span>
+                  @endif
+                </td>
+                <td>{{ $transaction->created_at->format('Y-m-d H:i') }}</td>
+              </tr>
+            @empty
+              <tr>
+                <td colspan="5" class="text-center">No transactions found.</td>
+              </tr>
+            @endforelse
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Deposit/Withdrawal Request Section -->
+    <div class="mb-4 mt-4">
+      <h6 class="">Deposit/Withdrawal Request</h6>
+      <div class="table-responsive">
+        <table class="table table-bordered table-sm custom-table mb-0">
+          <thead class="bg-primary text-white">
+            <!-- Reordered: Date moved to the last column -->
+            <tr>
+              <th>Order ID</th>
+              <th>Type</th>
+              <th>Amount</th>
+              <th>TRC20 Address</th>
+              <th>Status</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Deposit Requests -->
             @foreach($depositRequests as $deposit)
               <tr>
-                <td>Deposit</td>
                 <td>{{ $deposit->txid }}</td>
-                <td>{{ number_format($deposit->amount, 2) }}</td>
+                <td>Deposit</td>
+                <td>{{ number_format($deposit->amount, 4) }}</td>
                 <td>{{ $deposit->trc20_address }}</td>
-                <td>{{ $deposit->status }}</td>
+                <td>
+                  @if($deposit->status == 'Pending')
+                    <span class="badge bg-success">Processing</span>
+                  @elseif($deposit->status == 'Completed')
+                    <span class="badge bg-primary">Completed</span>
+                  @elseif($deposit->status == 'Rejected')
+                    <span class="badge bg-danger">Rejected</span>
+                  @else
+                    <span class="badge bg-secondary">{{ $deposit->status }}</span>
+                  @endif
+                </td>
                 <td>{{ $deposit->created_at->format('Y-m-d H:i') }}</td>
               </tr>
             @endforeach
-            <!-- Display Withdrawal Requests -->
+            <!-- Withdrawal Requests -->
             @foreach($withdrawalRequests as $withdrawal)
               <tr>
-                <td>Withdrawal</td>
                 <td>{{ $withdrawal->txid }}</td>
-                <td>{{ number_format($withdrawal->amount, 2) }}</td>
+                <td>Withdrawal</td>
+                <td>{{ number_format($withdrawal->amount, 4) }}</td>
                 <td>{{ $withdrawal->trc20_address }}</td>
-                <td>{{ $withdrawal->status }}</td>
+                <td>
+                  @if($withdrawal->status == 'Pending')
+                    <span class="badge bg-success">Processing</span>
+                  @elseif($withdrawal->status == 'Completed')
+                    <span class="badge bg-primary">Completed</span>
+                  @elseif($withdrawal->status == 'Rejected')
+                    <span class="badge bg-danger">Rejected</span>
+                  @else
+                    <span class="badge bg-secondary">{{ $withdrawal->status }}</span>
+                  @endif
+                </td>
                 <td>{{ $withdrawal->created_at->format('Y-m-d H:i') }}</td>
               </tr>
             @endforeach
@@ -279,109 +355,120 @@
         </table>
       </div>
     </div>
-  </div>
-  <!-- End Deposit/Withdrawal Request Section -->
-
-  <!-- Deposit Modal -->
-  <div class="modal fade" id="depositModal" tabindex="-1" aria-labelledby="depositModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content bg-dark">
-        <div class="modal-header">
-          <h5 class="modal-title" id="depositModalLabel">Deposit</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <form action="{{ route('user.deposit') }}" method="POST">
-          @csrf
-          <div class="modal-body">
-            <p>Current USDT Wallet Balance: {{ number_format($wallets->cash_wallet, 2) }} USDT</p>
-            <div class="mb-3">
-              <label for="depositAmount" class="form-label">Amount</label>
-              <input type="number" step="0.01" name="amount" class="form-control" id="depositAmount" required>
-            </div>
-            <div class="mb-3">
-              <label for="depositTRC20" class="form-label">TRC20 Address</label>
-              <!-- The sample TRC20 address is shown here and cannot be edited -->
-              <input type="text" name="trc20_address" class="form-control" id="depositTRC20" value="TR9wHy8rF89a59gD3dmMPhrtPhtu6n5U5H" disabled>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="submit" class="btn btn-primary">Submit Deposit</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
     
-  <!-- Withdrawal Modal -->
-  <div class="modal fade" id="withdrawalModal" tabindex="-1" aria-labelledby="withdrawalModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content bg-dark">
-        <div class="modal-header">
-          <h5 class="modal-title" id="withdrawalModalLabel">Withdrawal</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <form action="{{ route('user.withdrawal') }}" method="POST">
-          @csrf
-          <div class="modal-body">
-            <p>Current USDT Wallet Balance: {{ number_format($wallets->cash_wallet, 2) }} USDT</p>
-            <div class="mb-3">
-              <label for="withdrawalAmount" class="form-label">Amount</label>
-              <input type="number" step="0.01" name="amount" class="form-control" id="withdrawalAmount" required>
-            </div>
-            <div class="mb-3">
-              <label for="withdrawalTRC20" class="form-label">TRC20 Address</label>
-              <input type="text" name="trc20_address" class="form-control" id="withdrawalTRC20" placeholder="Enter your TRC20 address" required>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="submit" class="btn btn-primary">Submit Withdrawal</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-  
-  <!-- Transfer Modal -->
-    <div class="modal fade" id="transferModal" tabindex="-1" aria-labelledby="transferModalLabel" aria-hidden="true">
+    <!-- Payout Detail Modal -->
+    <div class="modal fade" id="payoutDetailModal" tabindex="-1" aria-labelledby="payoutDetailModalLabel" aria-hidden="true">
       <div class="modal-dialog">
-        <div class="modal-content bg-dark">
+        <div class="modal-content bg-white">
           <div class="modal-header">
-            <h5 class="modal-title" id="transferModalLabel">Transfer</h5>
+            <h5 class="modal-title" id="payoutDetailModalLabel">Payout Detail</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
-          <form action="{{ route('user.transfer') }}" method="POST">
-            @csrf
-            <div class="modal-body">
-              <!-- Display current wallet balances -->
-              <p>USDT Wallet: {{ number_format($wallets->cash_wallet, 2) }} USDT</p>
-              <p>Trading Wallet: {{ number_format($wallets->trading_wallet, 2) }} USDT</p>
-              <p>Earning Wallet: {{ number_format($wallets->earning_wallet, 2) }} USDT</p>
-              <p>Affiliates Wallet: {{ number_format($wallets->affiliates_wallet, 2) }} USDT</p>
+          <div class="modal-body">
+            <!-- For regular payouts -->
+            <div id="regularPayout">
+              <p><strong>Order ID:</strong> <span id="modalTxid"></span></p>
+              <p><strong>Order Buy:</strong> <span id="modalBuy"></span></p>
+              <p><strong>Order Earning:</strong> <span id="modalEarning"></span></p>
+              <p><strong>Payout Amount:</strong> <span id="modalActual"></span></p>
               <hr>
-              <!-- Transfer Type Selection -->
-              <div class="mb-3">
-                <label for="transferType" class="form-label">Transfer Type</label>
-                <select class="form-select" id="transferType" name="transfer_type" required>
-                  <option value="">Select Transfer Type</option>
-                  <option value="earning_to_cash">Earning Wallet → USDT Wallet</option>
-                  <option value="affiliates_to_cash">Affiliates Wallet → USDT Wallet</option>
-                  <option value="cash_to_trading">USDT Wallet → Trading Wallet</option>
-                </select>
-              </div>
-              <!-- Transfer Amount -->
-              <div class="mb-3">
-                <label for="transferAmount" class="form-label">Amount</label>
-                <input type="number" step="0.01" name="amount" class="form-control" id="transferAmount" required>
+              <div id="affiliateCalculationBlock">
+                <h6><strong>Affiliate Income Share Calculation:</strong></h6>
+                <p><strong>Eligible Profit Sharing:</strong> <span id="modalProfitSharing"></span></p>
+                <p id="affiliateCalculationLabel" class="small text-danger">(Order Earning/2) x Profit Sharing</p>
               </div>
             </div>
-            <div class="modal-footer">
-              <button type="submit" class="btn btn-primary">Submit Transfer</button>
+
+            
+            <!-- For direct payouts -->
+            <div id="directPayout" style="display:none;">
+              <p><strong>Topup ID:</strong> <span id="modalTxidDirect"></span></p>
+              <p><strong>Topup Amount:</strong> <span id="modalBuyDirect"></span></p>
+              <hr>
+              <h6><strong>Affiliate Income Share Calculation:</strong></h6>
+              <p><strong>Eligible Profit Sharing:</strong> <span id="modalProfitSharingDirect"></span></p>
+              <p><strong>Calculated Affiliate Income:</strong> <span id="modalAffiliateIncomeDirect"></span></p>
+              {{--<p id="affiliateCalculationLabelDirect" class="small text-danger">Topup Total x Eligible Profit Sharing</p>--}}
             </div>
-          </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+          </div>
         </div>
       </div>
     </div>
-    
+  </div>
 
-</div>
-@endsection
+  <x-slot:footerFiles>
+    <script>
+      document.addEventListener("DOMContentLoaded", function(){
+          var payoutLinks = document.querySelectorAll('.payout-detail-link');
+          payoutLinks.forEach(function(link) {
+            link.addEventListener('click', function(){
+              var payoutType = this.getAttribute('data-payout-type'); // "direct" or "earning"
+              
+              if (payoutType === "direct") {
+                // Hide regular payout section, show direct payout section.
+                document.getElementById('regularPayout').style.display = "none";
+                document.getElementById('directPayout').style.display = "block";
+                
+                // Retrieve deposit details.
+                var depositTxid = this.getAttribute('data-deposit-txid') || "N/A";
+                var depositAmount = this.getAttribute('data-deposit-amount') || "0.0000";
+                var directPercentage = this.getAttribute('data-direct-percentage') || "0";
+                var totalPayout = this.getAttribute('data-total-payout') || "0";
+                
+                // Populate direct payout fields.
+                document.getElementById('modalTxidDirect').textContent = depositTxid;
+                document.getElementById('modalBuyDirect').textContent = depositAmount;
+                document.getElementById('modalProfitSharingDirect').textContent = (parseFloat(directPercentage) * 100).toFixed(2) + '%';
+                
+                // Calculate affiliate income: Topup Total x directPercentage
+                var topupTotal = parseFloat(depositAmount.replace(/,/g, ''));
+                var affiliateIncomeDirect = totalPayout;
+                document.getElementById('modalAffiliateIncomeDirect').textContent = affiliateIncomeDirect;
+              } else {
+                // Regular payout section.
+                document.getElementById('regularPayout').style.display = "block";
+                document.getElementById('directPayout').style.display = "none";
+                
+                // Retrieve standard payout details.
+                var txid = this.getAttribute('data-txid');
+                var buy = this.getAttribute('data-buy');
+                var earning = this.getAttribute('data-earning');
+                var actual = this.getAttribute('data-actual');
+                var profitSharing = this.getAttribute('data-profit-sharing'); // e.g., "0.25"
+                var ownOrder = this.getAttribute('data-own-order'); // "true" or "false"
+                var wallet = this.getAttribute('data-wallet') || "";
+                console.log("Wallet attribute:", wallet);
+
+                
+                // Populate regular payout fields.
+                document.getElementById('modalTxid').textContent = txid;
+                document.getElementById('modalBuy').textContent = buy;
+                document.getElementById('modalEarning').textContent = earning;
+                document.getElementById('modalActual').textContent = actual;
+                document.getElementById('modalProfitSharing').textContent = (parseFloat(profitSharing) * 100).toFixed(2) + '%';
+                
+                // If the order belongs to the current user OR if the wallet is "earning", hide the affiliate calculation block.
+                if (ownOrder === "true" || wallet.toLowerCase() === "earning") {
+                  document.getElementById('affiliateCalculationBlock').style.display = "none";
+                } else {
+                  document.getElementById('affiliateCalculationBlock').style.display = "block";
+                }
+                
+                // Calculate affiliate income for regular payouts.
+                var affiliateIncomeElem = document.getElementById('modalAffiliateIncome');
+                if (affiliateIncomeElem) {
+                    var affiliateIncome = ((parseFloat(earning) / 2) * parseFloat(profitSharing)).toFixed(4);
+                    affiliateIncomeElem.textContent = affiliateIncome;
+                }
+
+
+              }
+            });
+          });
+        });
+    </script>
+  </x-slot:footerFiles>
+</x-base-layout>

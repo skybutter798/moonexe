@@ -21,13 +21,13 @@
       <div class="navbar-nav theme-brand flex-row text-center">
         <div class="nav-logo">
           <div class="nav-item theme-logo">
-            <a href="{{ route('dashboard') }}">
-              <img src="{{ asset('img/dark_logo.png') }}" class="navbar-logo logo-dark" alt="logo">
-              <img src="{{ asset('img/logo.png') }}" class="navbar-logo logo-light" alt="logo">
+            <a href="{{ route('admin.dashboard') }}">
+              <img src="{{ asset('img/MoonExe_logo_white.png') }}" class="navbar-logo logo-dark" alt="logo">
+              <img src="{{ asset('img/MoonExe_logo_black.png') }}" class="navbar-logo logo-light" alt="logo">
             </a>
           </div>
           <div class="nav-item theme-text">
-            <a href="{{ route('dashboard') }}" class="nav-link">MOONEXE</a>
+            <a href="{{ route('admin.dashboard') }}" class="nav-link">MOONEXE</a>
           </div>
         </div>
         <div class="nav-item sidebar-toggle">
@@ -66,8 +66,8 @@
         ****************************************--}}
         @if (Auth::check() && Auth::user()->is_admin)
           <!-- Dashboard (Admin) -->
-          <li class="menu {{ Request::routeIs('dashboard') ? 'active' : '' }}">
-            <a href="{{ route('dashboard') }}" aria-expanded="false" class="dropdown-toggle">
+          <li class="menu {{ Request::routeIs('admin.dashboard') ? 'active' : '' }}">
+            <a href="{{ route('admin.dashboard') }}" aria-expanded="false" class="dropdown-toggle">
               <div>
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -92,8 +92,8 @@
             </div>
           </li>
           <!-- Plans -->
-          <li class="menu {{ Request::routeIs('packages.index') ? 'active' : '' }}">
-            <a href="{{ route('packages.index') }}" aria-expanded="false" class="dropdown-toggle">
+          <li class="menu {{ Request::routeIs('admin.packages.index') ? 'active' : '' }}">
+            <a href="{{ route('admin.packages.index') }}" aria-expanded="false" class="dropdown-toggle">
               <div>
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -255,8 +255,8 @@
             </a>
           </li>
           <!-- Users -->
-          <li class="menu {{ Request::routeIs('users.index') ? 'active' : '' }}">
-            <a href="{{ route('users.index') }}" aria-expanded="false" class="dropdown-toggle">
+          <li class="menu {{ Request::routeIs('admin.users.index') ? 'active' : '' }}">
+            <a href="{{ route('admin.users.index') }}" aria-expanded="false" class="dropdown-toggle">
               <div>
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -367,8 +367,8 @@
         ****************************************--}}
         @else
           <!-- Dashboard (User) -->
-          <li class="menu {{ Request::routeIs('dashboard') ? 'active' : '' }}">
-            <a href="{{ route('dashboard') }}" aria-expanded="false" class="dropdown-toggle">
+          <li class="menu {{ Request::routeIs('user.dashboard') ? 'active' : '' }}">
+            <a href="{{ route('user.dashboard') }}" aria-expanded="false" class="dropdown-toggle">
               <div>
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
                      stroke="currentColor" stroke-width="2" stroke-linecap="round"

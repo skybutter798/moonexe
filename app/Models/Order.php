@@ -17,6 +17,8 @@ class Order extends Model
         'sell',
         'receive',
         'status',
+        'earning',
+        'est_rate',
     ];
 
     // Relationships

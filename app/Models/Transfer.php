@@ -13,5 +13,6 @@ class Transfer extends Model
         'to_wallet',
         'amount',
         'status',
+        'remark',
     ];
 }

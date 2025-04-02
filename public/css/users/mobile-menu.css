@@ -1,0 +1,142 @@
+:root {
+    --primary-color: #4361ee;
+    --bg-color: #fff;
+    --text-color: #333;
+}
+
+/* Dark mode variable overrides when layout-dark is applied */
+body.layout-dark {
+    --primary-color: #82aaff; /* A lighter blue for dark mode */
+    --bg-color: #000;         /* Dark background */
+    --text-color: #ccc;       /* Lighter text */
+}
+
+.bi-primary {
+    color: var(--primary-color);
+    font-size: 22px;
+}
+
+/* Animate icons on hover */
+.mobile-footer-menu ul li a i {
+    transition: transform 0.2s ease-in-out;
+}
+
+.mobile-footer-menu ul li a:hover i {
+    transform: scale(1.2);
+}
+
+/* Center button animation - Pulse Effect */
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0px 0px 10px rgba(67, 97, 238, 0.5);
+    }
+    50% {
+        transform: scale(1.1);
+        box-shadow: 0px 0px 20px rgba(67, 97, 238, 0.7);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0px 0px 10px rgba(67, 97, 238, 0.5);
+    }
+}
+
+.menu-center {
+    position: relative;
+    top: -20px;
+}
+
+.menu-center .order-icon {
+    width: 60px;
+    height: 60px;
+    background: var(--primary-color);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+    animation: pulse 2s infinite ease-in-out;
+}
+
+/* Button click effect */
+.mobile-footer-menu ul li a:active {
+    transform: scale(0.9);
+    transition: transform 0.1s ease;
+}
+
+.mobile-footer-menu {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    z-index: 2;
+    width: 100%;
+    background: var(--bg-color);
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    display: none;
+    border-top-left-radius: 50px;
+    border-top-right-radius: 50px;
+}
+
+.mobile-footer-menu ul {
+    display: flex;
+    justify-content: space-around;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.mobile-footer-menu ul li {
+    flex: 1;
+    text-align: center;
+    margin: auto;
+}
+
+.mobile-footer-menu ul li a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-decoration: none;
+    color: var(--text-color);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.mobile-footer-menu ul li a i {
+    font-size: 20px;
+}
+
+.menu-center a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 14px;
+    font-weight: bold;
+    margin-top: 5px;
+}
+
+.menu-center .order-icon i {
+    font-size: 28px;
+}
+
+/* Show only on small screens */
+@media (max-width: 768px) {
+    .mobile-footer-menu {
+        display: block;
+    }
+
+    /* Hide the main menu */
+    .desktop-menu {
+        display: none !important;
+    }
+    
+    #content {
+        margin-top: 0px !important;
+    }
+}
+
+.custom-order-icon {
+    width: 45%;
+    object-fit: contain;
+}

@@ -12,6 +12,7 @@ class Currency extends Model
     protected $fillable = [
         'c_name',
         'status',
+        'timezone',
     ];
 
     // Optional: Define relationships if needed

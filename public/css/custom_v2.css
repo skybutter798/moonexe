@@ -1,0 +1,96 @@
+.main-container#container {
+    background: white;
+}
+
+
+/* Header */
+.mobile-header {
+    background-color: #fff;
+    padding: 40px 10px 10px 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.header-left {
+    width: 40px;
+}
+
+.header-logo {
+    flex: 1;
+    text-align: center;
+}
+
+.header-logo img {
+    height: 35px;
+    object-fit: contain;
+}
+
+.header-right {
+    width: 40px;
+    text-align: right;
+}
+
+.burger-menu {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 24px;
+    color: #333;
+}
+
+.header-marquee {
+    margin-top: 20px;
+    font-size: 14px;
+    border: 1px solid #acacff;
+    background-color: #ededed;
+    padding-top: 5px;
+    color: #003cff;
+    overflow: hidden;
+}
+
+/* Container for each currency item */
+.currency-item {
+    display: inline-flex; 
+    align-items: center;
+    margin-right: 20px;
+    padding: 5px 10px;
+}
+
+/* Flag icon styling */
+.flag-icon {
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+/* Pair (e.g., USDT / GBP) */
+.pair {
+    font-weight: 600;
+    margin-right: 8px;
+}
+
+/* Price styling */
+.price {
+    margin-right: 4px;
+    color: #333;
+}
+
+/* Arrow styling for up/down indicators */
+.arrow {
+    font-weight: bold;
+}
+
+.up {
+    color: green;
+}
+
+.down {
+    color: red;
+}

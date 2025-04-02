@@ -59,12 +59,12 @@
         <!-- Shortcut Buttons Row -->
         <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 col-12 layout-spacing">
             <div class="d-flex flex-wrap shortcut-buttons">
-                <a href="{{ route('packages.index') }}" class="shortcut-btn">Plans</a>
+                <a href="{{ route('admin.packages.index') }}" class="shortcut-btn">Plans</a>
                 <a href="#" class="shortcut-btn">Currencies</a>
                 <a href="#" class="shortcut-btn">Payout</a>
                 <a href="#" class="shortcut-btn">Deposit &amp; Withdrawal</a>
                 <a href="#" class="shortcut-btn">Wallet Control</a>
-                <a href="{{ route('users.index') }}" class="shortcut-btn">Staff &amp; Users</a>
+                <a href="{{ route('admin.users.index') }}" class="shortcut-btn">Staff &amp; Users</a>
                 <a href="#" class="shortcut-btn">Transaction</a>
                 <a href="#" class="shortcut-btn">Payout</a>
                 <a href="#" class="shortcut-btn">P/L</a>
