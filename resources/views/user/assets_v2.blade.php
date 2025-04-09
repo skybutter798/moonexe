@@ -87,6 +87,8 @@
           background-color:#4d80b5;
           color:white;
           padding: 10px;
+          border-top-left-radius: 0px;
+          border-top-right-radius: 0px;
       }
       
       .card .card-value {
@@ -122,7 +124,7 @@
     @endif
     
     <!-- Title for Assets Section -->
-    <h2 class="mb-4">Assets</h2>
+    <h2 class="mb-3 text-primary"><strong>Assets</strong></h4>
 
     <!-- Wallet Cards Section -->
     <div class="row mb-4 wallet-card">
@@ -132,7 +134,7 @@
                 <h6 class="card-header">USDT Wallet</h6>
                 <div class="card-body d-flex flex-column justify-content-center align-items-center">
                     <p class="mb-0 text-center">
-                        <strong>Balance:</strong> 
+                        <strong>Balance</strong> 
                         <div class="card-value border-radius-25px">{{ number_format($wallets->cash_wallet, 4) }}</div>
                     </p>
                 </div>
@@ -145,7 +147,7 @@
                 <h6 class="card-header">Trade Margin</h6>
                 <div class="card-body d-flex flex-column justify-content-center align-items-center">
                     <p class="mb-0 text-center">
-                        <strong>Balance:</strong> 
+                        <strong>Balance</strong> 
                         <div class="card-value border-radius-25px">{{ number_format($wallets->trading_wallet, 4) }}</div>
                     </p>
                 </div>
@@ -158,7 +160,7 @@
                 <h6 class="card-header">Trading Profit</h6>
                 <div class="card-body d-flex flex-column justify-content-center align-items-center">
                     <p class="mb-0 text-center">
-                        <strong>Balance:</strong> 
+                        <strong>Balance</strong> 
                         <div class="card-value border-radius-25px">{{ number_format($wallets->earning_wallet, 4) }}</div>
                     </p>
                 </div>
@@ -171,7 +173,7 @@
                 <h6 class="card-header">Affiliates</h6>
                 <div class="card-body d-flex flex-column justify-content-center align-items-center">
                     <p class="mb-0 text-center">
-                        <strong>Balance:</strong> 
+                        <strong>Balance</strong> 
                         <div class="card-value border-radius-25px">{{ number_format($wallets->affiliates_wallet, 4) }}</div>
                     </p>
                 </div>

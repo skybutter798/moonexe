@@ -24,7 +24,7 @@ class SimulateFakeUserBuyOrders extends Command
 
         if ($users->isEmpty()) {
             $this->info("No users with status 2 found.");
-            Log::channel('order')->info("No users with status 2 found.");
+            //log::channel('order')->info("No users with status 2 found.");
             return;
         }
 
@@ -38,7 +38,7 @@ class SimulateFakeUserBuyOrders extends Command
         foreach ($selectedUsers as $user) {
             $message = "--------> Processing fake orders for user id: {$user->id}";
             $this->info($message);
-            Log::channel('order')->info($message);
+            //log::channel('order')->info($message);
 
             // Retrieve the user's wallet.
             $wallet = Wallet::where('user_id', $user->id)->first();
@@ -52,7 +52,7 @@ class SimulateFakeUserBuyOrders extends Command
             if ($wallet->trading_wallet <= 0) {
                 $message = "User id {$user->id} has no trading wallet funds. Skipping.";
                 $this->warn($message);
-                //Log::channel('order')->warning($message);
+                Log::channel('order')->warning($message);
                 continue;
             }
 
@@ -66,7 +66,7 @@ class SimulateFakeUserBuyOrders extends Command
             if ($availablePairs->isEmpty()) {
                 $message = "No available pairs found for user id {$user->id}.";
                 $this->warn($message);
-                //Log::channel('order')->warning($message);
+                Log::channel('order')->warning($message);
                 continue;
             }
 
@@ -94,23 +94,23 @@ class SimulateFakeUserBuyOrders extends Command
                 if ($remainingAssetVolume <= 0) {
                     $message = "Pair id {$pair->id} has no remaining asset volume. Skipping.";
                     $this->info($message);
-                    Log::channel('order')->info($message);
+                    //log::channel('order')->info($message);
                     continue;
                 }
 
                 // Convert the remaining asset volume to USD using the market mid rate.
                 if (strpos($marketData->symbol, 'USD') === 0) {
                     $remainingUSDVolume = round($remainingAssetVolume / $marketData->mid, 2);
-                    Log::channel('order')->info("Available check: {$remainingAssetVolume} / {$marketData->mid} = {$remainingUSDVolume}");
+                    //log::channel('order')->info("Available check: {$remainingAssetVolume} / {$marketData->mid} = {$remainingUSDVolume}");
                 } else {
                     $remainingUSDVolume = round($remainingAssetVolume * $marketData->mid, 2);
-                    Log::channel('order')->info("Available check: {$remainingAssetVolume} * {$marketData->mid} = {$remainingUSDVolume}");
+                    //log::channel('order')->info("Available check: {$remainingAssetVolume} * {$marketData->mid} = {$remainingUSDVolume}");
                 }
 
                 if ($remainingUSDVolume <= 0) {
                     $message = "Pair id {$pair->id} has no remaining USD volume after conversion. Skipping.";
                     $this->info($message);
-                    Log::channel('order')->info($message);
+                    //log::channel('order')->info($message);
                     continue;
                 }
 
@@ -121,12 +121,12 @@ class SimulateFakeUserBuyOrders extends Command
                 if ($orderAmount < 10) {
                     $message = "Calculated order amount is below the minimum for pair id {$pair->id}. Skipping.";
                     $this->info($message);
-                    Log::channel('order')->info($message);
+                    //log::channel('order')->info($message);
                     continue;
                 }
                 
                 $existingOrder = Order::where('pair_id', $pair->id)->first();
-                $randomDelta = mt_rand(1, 5) / 100;
+                $randomDelta = mt_rand(1, 4) / 100;
                 $est_rate = ($existingOrder && $existingOrder->est_rate !== null)
                                 ? $existingOrder->est_rate
                                 : $pair->rate + $randomDelta;
@@ -157,6 +157,7 @@ class SimulateFakeUserBuyOrders extends Command
                     'receive' => $estimatedReceive,
                     'status'  => 'pending',
                     'earning' => $earning,
+                    'time' => random_int(3, 18),
                 ]);
 
                 // Deduct the order amount from the user's trading wallet.
@@ -165,7 +166,7 @@ class SimulateFakeUserBuyOrders extends Command
 
                 $message = "Created fake order for user id {$user->id} on pair id {$pair->id} with order amount: {$orderAmount} and estimated receive: {$estimatedReceive}";
                 $this->info($message);
-                Log::channel('order')->info($message);
+                //log::channel('order')->info($message);
                 
                 $updatedVolume = $remainingAssetVolume - $estimatedReceive;
                 event(new OrderUpdated($pair->id, $updatedVolume, $pair->volume));

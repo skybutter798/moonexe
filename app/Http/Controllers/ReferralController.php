@@ -5,6 +5,7 @@ use App\Models\User;
 use App\Models\Transfer;
 use App\Models\Order;
 use App\Models\Payout;
+use App\Models\MatchingRecord;
 use App\Services\UserRangeCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -53,14 +54,15 @@ class ReferralController extends Controller
         return $user; // Will be null if not found.
     }
 
-
     public function index(Request $request)
     {
         // Determine filter dates based on request parameters
         $fromDate = null;
         $toDate = null;
+        $applyDateFilter = false;
         
         if ($request->has('filter') && $request->input('filter') && $request->input('filter') !== 'all') {
+            $applyDateFilter = true;
             switch ($request->input('filter')) {
                 case 'today':
                     $fromDate = now()->toDateString();
@@ -78,9 +80,11 @@ class ReferralController extends Controller
         } else {
             // Use custom date range if provided
             if ($request->filled('from')) {
+                $applyDateFilter = true;
                 $fromDate = $request->input('from');
             }
             if ($request->filled('to')) {
+                $applyDateFilter = true;
                 $toDate = $request->input('to');
             }
         }
@@ -97,30 +101,26 @@ class ReferralController extends Controller
         // ---------------------------
         // Cards (Community Summary) - date-filtered
         // ---------------------------
-        $allDownlineIds = $this->getAllDownlineIds(auth()->id(), $fromDate, $toDate);
+        $allDownlineIds = $this->getAllDownlineIds(auth()->id(), $applyDateFilter ? $fromDate : null, $applyDateFilter ? $toDate : null);
         $communityUserIds = array_merge($allDownlineIds, [auth()->id()]);
         
         $myEarningQuery = Payout::where('user_id', auth()->id())
                         ->where('status', '1')
                         ->where('type', 'payout')
                         ->where('wallet', 'earning')
-                        ->when($fromDate, function ($query) use ($fromDate) {
-                            return $query->whereDate('created_at', '>=', $fromDate);
-                        })
-                        ->when($toDate, function ($query) use ($toDate) {
-                            return $query->whereDate('created_at', '<=', $toDate);
+                        ->when($applyDateFilter, function ($query) use ($fromDate, $toDate) {
+                            if ($fromDate) {
+                                $query->whereDate('created_at', '>=', $fromDate);
+                            }
+                            if ($toDate) {
+                                $query->whereDate('created_at', '<=', $toDate);
+                            }
+                            return $query;
                         });
-                        
-        if ($fromDate) {
-            $myEarningQuery->whereDate('created_at', '>=', $fromDate);
-        }
-        if ($toDate) {
-            $myEarningQuery->whereDate('created_at', '<=', $toDate);
-        }
         
         $myTotalEarning = $myEarningQuery->sum('actual');
         $totalOrders = (clone $myEarningQuery)->count();
-        $dateRange = ($fromDate || $toDate) ? "$fromDate to $toDate" : "All";
+        $dateRange = $applyDateFilter ? "$fromDate to $toDate" : "All";
         
         $totalCommunity = count($allDownlineIds);
         
@@ -128,11 +128,14 @@ class ReferralController extends Controller
                         ->where('type', 'direct')
                         ->where('wallet', 'affiliates')
                         ->where('status', 1)
-                        ->when($fromDate, function($query) use ($fromDate) {
-                            return $query->whereDate('created_at', '>=', $fromDate);
-                        })
-                        ->when($toDate, function($query) use ($toDate) {
-                            return $query->whereDate('created_at', '<=', $toDate);
+                        ->when($applyDateFilter, function($query) use ($fromDate, $toDate) {
+                            if ($fromDate) {
+                                $query->whereDate('created_at', '>=', $fromDate);
+                            }
+                            if ($toDate) {
+                                $query->whereDate('created_at', '<=', $toDate);
+                            }
+                            return $query;
                         })
                         ->sum('actual');
                         
@@ -140,42 +143,79 @@ class ReferralController extends Controller
                         ->where('type', 'payout')
                         ->where('wallet', 'affiliates')
                         ->where('status', 1)
-                        ->when($fromDate, function($query) use ($fromDate) {
-                            return $query->whereDate('created_at', '>=', $fromDate);
-                        })
-                        ->when($toDate, function($query) use ($toDate) {
-                            return $query->whereDate('created_at', '<=', $toDate);
+                        ->when($applyDateFilter, function($query) use ($fromDate, $toDate) {
+                            if ($fromDate) {
+                                $query->whereDate('created_at', '>=', $fromDate);
+                            }
+                            if ($toDate) {
+                                $query->whereDate('created_at', '<=', $toDate);
+                            }
+                            return $query;
                         })
                         ->sum('actual');
         
-        $referralBreakdown = collect();
-        $directPayouts = Payout::with('transfer')
-                        ->where('user_id', auth()->user()->id)
-                        ->where('type', 'direct')
-                        ->where('wallet', 'affiliates')
-                        ->when($fromDate, function ($query) use ($fromDate) {
-                            return $query->whereDate('created_at', '>=', $fromDate);
-                        })
-                        ->when($toDate, function ($query) use ($toDate) {
-                            return $query->whereDate('created_at', '<=', $toDate);
-                        })
-                        ->get();
-
-                        
-        $matchingBreakdown = collect();
-        $matchingPayouts = Payout::with('order')
-                        ->where('user_id', auth()->user()->id)
-                        ->where('type', 'payout')
-                        ->where('wallet', 'affiliates')
-                        ->when($fromDate, function ($query) use ($fromDate) {
-                            return $query->whereDate('created_at', '>=', $fromDate);
-                        })
-                        ->when($toDate, function ($query) use ($toDate) {
-                            return $query->whereDate('created_at', '<=', $toDate);
-                        })
-                        ->get();
-
-
+        // ---------------------------
+        // Referral Breakdown using MatchingRecord table
+        // (Referral = total_ref_contribute and total_deposit)
+        // ---------------------------
+        $referralQuery = MatchingRecord::select(
+            'referral_group',
+            \DB::raw('SUM(total_ref_contribute) as total'),
+            \DB::raw('SUM(total_deposit) as count')
+        )
+        ->where('user_id', auth()->id());
+        
+        if ($applyDateFilter) {
+            if ($fromDate) {
+                $referralQuery->whereDate('record_date', '>=', $fromDate);
+            }
+            if ($toDate) {
+                $referralQuery->whereDate('record_date', '<=', $toDate);
+            }
+        }
+        
+        $referralBreakdown = $referralQuery->groupBy('referral_group')
+            ->get()
+            ->map(function($record) {
+                $referralUser = User::find($record->referral_group);
+                return [
+                    'referral_name' => $referralUser ? $referralUser->name : 'Unknown',
+                    'total'         => $record->total,
+                    'count'         => $record->count,
+                ];
+            });
+        
+        // ---------------------------
+        // Matching Breakdown using MatchingRecord table
+        // (Matching = total_contribute and total_trade)
+        // ---------------------------
+        $matchingQuery = MatchingRecord::select(
+            'referral_group',
+            \DB::raw('SUM(total_contribute) as total'),
+            \DB::raw('SUM(total_trade) as count')
+        )
+        ->where('user_id', auth()->id());
+        
+        if ($applyDateFilter) {
+            if ($fromDate) {
+                $matchingQuery->whereDate('record_date', '>=', $fromDate);
+            }
+            if ($toDate) {
+                $matchingQuery->whereDate('record_date', '<=', $toDate);
+            }
+        }
+        
+        $matchingBreakdown = $matchingQuery->groupBy('referral_group')
+            ->get()
+            ->map(function($record) {
+                $referralUser = User::find($record->referral_group);
+                return [
+                    'referral_name' => $referralUser ? $referralUser->name : 'Unknown',
+                    'total'         => $record->total,
+                    'count'         => $record->count,
+                ];
+            });
+        
         // ---------------------------
         // Table (First Level Downline Summary)
         // ---------------------------
@@ -184,83 +224,9 @@ class ReferralController extends Controller
                                    ->orderBy('created_at', 'desc')
                                    ->get();
                                    
-        $firstLevelIds = $firstLevelReferrals->pluck('id')->toArray();
-        
-        $groupedReferral = [];
-        $referralTreeCount = [];
-        foreach ($directPayouts as $payout) {
-            $transfer = $payout->transfer;
-            if ($transfer) {
-                $topReferralUser = $this->findTopReferral($transfer->user_id, auth()->id());
-                if ($topReferralUser) {
-                    $referralName = $topReferralUser->name;
-        
-                    // If we haven’t already calculated the tree count, do so now.
-                    if (!isset($referralTreeCount[$referralName])) {
-                        // Get all downline IDs for the top referral.
-                        $treeIds = $this->getAllDownlineIds($topReferralUser->id);
-                        // Count the referral itself plus its downlines.
-                        $referralTreeCount[$referralName] = count($treeIds) + 1;
-                    }
-        
-                    if (isset($groupedReferral[$referralName])) {
-                        $groupedReferral[$referralName]['total'] += $payout->actual;
-                        // Do not increment count here—use the unique tree count.
-                    } else {
-                        $groupedReferral[$referralName] = [
-                            'referral_name' => $referralName,
-                            'total'         => $payout->actual,
-                            'count'         => $referralTreeCount[$referralName],
-                        ];
-                    }
-                }
-            }
-        }
-        $referralBreakdown = collect(array_values($groupedReferral));
-        
-        $groupedMatching = [];
-        foreach ($matchingPayouts as $payout) {
-            // Look up the corresponding order using order_id.
-            $order = $payout->order;
-            
-            if ($order) {
-                // Trace up the referral chain to find the first-level referral under the main user.
-                $topReferralUser = $this->findTopReferral($order->user_id, auth()->id());
-                
-                if ($topReferralUser) {
-                    $referralName = $topReferralUser->name;
-                    
-                    // Initialize the group if it doesn't exist.
-                    if (!isset($groupedMatching[$referralName])) {
-                        $groupedMatching[$referralName] = [
-                            'total'  => $payout->actual,
-                            'orders' => [$order->id] // Track unique orders.
-                        ];
-                    } else {
-                        // Add the payout amount.
-                        $groupedMatching[$referralName]['total'] += $payout->actual;
-                        // Only add if this order hasn't been recorded yet.
-                        if (!in_array($order->id, $groupedMatching[$referralName]['orders'])) {
-                            $groupedMatching[$referralName]['orders'][] = $order->id;
-                        }
-                    }
-                }
-            }
-        }
-        
-        // Convert the grouped results into a collection for the view.
-        $matchingBreakdown = collect();
-        foreach ($groupedMatching as $referralName => $data) {
-            $matchingBreakdown->push([
-                'referral_name' => $referralName,
-                'total'         => $data['total'],
-                'count'         => count($data['orders']), // Count of unique orders.
-            ]);
-        }
-        
         foreach ($firstLevelReferrals as $referral) {
             // Calculate metrics for each referral using date filters
-            $descendantIds = $this->getAllDownlineIds($referral->id, $fromDate, $toDate);
+            $descendantIds = $this->getAllDownlineIds($referral->id, $applyDateFilter ? $fromDate : null, $applyDateFilter ? $toDate : null);
             $userIds = array_merge($descendantIds, [$referral->id]);
             
             // Community count: count of all downline referrals (plus self if needed)
@@ -270,11 +236,14 @@ class ReferralController extends Controller
             $referral->total_direct = Payout::whereIn('user_id', $userIds)
                 ->where('type', 'direct')
                 ->where('wallet', 'affiliates')
-                ->when($fromDate, function($query) use ($fromDate) {
-                    return $query->whereDate('created_at', '>=', $fromDate);
-                })
-                ->when($toDate, function($query) use ($toDate) {
-                    return $query->whereDate('created_at', '<=', $toDate);
+                ->when($applyDateFilter, function($query) use ($fromDate, $toDate) {
+                    if ($fromDate) {
+                        $query->whereDate('created_at', '>=', $fromDate);
+                    }
+                    if ($toDate) {
+                        $query->whereDate('created_at', '<=', $toDate);
+                    }
+                    return $query;
                 })
                 ->sum('actual');
             
@@ -282,11 +251,14 @@ class ReferralController extends Controller
             $referral->total_earning = Payout::whereIn('user_id', $userIds)
                 ->where('type', 'payout')
                 ->where('wallet', 'earning')
-                ->when($fromDate, function($query) use ($fromDate) {
-                    return $query->whereDate('created_at', '>=', $fromDate);
-                })
-                ->when($toDate, function($query) use ($toDate) {
-                    return $query->whereDate('created_at', '<=', $toDate);
+                ->when($applyDateFilter, function($query) use ($fromDate, $toDate) {
+                    if ($fromDate) {
+                        $query->whereDate('created_at', '>=', $fromDate);
+                    }
+                    if ($toDate) {
+                        $query->whereDate('created_at', '<=', $toDate);
+                    }
+                    return $query;
                 })
                 ->sum('actual');
             
@@ -294,11 +266,14 @@ class ReferralController extends Controller
             $referral->total_payout = Payout::whereIn('user_id', $userIds)
                 ->where('type', 'payout')
                 ->where('wallet', 'affiliates')
-                ->when($fromDate, function($query) use ($fromDate) {
-                    return $query->whereDate('created_at', '>=', $fromDate);
-                })
-                ->when($toDate, function($query) use ($toDate) {
-                    return $query->whereDate('created_at', '<=', $toDate);
+                ->when($applyDateFilter, function($query) use ($fromDate, $toDate) {
+                    if ($fromDate) {
+                        $query->whereDate('created_at', '>=', $fromDate);
+                    }
+                    if ($toDate) {
+                        $query->whereDate('created_at', '<=', $toDate);
+                    }
+                    return $query;
                 })
                 ->sum('actual');
                 
@@ -307,11 +282,14 @@ class ReferralController extends Controller
                 ->where('type', 'payout')
                 ->where('wallet', 'earning')
                 ->where('status', 1)
-                ->when($fromDate, function($query) use ($fromDate) {
-                    return $query->whereDate('created_at', '>=', $fromDate);
-                })
-                ->when($toDate, function($query) use ($toDate) {
-                    return $query->whereDate('created_at', '<=', $toDate);
+                ->when($applyDateFilter, function($query) use ($fromDate, $toDate) {
+                    if ($fromDate) {
+                        $query->whereDate('created_at', '>=', $fromDate);
+                    }
+                    if ($toDate) {
+                        $query->whereDate('created_at', '<=', $toDate);
+                    }
+                    return $query;
                 })
                 ->sum('actual');
             
@@ -320,11 +298,14 @@ class ReferralController extends Controller
                 ->where('type', 'payout')
                 ->where('wallet', 'affiliates')
                 ->where('status', 1)
-                ->when($fromDate, function($query) use ($fromDate) {
-                    return $query->whereDate('created_at', '>=', $fromDate);
-                })
-                ->when($toDate, function($query) use ($toDate) {
-                    return $query->whereDate('created_at', '<=', $toDate);
+                ->when($applyDateFilter, function($query) use ($fromDate, $toDate) {
+                    if ($fromDate) {
+                        $query->whereDate('created_at', '>=', $fromDate);
+                    }
+                    if ($toDate) {
+                        $query->whereDate('created_at', '<=', $toDate);
+                    }
+                    return $query;
                 })
                 ->sum('actual');
 
@@ -350,12 +331,10 @@ class ReferralController extends Controller
             'tableTotalTopupSum'  => $tableTotalTopupSum,
             'myTotalDirect'       => $myTotalDirect,
             'myTotalMatching'     => $myTotalMatching,
-            'totalOrders'    => $totalOrders,
-            'dateRange'      => $dateRange,
-            'referralBreakdown' => $referralBreakdown,
-            'matchingBreakdown' => $matchingBreakdown,
+            'totalOrders'         => $totalOrders,
+            'dateRange'           => $dateRange,
+            'referralBreakdown'   => $referralBreakdown,
+            'matchingBreakdown'   => $matchingBreakdown,
         ]);
     }
-    
-    
 }

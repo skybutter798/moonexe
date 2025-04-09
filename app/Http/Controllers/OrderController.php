@@ -91,6 +91,7 @@ class OrderController extends Controller
         // Also retrieve the current user’s trading wallet balance.
         $wallet = Wallet::where('user_id', $user->id)->first();
         $tradingBalance = $wallet ? $wallet->trading_wallet : 0;
+        $bonusBalance = $wallet ? $wallet->bonus_wallet : 0;
     
         // Retrieve the current user's orders for "My Exchange Orders" section.
         $userOrders = Order::where('user_id', $user->id)
@@ -103,11 +104,18 @@ class OrderController extends Controller
                               ->whereDate('created_at', date('Y-m-d'))
                               ->exists();
     
-        return view('user.order_v2', compact('pairs', 'tradingBalance', 'userOrders', 'hasOrderToday', 'package'));
+        return view('user.order_v2', compact('pairs', 'tradingBalance', 'userOrders', 'hasOrderToday', 'package', 'bonusBalance'));
     }
 
     public function store(Request $request)
     {
+        // Log the start of the order creation along with request data.
+        Log::channel('order')->info('Order process initiated.', [
+            'user_id' => auth()->id(),
+            'request_data' => $request->all(),
+        ]);
+    
+        // Validate input
         $request->validate([
             'pair_id'           => 'required|exists:pairs,id',
             'order_type'        => 'required|in:buy,sell',
@@ -116,7 +124,8 @@ class OrderController extends Controller
         ]);
     
         $user = auth()->user();
-        
+        Log::channel('order')->info('User passed validation.', ['user_id' => $user->id]);
+    
         // Calculate total available amount from transfers.
         $totalStepOne = Transfer::where('user_id', $user->id)
             ->where('from_wallet', 'cash_wallet')
@@ -124,95 +133,140 @@ class OrderController extends Controller
             ->where('status', 'Completed')
             ->where('remark', 'package')
             ->sum('amount');
-
+    
         $totalStepTwo = Transfer::where('user_id', $user->id)
             ->where('from_wallet', 'trading_wallet')
             ->where('to_wallet', 'cash_wallet')
             ->where('status', 'Completed')
             ->where('remark', 'package')
             ->sum('amount');
-            
+    
         $totalAvailable = $totalStepOne - $totalStepTwo;
-        
+    
+        // Get total pending buy orders for today.
         $totalPendingBuy = Order::where('user_id', $user->id)
-                        ->where('status', 'pending')
-                        ->whereDate('created_at', Carbon::today())
-                        ->sum('buy');
-
+            ->where('status', 'pending')
+            ->whereDate('created_at', Carbon::today())
+            ->sum('buy');
+    
         $orderAmount = $request->amount;
-        
-        // Calculate remaining amount available for buy orders.
         $availableToBuy = $totalAvailable - $totalPendingBuy;
-        
-        // For buy orders, ensure that adding the new order won't exceed the available limit.
+    
+        // For buy orders, validate available limit.
         if ($request->order_type === 'buy' && ($totalPendingBuy + $orderAmount) > $totalAvailable) {
+            Log::channel('order')->warning('Buy order exceeds available limit.', [
+                'user_id'           => $user->id,
+                'total_pending_buy' => $totalPendingBuy,
+                'total_available'   => $totalAvailable,
+                'order_amount'      => $orderAmount,
+                'available_to_buy'  => $availableToBuy,
+            ]);
+    
             return response()->json([
                 'success' => false,
-                'error' => 'Your available limit for buy orders is ' . $availableToBuy . '. You cannot place an order of ' . $orderAmount . '.'
+                'error'   => 'Your available limit for buy orders is ' . $availableToBuy . '. You cannot place an order of ' . $orderAmount . '.'
             ], 422);
         }
-        
-        $pair = Pair::findOrFail($request->pair_id);
     
-        // Check if the pair's rate exists.
+        // Retrieve pair
+        $pair = Pair::findOrFail($request->pair_id);
         if (!isset($pair->rate)) {
+            Log::channel('order')->error('Pair rate not found.', [
+                'user_id' => $user->id,
+                'pair_id' => $pair->id,
+            ]);
             return response()->json(['success' => false, 'error' => 'Pair rate not found.']);
         }
-        
-        // Check if an order with the given pair_id already exists.
+    
+        // Determine the estimated rate
         $existingOrder = Order::where('pair_id', $pair->id)->first();
         if ($existingOrder) {
             $est_rate = $existingOrder->est_rate;
         } else {
-            $randomDelta = mt_rand(1, 5) / 100;
+            $randomDelta = mt_rand(1, 4) / 100;
             $est_rate = $pair->rate + $randomDelta;
         }
         $rate = $est_rate / 100;
     
         $orderType = $request->order_type;
-        $amount = $request->amount;
+        $amount    = $request->amount;
         $txid = 'o_' . str_pad(random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
-
-        $wallet = \App\Models\Wallet::where('user_id', $user->id)->first();
     
+        $wallet = \App\Models\Wallet::where('user_id', $user->id)->first();
         if (!$wallet) {
+            Log::channel('order')->error('Wallet not found.', ['user_id' => $user->id]);
             return response()->json(['success' => false, 'error' => 'Wallet not found.']);
         }
     
-        // For buy orders, deduct from the trading wallet.
+        // For buy orders, process wallet deductions.
         if ($orderType === 'buy') {
             if ($wallet->trading_wallet < $amount) {
+                Log::channel('order')->error('Insufficient trading wallet balance.', [
+                    'user_id'        => $user->id,
+                    'order_amount'   => $amount,
+                    'wallet_balance' => $wallet->trading_wallet
+                ]);
                 return response()->json(['success' => false, 'error' => 'Insufficient USD balance in trading wallet.']);
             }
             $assetReceived = $request->estimated_receive;
             $wallet->trading_wallet -= $amount;
             $wallet->save();
+    
+            Log::channel('order')->info('Wallet debited for buy order.', [
+                'user_id'                   => $user->id,
+                'order_amount'              => $amount,
+                'new_trading_wallet_balance'=> $wallet->trading_wallet,
+            ]);
         }
     
-        // Calculate computed earning using the pair's rate.
+        // Calculate earning for the order.
         $earning = $amount * $rate;
     
-        // Create the order record.
-        $order = \App\Models\Order::create([
-            'user_id'  => $user->id,
-            'pair_id'  => $pair->id,
-            'txid'     => $txid,
-            'buy'      => $orderType === 'buy' ? $amount : null,
-            'sell'     => $orderType === 'sell' ? $amount : null,
-            'receive'  => $orderType === 'buy' ? $assetReceived : null,
-            'status'   => 'pending',
-            'earning'  => $earning,
-            'est_rate' => $est_rate,
-        ]);
-        
-        // Check the remaining volume for the pair.
+        // Create the order.
+        try {
+            $order = Order::create([
+                'user_id'  => $user->id,
+                'pair_id'  => $pair->id,
+                'txid'     => $txid,
+                'buy'      => $orderType === 'buy' ? $amount : null,
+                'sell'     => $orderType === 'sell' ? $amount : null,
+                'receive'  => $orderType === 'buy' ? $assetReceived : null,
+                'status'   => 'pending',
+                'earning'  => $earning,
+                'est_rate' => $est_rate,
+                'time'     => random_int(3, 18),
+            ]);
+    
+            Log::channel('order')->info('Order successfully created.', [
+                'user_id' => $user->id,
+                'order_id' => $order->id,
+                'txid'     => $txid,
+            ]);
+        } catch (\Exception $ex) {
+            // Log any exception during order creation.
+            Log::channel('order')->error('Order creation failed.', [
+                'user_id'   => $user->id,
+                'exception' => $ex->getMessage(),
+            ]);
+            return response()->json(['success' => false, 'error' => 'Order creation failed.'], 500);
+        }
+    
+        // Calculate the remaining volume for the pair.
         $sumOrdersReceive = Order::where('pair_id', $pair->id)->sum('receive');
         $remainingVolume = $pair->volume - $sumOrdersReceive;
     
-        $currencyId = $pair->currency->id;
+        // Trigger any post-order event and log the event trigger.
         event(new OrderUpdated($pair->id, $remainingVolume, $pair->volume));
-
-        return response()->json(['success' => true, 'message' => ucfirst($orderType).' order executed successfully.']);
+        Log::channel('order')->info('OrderUpdated event triggered.', [
+            'pair_id'         => $pair->id,
+            'remaining_volume'=> $remainingVolume,
+            'total_volume'    => $pair->volume,
+        ]);
+    
+        return response()->json([
+            'success' => true,
+            'message' => ucfirst($orderType).' order executed successfully.'
+        ]);
     }
     
     public function claim(Request $request)

@@ -114,7 +114,7 @@
     </div>
     <div class="tagline">
         <p>Welcome to <strong>MoonExe</strong>, a visionary platform revolutionizing automated currency matching and trading, empowering traders to 
-        Instantly convert USDT to fiat, anytime, anywhere</strong></p>
+        <strong>Instanly Converty USDT to Fiat, Anytime & Anywhere</strong></p>
         <!--<span class="small">
             Before embarking on your journey, we encourage you to review our Terms and Conditions for a comprehensive understanding of our services.
         </span>-->

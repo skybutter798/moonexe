@@ -25,6 +25,16 @@ class DashboardController extends Controller
             ];
         }
         
+        $assetsRecords = \App\Models\AssetsRecord::where('user_id', $userId)
+            ->orderBy('record_date', 'asc')
+            ->get();
+            
+        $profitRecords = \App\Models\ProfitRecord::where('user_id', $userId)
+            ->orderBy('record_date', 'asc')
+            ->get();
+            
+            
+        
         // Calculate the total from the wallets
         $total_balance = (float)$wallets->cash_wallet +
                          (float)$wallets->trading_wallet +
@@ -53,6 +63,7 @@ class DashboardController extends Controller
             ->where('user_id', $userId)
             ->where('remark', 'package')
             ->exists();
+        $forexRecords = \App\Models\MarketData::orderBy('symbol')->get();
         
         $data = [
             'title'              => 'Dashboard',
@@ -64,6 +75,9 @@ class DashboardController extends Controller
             'user'               => $user,
             'rangeData'          => $rangeData,
             'pendingBuy'         => $pendingBuy,
+            'assetsRecords'      => $assetsRecords,
+            'profitRecords'      => $profitRecords,
+            'forexRecords'       => $forexRecords,
         ];
         
         if ($user->isAdmin) {

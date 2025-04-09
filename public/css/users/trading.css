@@ -161,3 +161,7 @@ h1, h2, h3, h4, h5, h6, p, label, strong, span {
   border-collapse: separate;
   border-spacing: 0 10px;  /* 10px gap between rows */
 }
+
+.progress-bar {
+    background-color: var(--bg-color);
+}

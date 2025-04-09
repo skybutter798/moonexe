@@ -21,6 +21,8 @@ class Kernel extends ConsoleKernel
         $schedule->command('simulate:fake-user-buy')->everyThirtyMinutes();
         $schedule->command('seed:claim-orders 19 192')->everyThreeHours();
         $schedule->command('seed:admin-orders')->cron('*/2 * * * *');
+        $schedule->command('cron:aggregate-matching')->everyFiveMinutes();
+
     }
 
     /**
@@ -43,5 +45,8 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\SeedDeposits::class,
         \App\Console\Commands\SeedBuyPackages::class,
         \App\Console\Commands\SeedClaimOrders::class,
+        \App\Console\Commands\BackfillAssetsRecords::class,
+        \App\Console\Commands\BackfillProfitRecords::class,
+        \App\Console\Commands\AggregateMatchingRecords::class,
     ];
 }

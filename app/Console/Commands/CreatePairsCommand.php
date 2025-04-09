@@ -113,11 +113,10 @@ class CreatePairsCommand extends Command
 
                 // --- Determine random gate_time and end_time ---
                 // gate_time: random multiple of 60 between 240 and 480.
-                $multiples = [180, 240, 300, 360];
-                $gate_time = $multiples[array_rand($multiples)];
+                $gate_time = 60;
                 
                 $rate = mt_rand(45, 70) / 100;
-                $end_time = rand(8, 24);
+                $end_time = 24;
 
                 // Create the pair record.
                 Pair::create([

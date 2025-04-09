@@ -5,35 +5,67 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Separate function for updating trading card exchange rates.
     function updateTradingCardRates(apiData) {
+      const reversedSymbols = ['LKR', 'VND', 'IDR', 'COP'];
       const rateEls = document.querySelectorAll('.exchangeRate');
+    
       rateEls.forEach(el => {
-        // Extract symbol from element ID (assumed to be "price-<SYMBOL>")
+        // 1) update the mid price as before …
         const symbol = el.id.replace('price-', '');
         let marketData = apiData[symbol];
-    
-        // If not found, try the reversed symbol (for 3-letter codes)
         if (!marketData && symbol.length === 6) {
-          const reversedSymbol = symbol.slice(3) + symbol.slice(0, 3);
-          marketData = apiData[reversedSymbol];
+          const reversed = symbol.slice(3) + symbol.slice(0, 3);
+          marketData = apiData[reversed];
         }
     
         if (marketData && marketData.mid) {
           const mid = parseFloat(marketData.mid);
-          // Store or update the last valid rate
           lastValidRates[symbol] = mid;
+    
           el.innerText = mid.toFixed(6);
           el.classList.remove('bg-danger', 'bg-success', 'bg-secondary');
           el.classList.add('bg-secondary', 'badge-custom');
+    
+          // ───────────────────────────────────────────────
+          // 2) compute remaining‑USDT for this card:
+          const card = el.closest('.gateRow');
+          if (card) {
+            // read remaining base‑currency volume:
+            const remBase = parseFloat(card.dataset.remainingVolume) || 0;
+    
+            // determine if this pair is quoted “reversed”
+            const base = symbol.slice(0, 3);
+            const isReversed = reversedSymbols.includes(base);
+    
+            // compute USDT value: divide if reversed, otherwise multiply
+            const remUSDT = isReversed
+              ? remBase / mid
+              : remBase * mid;
+    
+            // write it back to a data- attribute:
+            card.dataset.remainingVolumeUsdt = remUSDT.toFixed(4);
+    
+            // update or create the on‑screen badge:
+            let usdtEl = card.querySelector('.volume-usdt');
+            if (!usdtEl) {
+              usdtEl = document.createElement('div');
+              usdtEl.className = 'volume-usdt text-muted small';
+              el.parentNode.insertBefore(usdtEl, el.nextSibling);
+            }
+            usdtEl.innerText = `${remUSDT.toFixed(2)} USDT`;
+          }
+          // ───────────────────────────────────────────────
+    
         } else {
-          console.warn(`No API data found for symbol: ${symbol}`);
+          console.warn(`No API data for ${symbol}`);
         }
       });
     }
+
     
     // Separate function for updating table matching data initially.
     function updateTableRates(apiData) {
       // Now look for matching-rate spans inside pairing cells
-      const matchingEls = document.querySelectorAll('.pairing-cell .matching-rate');
+      const matchingEls = document.querySelectorAll('.matching-rate');
       matchingEls.forEach(el => {
         
         if (el.innerHTML.trim() === 'Claim') {
@@ -74,6 +106,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function simulateExchangeRateAdjustments() {
       const now = new Date().getTime();
+      
+      // Update price elements as before (assuming these are still in your layout)
       for (const symbol in lastValidRates) {
         const priceEl = document.getElementById(`price-${symbol}`);
         if (!priceEl) continue;
@@ -82,7 +116,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const cardEl = priceEl.closest('.gateRow');
         if (cardEl) {
           const gateClose = parseInt(cardEl.getAttribute('data-gate-close'));
-          // If the current time is past the gate close, skip updating this rate.
           if (now > gateClose) {
             continue;
           }
@@ -95,71 +128,61 @@ document.addEventListener('DOMContentLoaded', function() {
         priceEl.classList.add(delta > 0 ? 'bg-success' : 'bg-danger', 'badge-custom');
       }
     
-      // Get current time once for updating matching rate and ROI.
-      const currentTime = new Date().getTime();
-    
-      // Update matching rate and ROI per row.
-      const rows = document.querySelectorAll('tr');
-      rows.forEach(row => {
-        // Read pair end time from the row's data attribute.
-        const pairEndAttr = row.getAttribute('data-pair-end');
+      // Now update the ROI inside each card.
+      const cards = document.querySelectorAll('.card');
+      cards.forEach(card => {
+        const pairEndAttr = card.getAttribute('data-pair-end');
         const pairEnd = pairEndAttr ? parseInt(pairEndAttr) : null;
         
-        // Get the matching rate element (from the pairing cell).
-        const matchingEl = row.querySelector('.matching-rate');
-        // Get the ROI element from the est-roi cell.
-        const roiEl = row.querySelector('.est-roi #rateDisplay');
+        // Find the ROI element inside this card.
+        const roiEl = card.querySelector('.est-roi #rateDisplay');
+        
+        if (roiEl) {
+          // Update the matching rate element if it exists
+          const matchingEl = card.querySelector('.matching-rate');
+          if (matchingEl) {
+            let currentMatching = parseFloat(matchingEl.innerText.replace('%','')) || 0;
+            const extraDelta = (Math.random() * (0.0005 - 0.0001) + 0.0001) * (Math.random() < 0.5 ? -1 : 1);
+            const newMatching = currentMatching + extraDelta;
+            matchingEl.innerText = newMatching.toFixed(6);
+            matchingEl.classList.remove('bg-danger', 'bg-success', 'bg-secondary');
+            const badgeClass = extraDelta > 0 ? 'bg-success' : 'bg-danger';
+            matchingEl.classList.add(badgeClass, 'btn');
+          }
+          
+          const pairStart = parseInt(card.getAttribute('data-pair-start'));
+          const orderHours = parseInt(card.getAttribute('data-order-time'), 10) || 0;
+          const orderEnd = pairStart + orderHours * 60 * 60 * 1000;
     
-        // Update matching rate badge (this always updates as needed).
-        if (matchingEl) {
-          let currentMatching = parseFloat(matchingEl.innerText.replace('%','')) || 0;
-          const extraDelta = (Math.random() * (0.0005 - 0.0001) + 0.0001) * (Math.random() < 0.5 ? -1 : 1);
-          const newMatching = currentMatching + extraDelta;
-          matchingEl.innerText = newMatching.toFixed(6);
-          matchingEl.classList.remove('bg-danger', 'bg-success', 'bg-secondary');
-          // Determine the badge color based on the delta.
-          const badgeClass = extraDelta > 0 ? 'bg-success' : 'bg-danger';
-          matchingEl.classList.add(badgeClass, 'badge-custom');
-    
-          if (roiEl) {
-            if (pairEnd && now < pairEnd) {
-              // Get the original base ROI from the parent cell's data attribute.
-              const estRoiCell = row.querySelector('.est-roi');
-              const baseRoi = estRoiCell ? parseFloat(estRoiCell.getAttribute('data-roi')) : 0;
-              
-              // Calculate a dynamic change.
-              const roiDelta = (Math.random() * (0.015 - 0.001) + 0.008) * (Math.random() < 0.5 ? -1 : 1);
-              const newRoi = baseRoi + roiDelta;
-              
-              // Determine the badge class for the dynamic value.
-              const roiBadgeClass = roiDelta > 0 ? 'bg-success' : 'bg-danger';
-              
-              // **Update the row's attribute so other functions can use the dynamic est_rate**
-              row.setAttribute('data-dynamic-est-rate', newRoi.toFixed(2));
-              
-              // Update the display: static value first, then a pipe, then the dynamic value wrapped in a span.
-              roiEl.innerHTML = baseRoi.toFixed(2) + " | <span class='" + roiBadgeClass + " badge-custom'>" + newRoi.toFixed(2) + "</span>";
+          // Update ROI dynamically
+          if (now < orderEnd) {
+            const estRoiCell = card.querySelector('.est-roi');
+            // Expecting data-roi in "base | dynamic" format.
+            const baseRoiParts = estRoiCell.getAttribute('data-roi').split('/');
+            const baseRoi = baseRoiParts.length > 0 ? parseFloat(baseRoiParts[0].trim()) : 0;
+            
+            const roiDelta = (Math.random() * (0.015 - 0.001) + 0.008) * (Math.random() < 0.5 ? -1 : 1);
+            const newRoi = baseRoi + roiDelta;
+            const roiBadgeClass = roiDelta > 0 ? 'bg-success' : 'bg-danger';
+            
+            // Optionally store the dynamic value on the card for further use.
+            card.setAttribute('data-dynamic-est-rate', newRoi.toFixed(2));
+            
+            // Update display: show the static base and then the dynamic value with a colored badge.
+            roiEl.innerHTML = baseRoi.toFixed(2) + " / <span class='" + roiBadgeClass + " badge-custom'>" + newRoi.toFixed(2) + "</span>";
+          } else {
+            // If the time has expired, revert to the original static display.
+            const estRoiCell = card.querySelector('.est-roi');
+            const originalData = estRoiCell.getAttribute('data-roi');
+            const parts = originalData.split('/');
+            if (parts.length > 1) {
+              roiEl.innerHTML = parts[0].trim() + " / <span class='badge badge-dark'>" + parts[1].trim() + "</span>";
+              card.setAttribute('data-dynamic-est-rate', parseFloat(parts[1].trim()).toFixed(2));
             } else {
-              // Reset to the original static view when time has expired.
-              const estRoiCell = row.querySelector('.est-roi');
-              if (estRoiCell) {
-                // Get the original ROI string, expected in "base | dynamic" format.
-                const originalData = estRoiCell.getAttribute('data-roi');
-                const parts = originalData.split('|');
-                if (parts.length > 1) {
-                  // Reconstruct the HTML with the badge-dark class applied to the dynamic value.
-                  roiEl.innerHTML = parts[0].trim() + " | <span class='badge badge-dark'>" + parts[1].trim() + "</span>";
-                  // Set the dynamic-est-rate attribute for consistency.
-                  row.setAttribute('data-dynamic-est-rate', parseFloat(parts[1].trim()).toFixed(2));
-                } else {
-                  // Fallback in case originalData is not in the expected format.
-                  roiEl.textContent = originalData;
-                  row.setAttribute('data-dynamic-est-rate', parseFloat(originalData).toFixed(2));
-                }
-                // Remove any residual dynamic badge classes.
-                roiEl.classList.remove('bg-danger', 'bg-success', 'bg-secondary', 'badge-custom');
-              }
+              roiEl.textContent = originalData;
+              card.setAttribute('data-dynamic-est-rate', parseFloat(originalData).toFixed(2));
             }
+            roiEl.classList.remove('bg-danger', 'bg-success', 'bg-secondary', 'badge-custom');
           }
         }
       });
@@ -174,10 +197,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const staticBuy = parseFloat(cell.getAttribute('data-buy'));
         const baseEstRate = parseFloat(cell.getAttribute('data-est-rate'));
         
-        // Find the closest row to read the updated dynamic estimated rate.
-        const row = cell.closest('tr');
-        const dynamicEstRate = row && row.getAttribute('data-dynamic-est-rate')
-                                 ? parseFloat(row.getAttribute('data-dynamic-est-rate'))
+        // Find the closest card to read the updated dynamic estimated rate.
+        const card = cell.closest('.card');
+        const dynamicEstRate = card && card.getAttribute('data-dynamic-est-rate')
+                                 ? parseFloat(card.getAttribute('data-dynamic-est-rate'))
                                  : baseEstRate;
         
         // Calculate computed value using the formula: buy * (1 + (newEstRate/100))
@@ -219,13 +242,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const seconds = diffInSeconds % 60;
             timerSpan.innerText = ("0" + hours).slice(-2) + ':' + ("0" + minutes).slice(-2) + ':' + ("0" + seconds).slice(-2);
           } else {
-            timerSpan.innerText = '[Gate Closed]';
+            timerSpan.innerText = 'Gate Closed';
           }
         });
-      }
+    }
       
     updateGateCountdowns();
-    setInterval(updateGateCountdowns, 1000);
+    setInterval(updateGateCountdowns, 5000);
   
     let tradeCountdownInterval;
   
@@ -240,7 +263,7 @@ document.addEventListener('DOMContentLoaded', function() {
             tradeCountdownElem.textContent = `Gate closes in: ${minutes}m ${seconds}s`;
             tradeTime--;
           } else {
-            tradeCountdownElem.textContent = "Gate Closed";
+            tradeCountdownElem.textContent = "[Gate Closed]";
             clearInterval(tradeCountdownInterval);
           }
         }
@@ -442,13 +465,13 @@ document.addEventListener('DOMContentLoaded', function() {
       // Insert the spinner into the DOM
       const spinnerContainer = document.getElementById('spinnerContainer');
         
-    const tradePopup = document.getElementById('tradePopup');
-    const tradePopupText = document.getElementById('tradePopupText');
-    const tradeSpinner = document.getElementById('tradePopupSpinner');
+      const tradePopup = document.getElementById('tradePopup');
+      const tradePopupText = document.getElementById('tradePopupText');
+      const tradeSpinner = document.getElementById('tradePopupSpinner');
     
-    tradePopup.classList.remove('d-none');
-    tradeSpinner.classList.remove('d-none');
-    tradePopupText.innerHTML = 'Pairing...';
+      tradePopup.classList.remove('d-none');
+      tradeSpinner.classList.remove('d-none');
+      tradePopupText.innerHTML = 'Pairing...';
       
       // Generate a random delay between 1 and 4 seconds (1000 to 4000 ms)
       const randomDelay = Math.floor(Math.random() * 3000) + 1000;
@@ -468,9 +491,16 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(result => {
           if (result.success) {
-              document.getElementById('tradePopupSpinner').style.display = 'none';
+            document.getElementById('tradePopupSpinner').style.display = 'none';
             tradePopupText.innerHTML = `<div class="text-success fw-bold">${result.message}</div>`;
-            setTimeout(() => location.reload(), 2000);
+            setTimeout(() => {
+              const { pathname, search } = window.location;
+              const separator = search.includes('?') ? '&' : '?';
+              const ts = Date.now();
+              const newUrl = `${pathname}${search}${separator}ts=${ts}#myExchangeOrders`;
+              // Navigate there — this will reload the page
+              window.location.href = newUrl;
+            }, 500);
           } else {
             tradePopupText.innerHTML = `<div class="text-danger fw-bold">${result.error || 'Order failed.'}</div>`;
             setTimeout(() => {
@@ -494,7 +524,6 @@ document.addEventListener('DOMContentLoaded', function() {
         bsOffCanvas.hide();
       }, randomDelay);
     };
-
   
     function showRandomTradeNotification() {
       // Expanded lists with more names, pairs, and actions
@@ -532,6 +561,7 @@ document.addEventListener('DOMContentLoaded', function() {
       
     function startGateCloseCountdown(closingTimestamp) {
       const countdownElem = document.getElementById('gateCloseCountdown');
+      countdownElem.classList.add('text-white');
       function updateCountdown() {
         const now = new Date().getTime();
         const diff = Math.floor((closingTimestamp - now) / 1000);
@@ -544,7 +574,7 @@ document.addEventListener('DOMContentLoaded', function() {
             ("0" + minutes).slice(-2) + ':' +
             ("0" + seconds).slice(-2);
         } else {
-          countdownElem.textContent = "Gate Closed";
+          countdownElem.textContent = "[Gate Closed]";
           clearInterval(intervalId);
         }
       }
@@ -553,13 +583,17 @@ document.addEventListener('DOMContentLoaded', function() {
     }
         
     function updateOrderProgress() {
-      const now = new Date().getTime();
-      document.querySelectorAll('#ordersTable tbody tr').forEach(function(row) {
-        // --- Update Progress Bar and Countdown ---
-        const pairStart = parseInt(row.getAttribute('data-pair-start'));
-        const pairEnd = parseInt(row.getAttribute('data-pair-end'));
-        const progressBar = row.querySelector('.status-progress');
-        let progress = 0;
+      const now = Date.now();
+    
+      document.querySelectorAll('.card').forEach(card => {
+        // 1) Progress bar & countdown (using pairEnd)
+        const pairStart   = parseInt(card.dataset.pairStart, 10);
+        const pairEnd     = parseInt(card.dataset.pairEnd, 10);
+        const progressBar = card.querySelector('.status-progress');
+        const progressText = card.querySelector('.progress-text_order');
+    
+        // Calculate progress %
+        let progress;
         if (now >= pairEnd) {
           progress = 100;
         } else if (now <= pairStart) {
@@ -567,60 +601,52 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
           progress = ((now - pairStart) / (pairEnd - pairStart)) * 100;
         }
-        progressBar.style.width = progress.toFixed(2) + '%';
-        progressBar.setAttribute('aria-valuenow', progress.toFixed(2));
     
-        // Countdown tip update
+        // Update bar width & aria
+        if (progressBar) {
+          progressBar.style.width = progress.toFixed(2) + '%';
+          progressBar.setAttribute('aria-valuenow', progress.toFixed(2));
+          progressBar.style.backgroundColor = (pairEnd - now) > 0 ? '#2e396f' : '#343a40';
+        }
+    
+        // Calculate remaining time for countdown
         let remainingTime = pairEnd - now;
-        const progressContainer = progressBar.parentElement;
-        let countdownTip = row.querySelector('.status-countdown');
-        if (!countdownTip) {
-          countdownTip = document.createElement('div');
-          countdownTip.classList.add('status-countdown');
-          countdownTip.style.fontSize = '8px';
-          countdownTip.style.color = '#777';
-          countdownTip.style.marginTop = '3px';
-          progressContainer.insertAdjacentElement('afterend', countdownTip);
-        }
-        if (remainingTime <= 0) {
-          countdownTip.style.display = 'block';
-          countdownTip.innerText = "00:00:00";
-          progressBar.style.backgroundColor = "#343a40";
-        } else {
-          countdownTip.style.display = 'block';
-          let hours = Math.floor(remainingTime / 3600000);
-          let minutes = Math.floor((remainingTime % 3600000) / 60000);
-          let seconds = Math.floor((remainingTime % 60000) / 1000);
-          let countdownText = ("0" + hours).slice(-2) + ':' + ("0" + minutes).slice(-2) + ':' + ("0" + seconds).slice(-2);
-          countdownTip.innerText = countdownText;
-          // Here you might want to use your normal progress bar color
-          progressBar.style.backgroundColor = "primary";
+        if (remainingTime < 0) remainingTime = 0;
+    
+        // Format hh:mm:ss
+        const hh = String(Math.floor(remainingTime / 3600000)).padStart(2, '0');
+        const mm = String(Math.floor((remainingTime % 3600000) / 60000)).padStart(2, '0');
+        const ss = String(Math.floor((remainingTime % 60000) / 1000)).padStart(2, '0');
+        const countdownText = `${hh}:${mm}:${ss}`;
+    
+        // Update the countdown overlay text
+        if (progressText) {
+          progressText.innerText = countdownText;
         }
     
-        // --- Update the Pairing Cell ---
-        const pairingCell = row.querySelector('.pairing-cell');
-        if (!pairingCell) return;
-        const orderStatus = row.getAttribute('data-order-status');
+        // 2) Footer button logic
+        const status = card.dataset.orderStatus;
+        const footer = card.querySelector('.card-footer');
+        if (!footer) return;
     
-        if (orderStatus === 'completed') {
-          // If already claimed, show Completed.
-          pairingCell.innerHTML = '<span class="badge bg-dark">Completed</span>';
-        } else {
-          if (remainingTime <= 0) {
-            // Countdown finished and not yet claimed: show Claim button.
-            pairingCell.innerHTML = '<button class="btn btn-sm btn-primary claim-btn">Claim</button>';
-          } else {
-            // While countdown is active: show matching rate.
-            // Ensure the cell contains the matching rate span.
-            if (!pairingCell.querySelector('.matching-rate')) {
-              // If missing, add the span. (Assumes you have a data-symbol on the cell; if not, adjust accordingly.)
-              let dataSymbol = pairingCell.getAttribute('data-symbol') || '';
-              pairingCell.innerHTML = '<span class="matching-rate" data-symbol="' + dataSymbol + '">0.000000</span>';
-            }
-          }
+        // Compute order’s own end time (data-order-time in hours)
+        const orderHours = parseInt(card.dataset.orderTime, 10) || 0;
+        const orderEnd   = pairStart + orderHours * 3600_000; // ms
+    
+        if (status === 'completed') {
+          footer.innerHTML = '<span class="btn btn-dark">Completed</span>';
         }
+        else if (now >= pairEnd) {
+          footer.innerHTML = '<button class="btn btn-primary claim-btn">Claim</button>';
+        }
+        else if (now >= orderEnd) {
+          footer.innerHTML = '<button class="btn btn-secondary" disabled>Resolving</button>';
+        }
+        // else (still live & not expired) → leave footer as-is (or clear)
       });
     }
+
+    
     setInterval(updateOrderProgress, 1000);
     
     // Notification element (you can style/position it as needed).
@@ -722,7 +748,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 document.addEventListener('click', function (e) {
   if (e.target.classList.contains('claim-btn') && !e.target.disabled) {
-    const row = e.target.closest('tr');
+    const row = e.target.closest('.card');
     const orderId = row.getAttribute('data-order-id');
     if (!orderId) return alert('Order ID missing');
 
@@ -734,7 +760,7 @@ document.addEventListener('click', function (e) {
     // Show loading popup
     tradePopup.classList.remove('d-none');
     tradeSpinner.style.display = 'inline-block';
-    tradePopupText.innerText = 'Porcessing payout...';
+    tradePopupText.innerText = 'Processing payout...';
     tradeButtons.classList.add('d-none');
 
     const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
@@ -753,17 +779,16 @@ document.addEventListener('click', function (e) {
       tradeSpinner.style.display = 'none';
     
       if (result.success) {
-        // Extract details from the row
-        const orderID = row.querySelector('td:nth-child(1)')?.innerText || '-';
-        const pair = row.querySelector('td:nth-child(3)')?.innerText || '-';
-        const estRate = row.querySelector('.est-roi')?.getAttribute('data-roi')?.split('|')[1]?.trim() || '-';
+        // Extract details from the card
+        const orderID = row.getAttribute('data-order-id') || '-';
+        const pair = row.querySelector('.card-header')?.getAttribute('data-pair') || '-';
+        const estRate = row.querySelector('.est-roi')?.getAttribute('data-roi')?.split('/')[1]?.trim() || '-';
         const returnProfit = row.querySelector('.computed-value')?.innerText || '-';
     
         // Build detail HTML
         const detailsHTML = `
           <div id="tradeOrderDetails" class="mt-3 text-start small border-top pt-2">
             <div><strong>Order ID:</strong> ${orderID}</div>
-            <div><strong>Pair:</strong> ${pair}</div>
             <div><strong>Actual Profit:</strong> ${estRate}%</div>
             <div><strong>Return Profit:</strong> ${returnProfit}</div>
           </div>
@@ -806,8 +831,6 @@ document.addEventListener('click', function (e) {
         }, 3000);
       }
     })
-
-
     .catch(err => {
       console.error(err);
       tradeSpinner.style.display = 'none';

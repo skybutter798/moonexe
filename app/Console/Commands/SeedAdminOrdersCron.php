@@ -65,9 +65,19 @@ class SeedAdminOrdersCron extends Command
                 continue;
             }
 
-            // Calculate random volume as a random percentage (between 1% and 2%) of the remaining volume.
-            $percentage = random_int(1, 2) / 100; // e.g., 0.01 to 0.02
-            $randomVolume = round($remainingVolume * $percentage, 2);
+            // Calculate how many minutes have passed since creation
+            $createdAt      = Carbon::parse($pair->created_at);
+            $minutesPassed  = $createdAt->diffInMinutes(now());
+            
+            if ($minutesPassed >= 15) {
+                // After 15 minutes — buy all remaining
+                $randomVolume = round($remainingVolume, 2);
+            } else {
+                // Before 15 minutes — buy small amount (1–2%)
+                $percentage   = random_int(1, 2) / 100;
+                $randomVolume = round($remainingVolume * $percentage, 2);
+            }
+
 
             // Ensure that the random volume is not 0.
             if ($randomVolume <= 0) {
@@ -79,7 +89,7 @@ class SeedAdminOrdersCron extends Command
             $estimatedReceive = round($randomVolume, 2);
 
             // Calculate earning based on pair rate.
-            $randomDelta = mt_rand(1, 5) / 100;
+            $randomDelta = mt_rand(1, 4) / 100;
             $est_rate = $pair->rate + $randomDelta;
             $rate = $est_rate / 100;
             
@@ -118,6 +128,7 @@ class SeedAdminOrdersCron extends Command
                     'receive' => $estimatedReceive,
                     'status'  => 'pending',
                     'earning' => $earning,
+                    'time' => random_int(3, 18),
                 ]);
 
                 $message = "Created new admin order for pair id {$pair->id} with buy {$randomVolume} and receive {$estimatedReceive}.";

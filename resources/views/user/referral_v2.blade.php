@@ -611,7 +611,7 @@
                   referralRows += `<tr>
                       <td>${referral}</td>
                       <td>$${grouped[referral].total.toFixed(4)}</td>
-                      <td>${grouped[referral].count}</td>
+                      <td>${Math.floor(grouped[referral].count)}</td>
                     </tr>`;
                 }
                 let referralTable = `
@@ -648,7 +648,7 @@
                 matchingRows += `<tr>
                                   <td>${item.referral_name}</td>
                                   <td>$${parseFloat(item.total).toFixed(4)}</td>
-                                  <td>${item.count}</td>
+                                  <td>${parseInt(item.count)}</td>
                                 </tr>`;
               });
               
