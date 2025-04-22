@@ -177,15 +177,18 @@ class OrderController extends Controller
             ]);
             return response()->json(['success' => false, 'error' => 'Pair rate not found.']);
         }
-    
+        
         // Determine the estimated rate
         $existingOrder = Order::where('pair_id', $pair->id)->first();
-        if ($existingOrder) {
+        if ($existingOrder && $existingOrder->est_rate !== null) {
             $est_rate = $existingOrder->est_rate;
         } else {
             $randomDelta = mt_rand(1, 4) / 100;
-            $est_rate = $pair->rate + $randomDelta;
+            // Decide randomly whether to add or subtract the random delta.
+            $shouldAdd = mt_rand(0, 1) == 1;
+            $est_rate = $shouldAdd ? $pair->rate + $randomDelta : $pair->rate - $randomDelta;
         }
+        
         $rate = $est_rate / 100;
     
         $orderType = $request->order_type;

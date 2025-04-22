@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Models\NewsletterSubscriber; // Make sure this model exists or adjust accordingly
+use App\Models\NewsletterSubscriber;
+use Illuminate\Support\Facades\Storage;
+
 
 class AccountController extends Controller
 {
@@ -18,6 +20,34 @@ class AccountController extends Controller
 
         // Pass the user object to the account view.
         return view('user.account_v2', compact('user'));
+    }
+    
+    public function updateProfile(Request $request)
+    {
+        $user = Auth::user();
+
+        $validatedData = $request->validate([
+            //'name'   => 'required|string|max:255',
+            //'email'  => 'required|email|max:255|unique:users,email,' . $user->id,
+            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048', // 2MB Max
+        ]);
+
+        if ($request->hasFile('avatar')) {
+            // Optionally delete the old avatar if exists
+            if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
+                Storage::disk('public')->delete($user->avatar);
+            }
+            // Store the new avatar in a directory called 'avatars'
+            $path = $request->file('avatar')->store('avatars', 'public');
+            $validatedData['avatar'] = $path;
+            $user->update($validatedData);
+        } else {
+            // Update only non-avatar fields if necessary, or do nothing if no updates are made.
+        }
+
+        $user->update($validatedData);
+
+        return redirect()->back()->with('success', 'Profile updated successfully.');
     }
 
     /**

@@ -291,16 +291,21 @@
             <!-- Trading Wallet (with bonus) -->
             <div class="col-12 col-md-6 mb-3">
                 <div id="tradingWalletCard" class="card h-100 text-center p-2 position-relative assets" style="background-image: url('/img/trademargin.png'); background-repeat: no-repeat; background-position: left center;">
-                    <button class="btn wallet-btn btn-sm" style="position: absolute; top: 10px; right: 10px; width: 25px; height: 25px; padding: 0; line-height: 1;" data-bs-toggle="modal" data-bs-target="#tradingTransferModal">
-                        -
-                    </button>
+
                     <div class="card-body d-flex flex-column">
                         <h5 class="text-custom">Trade Margin</h5>
-                        <p class="sub-wallet-amount mb-0 value">
+                        <p class="sub-wallet-amount mb-1 value" style="position: relative;">
                             {{ number_format($wallets->trading_wallet, 2) }}
-                            <br><small>≈ Open Order: ${{ number_format($pendingBuy, 2) }}</small>
+                            <button type="button" 
+                                    class="btn btn-sm custom-btn" 
+                                    style="position: absolute; right: 5px; top: 10%; padding: 8px 12px; line-height: 1;border-radius: 100px;" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#tradingTransferModal">
+                                -
+                            </button>
                         </p>
                         <a href="{{ route('user.order') }}" class="btn wallet-btn btn-sm mt-2">Trade</a>
+                        <p class="openorder"><small class="text-danger">*Open Order: ${{ number_format($pendingBuy, 4) }}</small></p>
                     </div>
                 </div>
             </div>
@@ -327,15 +332,22 @@
                     @endif
                     <div class="card-body d-flex flex-column">
                         <h5 class="text-custom">Trade Margin</h5>
-                        <p class="sub-wallet-amount mb-1 value">
+                        <p class="sub-wallet-amount mb-1 value" style="position: relative;">
                             {{ number_format($wallets->trading_wallet, 2) }}
+                            <button type="button" 
+                                    class="btn btn-sm custom-btn" 
+                                    style="position: absolute; right: 5px; top: 10%; padding: 8px 12px; line-height: 1;border-radius: 100px;" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#tradingTransferModal">
+                                -
+                            </button>
                         </p>
                         <div class="row mt-2">
                             <div class="col-12">
                                 <a href="{{ route('user.order') }}" class="btn wallet-btn btn-sm">Trade</a>
                             </div>
                         </div>
-                        <p class="openorder"><small class="text-danger">*Open Order: ${{ number_format($pendingBuy, 2) }}</small></p>
+                        <p class="openorder"><small class="text-danger">*Open Order: ${{ number_format($pendingBuy, 4) }}</small></p>
                     </div>
                 </div>
             </div>
@@ -379,14 +391,44 @@
         <hr>
         
         <!-- Forex Cards Section -->
+        @php
+            // Define a mapping of symbols to flag filenames.
+            $flagMapping = [
+                'CHFUSD'  => 'ch.svg',
+                'TRYUSD'  => 'tr.svg',
+                'HKDUSD'  => 'hk.svg',
+                'THBUSD'  => 'th.svg',
+                'TWDUSD'  => 'tw.svg',
+                'USDVND'  => 'vn.svg',
+                'NZDUSD'  => 'nz.svg',
+                'BRLUSD'  => 'br.svg',
+                'USDCOP'  => 'co.svg',
+                'USDLKR'  => 'lk.svg',
+                'AUDUSD'  => 'au.svg',
+                'EURUSD'  => 'eu.svg',
+                'CADUSD'  => 'ca.svg',
+                'EGPUSD'  => 'eg.svg',
+                'GBPUSD'  => 'gb.svg',
+                'USDIDR'  => 'id.svg',
+                'JODUSD'  => 'jo.svg',
+                'KWDUSD'  => 'kw.svg',
+                'MXNUSD'  => 'mx.svg',
+                'ZARUSD'  => 'za.svg'
+            ];
+        @endphp
+        
         <div class="row mb-4" id="forexCards">
           <h2 class="text-primary"><strong>Currency Data</strong></h2>
-
+        
           @foreach($forexRecords as $record)
+            @php
+                // Get the correct flag filename for this symbol. Use a fallback if not set.
+                $flagFile = $flagMapping[$record->symbol] ?? 'default.svg';
+            @endphp
             <div class="col-md-4 mb-3 forex-card">
               <div class="card card-clickable" data-symbol="{{ $record->symbol }}">
                 <div class="card-header d-flex align-items-center">
-                  <img src="{{ asset('img/1x1/' . strtolower($record->symbol) . '.svg') }}" style="width:20px; margin-right:5px;">
+                  <img src="{{ asset('img/1x1/' . $flagFile) }}" style="width:20px; margin-right:5px;">
                   {{ $record->symbol }}
                 </div>
                 <div class="card-body">
@@ -398,7 +440,9 @@
                         <span class="text-success" id="bid-{{ $record->symbol }}">Bid: Loading...</span> | 
                         <span class="text-danger" id="ask-{{ $record->symbol }}">Ask: Loading...</span>
                       </p>
-                      <p class="card-text"><small class="text-muted" id="time-{{ $record->symbol }}">Last updated: Loading...</small></p>
+                      <p class="card-text">
+                        <small class="text-muted" id="time-{{ $record->symbol }}">Last updated: Loading...</small>
+                      </p>
                     </div>
                     <!-- Right Column: Sparkline Chart Container -->
                     <div class="col-4">
@@ -409,7 +453,7 @@
               </div>
             </div>
           @endforeach
-
+        
           <!-- Load More Button -->
           <div class="col-12 text-center mt-3">
               <button id="loadMoreBtn" class="btn btn-primary">Load More...</button>
@@ -495,6 +539,10 @@
                                 <label for="withdrawalTRC20" class="form-label">TRC20 Address</label>
                                 <input type="text" name="trc20_address" class="form-control" id="withdrawalTRC20" placeholder="Enter your TRC20 address" required>
                             </div>
+                            <!-- This paragraph will be updated to show the fee and final received amount -->
+                            <p class="text-danger" id="withdrawalFeeInfo">
+                                Withdrawal will charge a withdrawal fee of 3% upon success, you will receive a total of 0 USDT on completion.
+                            </p>
                         </div>
                         <div class="modal-footer">
                             <button type="submit" class="btn btn-primary">Submit Withdrawal</button>
@@ -509,14 +557,19 @@
             <div class="modal-dialog">
                 <div class="modal-content bg-white">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="walletTransferModalLabel">Transfer</h5>
+                        <div>
+                            <h5 class="modal-title" id="walletTransferModalLabel">Transfer</h5>
+                            <small class="text-muted">
+                                Please enter the transfer amount below. Funds will be debited from your trading profit or affiliates wallet and credited to your USDT wallet upon successful processing.
+                            </small>
+                        </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <form action="{{ route('user.transfer') }}" method="POST">
                         @csrf
                         <div class="modal-body">
                             <p id="sourceWalletBalance"></p>
-                            <input type="hidden" id="transferTypeHidden" name="transfer_type" value="">
+                            <input type="hidden" id="transferTypeHidden" name="transfer_type" value="affiliates_to_cash">
                             <div class="mb-3">
                                 <label for="transferAmountDynamic" class="form-label">Amount</label>
                                 <input type="number" step="0.01" name="amount" class="form-control" id="transferAmountDynamic" required>
@@ -538,21 +591,43 @@
                         <h5 class="modal-title" id="tradingTransferModalLabel">Terminate Trade Margin</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <form action="{{ route('user.tradingTransfer') }}" method="POST" class="trading-transfer-form">
+                    <!-- The form will not submit immediately; it will trigger the confirmation modal -->
+                    <form id="tradingTransferForm" action="{{ route('user.tradingTransfer') }}" method="POST" class="trading-transfer-form">
                         @csrf
                         <div class="modal-body">
                             <p>Trading Balance: {{ number_format($wallets->trading_wallet, 2) }} USDT</p>
                             <p><strong>Fee Rate:</strong> 20%</p>
-                            <p class="text-danger">Please note: For users registered under 100 days, a 20% fee will be deducted from the transferred amount to the USDT wallet.</p>
                             <div class="mb-3">
                                 <label for="tradingTransferAmount" class="form-label">Amount</label>
                                 <input type="number" step="0.01" name="amount" class="form-control" id="tradingTransferAmount" required>
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button type="submit" class="btn btn-primary">Terminate</button>
+                            <p class="text-danger">Please note: For users registered under 100 days, a 20% fee will be deducted from the transferred amount to the USDT wallet.</p>
+                            <!-- Instead of submitting here, trigger confirmation -->
+                            <button type="button" class="btn btn-primary" id="confirmTerminateBtn">Terminate</button>
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Confirmation Modal for Terminate Trade Margin -->
+        <div class="modal fade" id="tradingTransferConfirmModal" tabindex="-1" aria-labelledby="tradingTransferConfirmModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content bg-white">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="tradingTransferConfirmModalLabel">Confirm Termination</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- The confirmation details will be injected via JS -->
+                        <p id="transferConfirmationDetails">Are you sure you want to transfer?</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" id="finalizeTerminateBtn">Yes, Confirm</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -562,9 +637,16 @@
             <div class="modal-dialog modal-lg">
                 <div class="modal-content bg-white">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="packageModalLabel">
-                            {{ $hasPackageTransfer ? 'Top-up' : 'Activate Trade' }}
-                        </h5>
+                        <div>
+                            <h5 class="modal-title" id="packageModalLabel">
+                                {{ $hasPackageTransfer ? 'Top-up' : 'Activate Trade' }}
+                            </h5>
+                            @if(!$user->package)
+                                <small class="text-muted">Please choose a package for starting activation of your trading margin.</small>
+                            @else
+                                <small class="text-muted">Please key in the top-up amount to your trading margin.</small>
+                            @endif
+                        </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
@@ -573,7 +655,7 @@
                                 @csrf
                                 <div class="mb-3">
                                     <label for="activation_amount" class="form-label">Enter Activation Amount</label>
-                                    <input type="number" name="activation_amount" id="activation_amount" class="form-control" placeholder="Enter amount" required>
+                                    <input type="number" name="activation_amount" id="activation_amount" class="form-control" placeholder="Enter amount" min="10" step="10" required>
                                 </div>
                                 <div class="row">
                                     @foreach($directRanges->whereIn('id', [1,2,3]) as $range)
@@ -598,7 +680,7 @@
                                     @csrf
                                     <input type="hidden" name="directrange_id" value="{{ $currentRange->id }}">
                                     <div class="mb-2">
-                                        <input type="number" name="topup_amount" class="form-control" placeholder="Enter top-up amount" required>
+                                        <input type="number" name="topup_amount" class="form-control" placeholder="Enter top-up amount" min="10" step="10" required>
                                     </div>
                                     <button type="submit" class="btn btn-primary w-100">Top-up</button>
                                 </form>
@@ -614,7 +696,9 @@
             <div class="modal-dialog">
                 <div class="modal-content bg-white">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="sendModalLabel">Send USDT to Downline</h5>
+                        <div>
+                            <h5 class="modal-title" id="sendModalLabel">Send USDT to referral by email address</h5>
+                        </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <form action="{{ route('user.sendFunds') }}" method="POST">
@@ -622,8 +706,8 @@
                         <div class="modal-body">
                             <p>USDT Balance: {{ number_format($wallets->cash_wallet, 2) }} USDT</p>
                             <div class="mb-3">
-                                <label for="downlineEmail" class="form-label">Downline Email</label>
-                                <input type="email" name="downline_email" class="form-control" id="downlineEmail" placeholder="Enter downline email" required>
+                                <label for="downlineEmail" class="form-label">Referral Email</label>
+                                <input type="email" name="downline_email" class="form-control" id="downlineEmail" placeholder="Enter referral email" required>
                             </div>
                             <div class="mb-3">
                                 <label for="sendAmount" class="form-label">Amount</label>
@@ -631,7 +715,9 @@
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button type="submit" class="btn btn-primary">Send Funds</button>
+                            <small class="text-danger">*Please ensure the referral email is correct. The requested amount will be deducted from your USDT balance and processed.</small>
+                        
+                            <button type="submit" class="btn btn-primary">Send</button>
                         </div>
                     </form>
                 </div>
@@ -892,9 +978,10 @@
           new ApexCharts(document.querySelector(elementSelector), options).render();
         }
     
-        const forexSymbols = ['EURUSD', 'GBPUSD', 'THBUSD', 'CADUSD', 'CHFUSD', 'AUDUSD', 'USDVND', 'MXNUSD', 'USDIDR'];
-        forexSymbols.forEach(symbol => {
-          createSparklineChart('#sparkline-' + symbol);
+        const forexRecordsData = @json($forexRecords);
+        forexRecordsData.forEach(record => {
+            const symbol = record.symbol.toUpperCase();
+            createSparklineChart(`#sparkline-${symbol}`);
         });
     
         // -------------------------------
@@ -929,6 +1016,71 @@
         };
         var profitChart = new ApexCharts(document.querySelector("#profitChart"), profitChartConfig);
         profitChart.render();
+        
+        
+        const withdrawalAmountInput = document.getElementById('withdrawalAmount');
+        const feeInfoElement = document.getElementById('withdrawalFeeInfo');
+    
+        function updateFeeInfo() {
+            let amount = parseFloat(withdrawalAmountInput.value);
+            if (isNaN(amount) || amount <= 0) {
+                feeInfoElement.textContent = "*Please enter a valid withdrawal amount. 3% fee will be applied, resulting in a net receipt of 0.00 USDT.";
+                return;
+            }
+            // Calculate final amount after a 3% fee deduction (i.e., 97% of the amount)
+            let receivedAmount = amount * 0.97;
+            // Format the value to 2 decimal places.
+            feeInfoElement.textContent = `*Please note: A 3% fee will be deducted, and you will receive a net total of ${receivedAmount.toFixed(2)} USDT upon successful withdrawal.`;
+        }
+    
+        // Update fee info when the user types in a value.
+        withdrawalAmountInput.addEventListener('input', updateFeeInfo);
+        
+        document.getElementById('confirmTerminateBtn').addEventListener('click', function() {
+            const amountInput = document.getElementById('tradingTransferAmount');
+            let amount = parseFloat(amountInput.value);
+            if (isNaN(amount) || amount <= 0) {
+                alert('Please enter a valid amount');
+                return;
+            }
+            const fee = amount * 0.20;
+            const netAmount = amount - fee;
+            const confirmationText = `You are about to transfer ${amount.toFixed(2)} USDT. 
+        A fee of ${fee.toFixed(2)} USDT (20%) will be deducted, resulting in a net transfer of ${netAmount.toFixed(2)} USDT.
+        Do you wish to proceed?`;
+            document.getElementById('transferConfirmationDetails').textContent = confirmationText;
+        
+            // Show the confirmation modal
+            const confirmModal = new bootstrap.Modal(document.getElementById('tradingTransferConfirmModal'));
+            confirmModal.show();
+        });
+        
+        document.getElementById('finalizeTerminateBtn').addEventListener('click', function() {
+            // Hide the confirmation modal and submit the form
+            const confirmModalEl = document.getElementById('tradingTransferConfirmModal');
+            const confirmModal = bootstrap.Modal.getInstance(confirmModalEl);
+            confirmModal.hide();
+            document.getElementById('tradingTransferForm').submit();
+        });
+        
+        document.querySelector('form.package-form').addEventListener('submit', function(e) {
+            var topupInput = document.querySelector('input[name="topup_amount"]');
+            var value = parseInt(topupInput.value, 10);
+            if (value % 10 !== 0) {
+                e.preventDefault();
+                alert("Please enter a value in multiples of 10.");
+            }
+        });
+        
+        document.getElementById('activationForm').addEventListener('submit', function(e) {
+            var activationInput = document.getElementById('activation_amount');
+            var value = parseInt(activationInput.value, 10);
+            if (value % 10 !== 0) {
+              e.preventDefault();
+              alert("Please enter a value in multiples of 10.");
+            }
+          });
+
       </script>
     </x-slot:footerFiles>
 

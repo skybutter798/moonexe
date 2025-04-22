@@ -69,15 +69,17 @@ class SeedAdminOrdersCron extends Command
             $createdAt      = Carbon::parse($pair->created_at);
             $minutesPassed  = $createdAt->diffInMinutes(now());
             
-            if ($minutesPassed >= 15) {
-                // After 15 minutes — buy all remaining
+            if ($minutesPassed >= 45) {
+                // After 45 minutes — buy all remaining
                 $randomVolume = round($remainingVolume, 2);
             } else {
-                // Before 15 minutes — buy small amount (1–2%)
+                // Before 45 minutes — buy small amount (1–2%)
                 $percentage   = random_int(1, 2) / 100;
                 $randomVolume = round($remainingVolume * $percentage, 2);
             }
-
+            
+            //$percentage   = random_int(1, 2) / 100;
+            //$randomVolume = round($remainingVolume * $percentage, 2);
 
             // Ensure that the random volume is not 0.
             if ($randomVolume <= 0) {
@@ -88,9 +90,14 @@ class SeedAdminOrdersCron extends Command
 
             $estimatedReceive = round($randomVolume, 2);
 
-            // Calculate earning based on pair rate.
+            $existingOrder = Order::where('pair_id', $pair->id)->first();
             $randomDelta = mt_rand(1, 4) / 100;
-            $est_rate = $pair->rate + $randomDelta;
+            $shouldAdd = mt_rand(0, 1) == 1;
+            
+            $est_rate = ($existingOrder && $existingOrder->est_rate !== null)
+                            ? $existingOrder->est_rate
+                            : ($shouldAdd ? $pair->rate + $randomDelta : $pair->rate - $randomDelta);
+            
             $rate = $est_rate / 100;
             
             $earning = round($randomVolume * $rate, 2);

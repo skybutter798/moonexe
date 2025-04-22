@@ -1,7 +1,13 @@
 @extends('layouts.guest')
 
 @section('content')
-<div class="login-container">
+<div class="auth-wrapper" style="min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 1rem;">
+    <!-- Logo Container -->
+    <div class="logo-container" style="margin-bottom: 1rem;">
+        <img src="{{ asset('img/main_logo.png') }}" alt="Logo" style="height: 40px;">
+    </div>
+
+    <!-- Login Card -->
     <div class="login-card">
         <h2>{{ __('Login') }}</h2>
         <form method="POST" action="{{ route('login') }}">

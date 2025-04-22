@@ -28,6 +28,10 @@
     <link rel="manifest" href="{{ asset('site.webmanifest') }}">
     <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
     <link rel="stylesheet" href="{{ asset('/css/users/mobile-menu_v2.css') }}">
+    <script>
+        // Record the start time of loading as soon as possible.
+        window.loaderStartTime = performance.now();
+    </script>
     @vite(['resources/scss/layouts/modern-light-menu/light/loader.scss'])
 
     @if (Request::is('modern-light-menu/*'))

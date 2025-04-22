@@ -179,26 +179,26 @@
     
     <h2 class="mb-3 mt-5 text-primary"><strong>Upcoming Pair</strong></h2>
     <div class="d-flex overflow-auto" style="white-space: nowrap;">
-    @foreach($upcomingCurrencies as $currency)
-    @php
-        $triggerMYT = $getTriggerTimestamp($currency);
-        $triggerTimestamp = $triggerMYT->getTimestamp() * 1000;
-    @endphp
-    
-    <div class="card mb-3 me-3" style="min-width: 200px;"
-         data-trigger-timestamp="{{ $triggerTimestamp }}">
-      <div class="card-header py-2">
-        <span class="h6">USDT/{{ $currency->c_name }}/USDT</span>
-      </div>
-      <div class="card-body py-2">
-        <div class="">
-            <p class="mb-1"><strong>Upcoming :</strong> 
-              <span class="upcoming-countdown badge badge-dark">--:--:--</span>
-            </p>
-        </div>
-      </div>
-    </div>
-    @endforeach
+        @foreach($upcomingCurrencies as $currency)
+            @php
+                $triggerMYT = $getTriggerTimestamp($currency);
+                $triggerTimestamp = $triggerMYT->getTimestamp() * 1000;
+            @endphp
+            
+            <div class="card mb-3 me-3" style="min-width: 200px;"
+                 data-trigger-timestamp="{{ $triggerTimestamp }}">
+              <div class="card-header py-2">
+                <span class="h6">USDT/{{ $currency->c_name }}/USDT</span>
+              </div>
+              <div class="card-body py-2">
+                <div class="">
+                    <p class="mb-1"><strong>Upcoming :</strong> 
+                      <span class="upcoming-countdown badge badge-dark">--:--:--</span>
+                    </p>
+                </div>
+              </div>
+            </div>
+        @endforeach
     </div>
     
   <div class="container py-4">
@@ -303,90 +303,7 @@
 
     <hr>
     
-    <!-- My Exchange Orders (unchanged) -->
-    {{--<div class="mb-4">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <h4 class="mb-0 col-8">My Exchange Orders</h4>
-      </div>
-      <div class="table-responsive">
-        <table class="table table-bordered" id="ordersTable">
-          <thead class="bg-dark text-white">
-            <tr>
-              <th>Order ID</th>
-              <th>Date</th>
-              <th>Pair</th>
-              <th>Trade</th>
-              <th>Est. | Actual Profit (%)</th>
-              <th>Return Profit</th>
-              <th>Progress</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-             <tbody>
-                @forelse($userOrders as $order)
-                  @php
-                    $pairCreatedAt = $order->pair->created_at;
-                    $pairEndTimestamp = $order->pair->created_at->copy()->addHours($order->pair->end_time)->getTimestamp() * 1000;
-                    $pairStartTimestamp = $pairCreatedAt->getTimestamp() * 1000;
-                    $baseMatching = $order->receive && $order->buy ? $order->receive / $order->buy : 0;
-                  @endphp
-                  <tr data-order-id="{{ $order->id }}" data-pair-start="{{ $pairStartTimestamp }}" data-pair-end="{{ $pairEndTimestamp }}" data-order-status="{{ $order->status }}">
-                    <td>{{ $order->txid }}</td>
-                    <td>{{ $order->created_at->format('d M Y H:i') }}</td>
-                    <td>
-                      @php
-                        $baseCurrency = $order->pair->currency->c_name;
-                        $displayPair = "USDT / {$baseCurrency} / USDT";
-                      @endphp
-                      {{ $displayPair }}
-                    </td>
-        
-                    <td>{{ number_format($order->buy, 4) }} USDT</td>
-                    
-                    <td class="est-roi" data-roi="{{ number_format($order->pair->rate, 2) }} | {{ number_format($order->est_rate, 2) }}">
-                        <div id="rateDisplay" class="align-self-center">
-                            {{ number_format($order->pair->rate, 2) }} | {{ number_format($order->est_rate, 2) }}
-                        </div>
-                    </td>
-                    
-                    <td class="order-buy" 
-                        data-buy="{{ $order->buy }}" 
-                        data-est-rate="{{ $order->est_rate }}">
-                        <span style="font-size:0.9em">{{ number_format($order->receive, 4) }} {{ $baseCurrency }}</span> ➜ 
-                        <span id="buyDisplay">
-                          <span class="computed-value badge badge-dark">
-                              {{ number_format($order->buy * (1 + $order->est_rate/100), 4) }}
-                          </span>
-                        </span>
-                    </td>
-                    
-                    <!-- Status column with progress bar -->
-                    <td>
-                      <div class="progress" style="height: 20px;border-radius: 10px;">
-                        <div class="progress-bar status-progress" role="progressbar" style="width: 0%;" aria-valuemin="0" aria-valuemax="100"></div>
-                      </div>
-                    </td>
-                    
-                    <td class="pairing-cell">
-                        <span class="matching-rate" data-symbol="{{ str_replace(' ', '', str_replace('/', '', $order->pair->currency->c_name . $order->pair->pairCurrency->c_name)) }}">
-                          0.000000
-                        </span>
-                    </td>
-                  </tr>
-                @empty
-                  <tr>
-                    <td colspan="10" class="text-center">No exchange orders found.</td>
-                  </tr>
-                @endforelse
-            </tbody>
-        </table>
-        
-        <div class="mt-3">
-            {{ $userOrders->links('vendor.pagination.bootstrap-5') }}
-        </div>
-      </div>
-    </div>--}}
-    
+    <!-- My Exchange Orders -->
     <h2 id="myExchangeOrders" class="mb-3 mt-5 text-primary"><strong>My Exchange Orders</strong></h2>
     
     <div class="row">
@@ -431,7 +348,7 @@
                   </span>
                 </p>
                 <div class="mb-2">
-                  <strong class="text-dark">Progress: </strong>
+                  <strong class="text-dark">Matching Progress: </strong>
                   <div class="progress" style="position: relative; height: 30px; border-radius: 10px;">
                     <div class="progress-bar status-progress" role="progressbar" style="width: 0%;" aria-valuemin="0" aria-valuemax="100"></div>
                     <!-- New overlay element -->
@@ -444,7 +361,7 @@
             <!-- Card Footer -->
             <div class="card-footer">
               <div class="pairing-cell">
-                <strong class="text-dark">Matching: </strong>
+                <strong class="text-dark">Matching Rate: </strong>
                 <span class="matching-rate btn" 
                       data-symbol="{{ str_replace(' ', '', str_replace('/', '', $order->pair->currency->c_name . $order->pair->pairCurrency->c_name)) }}"
                       data-base-rate="0.000000">

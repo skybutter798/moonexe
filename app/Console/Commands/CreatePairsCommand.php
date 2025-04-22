@@ -82,6 +82,12 @@ class CreatePairsCommand extends Command
                 // Step 3: Calculate available volume as total divided by a random value between 2 and 4.
                 $divisor = rand(5, 10);
                 $availableVolume = intval(($total + $pendingSum) / $divisor);
+                
+                if ($availableVolume <= 0) {
+                    Log::channel('pair')->warning("Volume calculated as 0. Skipping.");
+                    continue;
+                }
+
                 Log::channel('pair')->info("Calculated available volume using divisor {$divisor}: {$availableVolume}");
 
                 // --- Get the market rate for the currency ---

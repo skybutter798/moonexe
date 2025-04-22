@@ -1,46 +1,14 @@
 @extends('layouts.guest')
 
 @section('content')
-<script>
-    console.log("Script loaded");
-</script>
+<!-- Container using flexbox to center both logo and form -->
+<div class="auth-wrapper" style="min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 1rem;">
+    <!-- Logo Container -->
+    <div class="logo-container" style="margin-bottom: 1rem;">
+        <img src="{{ asset('img/main_logo.png') }}" alt="Logo" style="height: 40px;">
+    </div>
 
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        var promotionInput = document.getElementById('promotion_code');
-        var promotionInfo = document.getElementById('promotionInfo');
-    
-        // Debounce the input to avoid too many API calls
-        let debounceTimer;
-        promotionInput.addEventListener('input', function() {
-            clearTimeout(debounceTimer);
-            var code = this.value.trim();
-            if (code.length === 0) {
-                promotionInfo.style.display = 'none';
-                return;
-            }
-            debounceTimer = setTimeout(function() {
-                // Fetch promotion info from API
-                fetch('/api/promotion-info?code=' + encodeURIComponent(code))
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Promotion code not found');
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        promotionInfo.textContent = " Code left: " + data.left;
-                        promotionInfo.style.display = 'block';
-                    })
-                    .catch(error => {
-                        promotionInfo.textContent = error.message;
-                        promotionInfo.style.display = 'block';
-                    });
-            }, 500); // wait 500ms after the user stops typing
-        });
-    });
-</script>
-<div class="login-container">
+    <!-- Registration Card -->
     <div class="login-card">
         <h2>{{ __('Register') }}</h2>
         <form method="POST" action="{{ route('register') }}">
@@ -98,7 +66,6 @@
                 @enderror
             </div>
 
-
             <!-- Submit Button -->
             <button type="submit" class="btn-primary">
                 {{ __('Register') }}
@@ -106,7 +73,7 @@
         </form>
 
         <!-- Link to Login -->
-        <div class="switch-auth" style="text-align:center; margin-top: 1rem;font-size: small;">
+        <div class="switch-auth" style="text-align:center; margin-top: 1rem; font-size: small;">
             <span>{{ __('Already have an account?') }}</span>
             <a href="{{ route('login') }}" style="color: #4c4cff; text-decoration: none; font-weight: 600;">
                 {{ __('Back to Login') }}
@@ -115,7 +82,48 @@
     </div>
 </div>
 
-<!-- Referral Code Error Modal -->
+<!-- Additional Scripts and Modals -->
+
+<script>
+    console.log("Script loaded");
+</script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        var promotionInput = document.getElementById('promotion_code');
+        var promotionInfo = document.getElementById('promotionInfo');
+    
+        // Debounce the input to avoid too many API calls
+        let debounceTimer;
+        promotionInput.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            var code = this.value.trim();
+            if (code.length === 0) {
+                promotionInfo.style.display = 'none';
+                return;
+            }
+            debounceTimer = setTimeout(function() {
+                // Fetch promotion info from API
+                fetch('/api/promotion-info?code=' + encodeURIComponent(code))
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Promotion code not found');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        promotionInfo.textContent = " Code left: " + data.left;
+                        promotionInfo.style.display = 'block';
+                    })
+                    .catch(error => {
+                        promotionInfo.textContent = error.message;
+                        promotionInfo.style.display = 'block';
+                    });
+            }, 500); // wait 500ms after the user stops typing
+        });
+    });
+</script>
+
 @if($errors->has('referral_code'))
 <div class="modal fade" id="referralModal" tabindex="-1" aria-labelledby="referralModalLabel" aria-hidden="true">
   <div class="modal-dialog">
@@ -138,7 +146,6 @@
 @endsection
 
 @section('scripts')
-
 @if($errors->has('referral_code'))
 <script>
     document.addEventListener("DOMContentLoaded", function() {

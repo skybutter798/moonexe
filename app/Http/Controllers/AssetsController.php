@@ -150,9 +150,17 @@ class AssetsController extends Controller
         // --- Retrieve dynamic payout records based on payout type ---
         // Fetch payouts for the current user (assuming payout->wallet is used to differentiate earning vs. affiliates)
         $payoutRecords = \App\Models\Payout::where('user_id', $userId)
-            ->whereIn('wallet', ['affiliates'])
+            ->where('wallet', 'affiliates')
+            ->where('type', 'payout')  // <-- Added condition here
             ->orderBy('created_at', 'desc')
             ->paginate(10, ['*'], 'payout_page');
+        
+        // New query for direct affiliates payouts (Type = "direct")
+        $directPayoutRecords = \App\Models\Payout::where('user_id', $userId)
+            ->where('wallet', 'affiliates')
+            ->where('type', 'direct')
+            ->orderBy('created_at', 'desc')
+            ->paginate(10, ['*'], 'direct_payout_page');
 
     
         // Run the UserRangeCalculator to get the percentages
@@ -160,37 +168,38 @@ class AssetsController extends Controller
         $rangeCalculation = $userRangeCalc->calculate($user);
         $directPercentage = $rangeCalculation['direct_percentage'];
         $matchingPercentage = $rangeCalculation['matching_percentage'];
-    
+        
         // Enrich each payout record with additional data based on type.
         foreach ($payoutRecords as $payout) {
-            if ($payout->type === 'direct') {
-                // For direct payouts, find the transfer where transfers->txid matches the payout->txid.
-                $transfer = \App\Models\Transfer::where('txid', $payout->txid)->first();
-                if ($transfer) {
-                    $payout->deposit_txid = $transfer->txid;
-                    $payout->deposit_amount = number_format($transfer->amount, 4);
-                    // You can also attach the user_id if needed:
-                    // $payout->transfer_user_id = $transfer->user_id;
-                } else {
-                    $payout->deposit_txid = 'N/A';
-                    $payout->deposit_amount = '0.0000';
-                }
-                $payout->direct_percentage = $directPercentage;
+            // This branch will always get the non-direct records,
+            // so you can continue with the regular logic (order lookup, etc).
+            $order = \App\Models\Order::find($payout->order_id);
+            if ($order) {
+                $payout->txid = $order->txid;
+                $payout->buy = number_format($order->buy, 4);
+                $payout->earning = number_format($order->earning, 4);
             } else {
-                // For regular earning payouts, find the order details using order_id.
-                $order = \App\Models\Order::find($payout->order_id);
-                if ($order) {
-                    $payout->txid = $order->txid;
-                    $payout->buy = number_format($order->buy, 4);
-                    $payout->earning = number_format($order->earning, 4);
-                } else {
-                    $payout->txid = 'N/A';
-                    $payout->buy = '0.0000';
-                    $payout->earning = '0.0000';
-                }
-                // For non-direct payouts, use matching_percentage.
-                $payout->profit_sharing = $matchingPercentage;
+                $payout->txid = 'N/A';
+                $payout->buy = '0.0000';
+                $payout->earning = '0.0000';
             }
+            // Assign the matching percentage for affiliate (non-direct) payouts.
+            $payout->profit_sharing = $matchingPercentage;
+        }
+        
+        // For direct payouts, similar logic can be used (if necessary).
+        foreach ($directPayoutRecords as $payout) {
+            // For direct payouts you want to fetch the transfer details.
+            $transfer = \App\Models\Transfer::where('txid', $payout->txid)->first();
+            if ($transfer) {
+                $payout->deposit_txid = $transfer->txid;
+                $payout->deposit_amount = number_format($transfer->amount, 4);
+            } else {
+                $payout->deposit_txid = 'N/A';
+                $payout->deposit_amount = '0.0000';
+            }
+            // Attach the direct percentage.
+            $payout->direct_percentage = $directPercentage;
         }
 
     
@@ -207,6 +216,7 @@ class AssetsController extends Controller
             'packages'            => $packages,
             'currentPackage'      => $currentPackage,
             'payoutRecords'       => $payoutRecords,
+            'directPayoutRecords' => $directPayoutRecords,
             'roiRecords'          => $roiRecords,
         ]);
     }
@@ -287,70 +297,86 @@ class AssetsController extends Controller
     
     public function transfer(Request $request)
     {
-        // Validate required fields
+        // 1) Validate input
         $request->validate([
-            'amount' => 'required|numeric|min:0.01',
-            'transfer_type' => 'required|string|in:earning_to_cash,affiliates_to_cash'
+            'amount'        => 'required|numeric|min:0.01',
+            'transfer_type' => 'required|string|in:earning_to_cash,affiliates_to_cash',
         ]);
-    
+
         $userId = auth()->id();
-        $wallet = Wallet::where('user_id', $userId)->first();
-    
-        if (!$wallet) {
-            Log::channel('admin')->info("Wallet not found for user", ['user_id' => $userId]);
-            return redirect()->back()->withErrors('Wallet not found.');
-        }
-        Log::channel('admin')->info("Wallet found", ['user_id' => $userId]);
-    
-        $amount = (float) $request->amount;
-        $fromWallet = '';
-        
-        // Process transfer based on the transfer type
-        if ($request->transfer_type === 'earning_to_cash') {
-            if ($wallet->earning_wallet < $amount) {
-                Log::channel('admin')->info("Insufficient funds in Earning Wallet", [
-                    'user_id' => $userId,
-                    'required' => $amount,
-                    'available' => $wallet->earning_wallet
+        $wallet = Wallet::firstOrCreate(['user_id' => $userId]);
+
+        // 2) Special reserved‑sum check for early users moving affiliates → cash
+        if ($request->transfer_type === 'affiliates_to_cash' && $userId <= 202) {
+            $reserved = DB::table('payouts as p')
+                ->selectRaw("
+                    SUM(CASE 
+                          WHEN p.type = 'payout' 
+                               AND o.user_id <= 202 THEN p.actual ELSE 0 END)
+                    + SUM(CASE 
+                          WHEN p.type = 'direct' 
+                               AND t.user_id <= 202 THEN p.actual ELSE 0 END)
+                    AS total_reserved
+                ")
+                ->leftJoin('orders as o', function($join) {
+                    $join->on('p.order_id', '=', 'o.id')
+                         ->where('p.type', 'payout');
+                })
+                ->leftJoin('transfers as t', function($join) {
+                    $join->on('p.txid', '=', 't.txid')
+                         ->where('p.type', 'direct');
+                })
+                ->where('p.user_id', $userId)
+                ->where('p.wallet', 'affiliates')
+                ->whereIn('p.type', ['payout','direct'])
+                ->value('total_reserved') ?: 0;
+
+            if ($wallet->affiliates_wallet <= $reserved) {
+                Log::channel('admin')->warning("transfer: Affiliates below reserved", [
+                    'user_id'        => $userId,
+                    'balance'        => $wallet->affiliates_wallet,
+                    'reserved_sum'   => $reserved,
                 ]);
-                return redirect()->back()->withErrors('Insufficient funds in Earning Wallet.');
+                return redirect()->back()
+                    ->withErrors('Your affiliates balance must exceed your reserved amount before transferring.');
             }
-            $wallet->earning_wallet -= $amount;
-            $fromWallet = 'earning_wallet';
-        } elseif ($request->transfer_type === 'affiliates_to_cash') {
-            if ($wallet->affiliates_wallet < $amount) {
-                Log::channel('admin')->info("Insufficient funds in Affiliates Wallet", [
-                    'user_id' => $userId,
-                    'required' => $amount,
-                    'available' => $wallet->affiliates_wallet
-                ]);
-                return redirect()->back()->withErrors('Insufficient funds in Affiliates Wallet.');
-            }
-            $wallet->affiliates_wallet -= $amount;
-            $fromWallet = 'affiliates_wallet';
         }
-        Log::channel('admin')->info("Wallet funds deducted", [
-            'user_id' => $userId,
-            'from_wallet' => $fromWallet,
-            'amount_deducted' => $amount
-        ]);
-    
-        // Credit the Cash Wallet with the transferred amount
-        $wallet->cash_wallet += $amount;
+
+        // 3) Deduct from the chosen wallet
+        $amount     = (float) $request->amount;
+        $fromWallet = $request->transfer_type === 'earning_to_cash'
+                    ? 'earning_wallet'
+                    : 'affiliates_wallet';
+
+        if ($wallet->{$fromWallet} < $amount) {
+            Log::channel('admin')->info("Insufficient funds in {$fromWallet}", [
+                'user_id'  => $userId,
+                'required' => $amount,
+                'available'=> $wallet->{$fromWallet},
+            ]);
+            return redirect()->back()
+                   ->withErrors("Insufficient funds in your {$fromWallet}.");
+        }
+
+        $wallet->{$fromWallet}   -= $amount;
+        $wallet->cash_wallet    += $amount;
         $wallet->save();
-        Log::channel('admin')->info("Cash wallet credited", [
-            'user_id' => $userId,
-            'cash_wallet_balance' => $wallet->cash_wallet
+
+        Log::channel('admin')->info("transfer: Wallets updated", [
+            'user_id'      => $userId,
+            'from_wallet'  => $fromWallet,
+            'amount'       => $amount,
+            'new_cash_bal' => $wallet->cash_wallet,
         ]);
-    
-        // Generate unique transaction ID
+
+        // 4) Generate a unique txid
         do {
-            $randomNumber = str_pad(random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
-            $txid = 't_' . $randomNumber;
+            $txid = 't_' . str_pad(random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
         } while (Transfer::where('txid', $txid)->exists());
-        Log::channel('admin')->info("Transaction ID generated", ['txid' => $txid]);
-        
-        // Record the transfer
+
+        Log::channel('admin')->info("transfer: Generated txid", ['txid' => $txid]);
+
+        // 5) Record the transfer
         Transfer::create([
             'user_id'     => $userId,
             'txid'        => $txid,
@@ -358,13 +384,14 @@ class AssetsController extends Controller
             'to_wallet'   => 'cash_wallet',
             'amount'      => $amount,
             'status'      => 'Completed',
-            'remark'      => 'Transfer from ' . $fromWallet,
+            'remark'      => "Transfer from {$fromWallet}",
         ]);
-        Log::channel('admin')->info("Transfer record created", ['txid' => $txid]);
-    
-        // Prepare a success message
-        $walletNameReadable = ucfirst(str_replace('_', ' ', $fromWallet));
-        return redirect()->back()->with('success', "profit transfer completed successfully.");
+
+        Log::channel('admin')->info("transfer: Record created", ['txid' => $txid]);
+
+        // 6) Success response
+        return redirect()->back()
+               ->with('success', 'Profit transfer completed successfully.');
     }
     
     public function buyPackage(Request $request)
@@ -382,9 +409,13 @@ class AssetsController extends Controller
         if (!$user->package) {
             // First-time activation using activation_amount.
             $request->validate([
-                'activation_amount' => 'required|numeric|min:1',
+                'activation_amount' => 'required|numeric|min:10',
             ]);
             $activationAmount = (float) $request->activation_amount;
+            
+            if ($activationAmount % 10 !== 0) {
+                return redirect()->back()->withErrors('Activation amount must be in multiples of 10.');
+            }
             
             // Check sufficient funds.
             if ($wallet->cash_wallet < $activationAmount) {
@@ -406,9 +437,13 @@ class AssetsController extends Controller
         } else {
             // Top-up for already activated user using topup_amount.
             $request->validate([
-                'topup_amount' => 'required|numeric|min:1',
+                'topup_amount' => 'required|numeric|min:10',
             ]);
             $topupAmount = (float) $request->topup_amount;
+            
+            if ($topupAmount % 10 !== 0) {
+                return redirect()->back()->withErrors('Top-up amount must be in multiples of 10.');
+            }
             
             if ($wallet->cash_wallet < $topupAmount) {
                 return redirect()->back()->withErrors('Insufficient balance in Cash Wallet for top-up.');
@@ -565,12 +600,12 @@ class AssetsController extends Controller
             'txid'          => $txid,
             'amount'        => $request->amount,
             'trc20_address' => $sampleTRC20,
-            'status'        => 'Completed', // Set directly to Completed
+            'status'        => 'Pending', // Set directly to Completed
         ]);
         Log::channel('admin')->info("Deposit record created", ['txid' => $txid]);
     
         // Find the user's wallet; create one if it doesn't exist.
-        $wallet = Wallet::firstOrNew(['user_id' => $userId]);
+        /*$wallet = Wallet::firstOrNew(['user_id' => $userId]);
         if (!$wallet->exists) {
             $wallet->cash_wallet = 0;
             $wallet->trading_wallet = 0;
@@ -587,9 +622,9 @@ class AssetsController extends Controller
         Log::channel('admin')->info("Wallet updated with deposit", [
             'user_id' => $userId,
             'new_cash_wallet_balance' => $wallet->cash_wallet
-        ]);
+        ]);*/
     
-        return redirect()->back()->with('success', 'Deposit submitted and auto-approved successfully.');
+        return redirect()->back()->with('success', 'Deposit submitted successfully.');
     }
     
     public function withdrawal(Request $request)
@@ -637,6 +672,15 @@ class AssetsController extends Controller
     
     public function sendFunds(Request $request)
     {
+        $user = auth()->user();
+        
+        if ($user->id <= 202) {
+            Log::channel('admin')->warning('sendFunds: Unauthorized user tried to send funds', [
+                'user_id' => $user->id,
+            ]);
+            return redirect()->back()->withErrors(['You do not have permission to send funds.']);
+        }
+        
         // Validate incoming data
         $request->validate([
             'downline_email' => 'required|email|exists:users,email',
@@ -647,7 +691,7 @@ class AssetsController extends Controller
             'amount' => $request->amount,
         ]);
     
-        $user = auth()->user();
+        
         $amount = (float) $request->amount; // e.g., 1000
     
         // Check if the sender has sufficient funds

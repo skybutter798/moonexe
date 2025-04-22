@@ -189,8 +189,13 @@
       <li class="nav-item" role="presentation">
         <a class="nav-link active" data-bs-toggle="tab" href="#tradingTab" role="tab" aria-controls="tradingTab" aria-selected="true">Trading Record</a>
       </li>
+      <!-- Change the existing payout tab label -->
       <li class="nav-item" role="presentation">
-        <a class="nav-link" data-bs-toggle="tab" href="#payoutTab" role="tab" aria-controls="payoutTab" aria-selected="false">Payout Record</a>
+        <a class="nav-link" data-bs-toggle="tab" href="#payoutTab" role="tab" aria-controls="payoutTab" aria-selected="false">Affiliates Payout</a>
+      </li>
+      <!-- New Direct Payout tab -->
+      <li class="nav-item" role="presentation">
+        <a class="nav-link" data-bs-toggle="tab" href="#directPayoutTab" role="tab" aria-controls="directPayoutTab" aria-selected="false">Direct Payout</a>
       </li>
       <li class="nav-item" role="presentation">
         <a class="nav-link" data-bs-toggle="tab" href="#transactionTab" role="tab" aria-controls="transactionTab" aria-selected="false">Recent Transactions</a>
@@ -241,85 +246,123 @@
         </div>
       </div>
 
-      <!-- Payout Record Tab -->
-      <div class="tab-pane fade" id="payoutTab" role="tabpanel">
-        <div class="mb-4">
-          <div class="table-responsive">
-            <table class="table table-bordered table-sm mb-0">
-              <thead class="bg-primary text-white">
-                <tr>
-                  <th>Order ID</th>
-                  <th>Total Payout</th>
-                  <th>Actual Earning</th>
-                  <th>Type</th>
-                  <th>Status</th>
-                  <th>Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                @forelse($payoutRecords as $payout)
-                  @php
-                    if ($payout->type === 'direct') {
-                      $displayTxid = $payout->deposit_txid;
-                    } else {
-                      $order = \App\Models\Order::find(optional($payout->order)->id);
-                      $displayTxid = $order ? $order->txid : 'N/A';
-                      $buy = $order ? $order->buy : 0;
-                      $earning = $order ? $order->earning : 0;
-                      $ownOrder = ($order && $order->user_id == auth()->id());
-                    }
-                  @endphp
+      <!-- Affiliates Payout Tab -->
+        <div class="tab-pane fade" id="payoutTab" role="tabpanel">
+          <div class="mb-4">
+            <div class="table-responsive">
+              <table class="table table-bordered table-sm mb-0">
+                <thead class="bg-primary text-white">
                   <tr>
-                    <td>
-                      <a href="#"
-                        class="payout-detail-link"
-                        data-bs-toggle="modal"
-                        data-bs-target="#payoutDetailModal"
-                        @if($payout->type === 'direct')
-                          data-payout-type="{{ $payout->type }}"
-                          data-deposit-txid="{{ $payout->deposit_txid }}"
-                          data-deposit-amount="{{ $payout->deposit_amount }}"
-                          data-direct-percentage="{{ $payout->direct_percentage }}"
-                          data-total-payout="{{ $payout->total }}"
+                    <th>Order ID</th>
+                    <th>Total Payout</th>
+                    <th>Actual Earning</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @forelse($payoutRecords as $payout)
+                    <tr>
+                      <td>
+                        <a href="#"
+                           class="payout-detail-link"
+                           data-bs-toggle="modal"
+                           data-bs-target="#payoutDetailModal"
+                           {{-- Since these are non-direct payouts, you can use the regular details --}}
+                           data-payout-type="{{ $payout->type }}"
+                           data-txid="{{ $payout->txid }}"
+                           data-buy="{{ $payout->buy }}"
+                           data-earning="{{ $payout->earning }}"
+                           data-actual="{{ $payout->total }}"
+                           data-profit-sharing="{{ $payout->profit_sharing }}"
+                           data-own-order="false"
+                           data-wallet="{{ $payout->wallet }}"
+                        >
+                          {{ $payout->txid }}
+                        </a>
+                      </td>
+                      <td>{{ number_format($payout->total, 4) }}</td>
+                      <td>{{ isset($payout->actual) ? number_format($payout->actual, 4) : '-' }}</td>
+                      <td>Affiliates</td>
+                      <td>
+                        @if($payout->status == 1)
+                          <span class="badge bg-success">Completed</span>
                         @else
-                          data-payout-type="{{ $payout->type }}"
-                          data-txid="{{ $displayTxid }}"
-                          data-buy="{{ number_format($buy, 4) }}"
-                          data-earning="{{ number_format($earning, 4) }}"
-                          data-actual="{{ number_format($payout->actual, 4) }}"
-                          data-profit-sharing="0.25"
-                          data-own-order="{{ $ownOrder ? 'true' : 'false' }}"
-                          data-wallet="{{ $payout->wallet }}"
-                        @endif>
-                        {{ $payout->type === 'direct' ? $payout->deposit_txid : $displayTxid }}
-                      </a>
-                    </td>
-                    <td>{{ number_format($payout->total, 4) }}</td>
-                    <td>{{ isset($payout->actual) ? number_format($payout->actual, 4) : '-' }}</td>
-                    <td>{{ $payout->wallet }}</td>
-                    <td>
-                      @if($payout->status == 1)
-                        <span class="badge bg-success">Completed</span>
-                      @else
-                        <span class="badge bg-danger">Failed</span>
-                      @endif
-                    </td>
-                    <td>{{ $payout->created_at ? \Carbon\Carbon::parse($payout->created_at)->format('Y-m-d H:i') : '-' }}</td>
-                  </tr>
-                @empty
-                  <tr>
-                    <td colspan="6" class="text-center">No payout records found.</td>
-                  </tr>
-                @endforelse
-              </tbody>
-            </table>
-            <!-- Pagination Links -->
-            <div class="mt-3">
-              {{ $payoutRecords->appends(['active_tab' => 'payout'])->links('vendor.pagination.bootstrap-5') }}
+                          <span class="badge bg-danger">Failed</span>
+                        @endif
+                      </td>
+                      <td>{{ $payout->created_at ? \Carbon\Carbon::parse($payout->created_at)->format('Y-m-d H:i') : '-' }}</td>
+                    </tr>
+                  @empty
+                    <tr>
+                      <td colspan="6" class="text-center">No affiliates payout records found.</td>
+                    </tr>
+                  @endforelse
+                </tbody>
+              </table>
+              <div class="mt-3">
+                {{ $payoutRecords->appends(['active_tab' => 'payout'])->links('vendor.pagination.bootstrap-5') }}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+        
+        <!-- Direct Payout Tab -->
+        <div class="tab-pane fade" id="directPayoutTab" role="tabpanel">
+          <div class="mb-4">
+            <div class="table-responsive">
+              <table class="table table-bordered table-sm mb-0">
+                <thead class="bg-primary text-white">
+                  <tr>
+                    <th>Topup ID</th>
+                    <th>Total Payout</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @forelse($directPayoutRecords as $payout)
+                    <tr>
+                      <td>
+                        <a href="#"
+                           class="payout-detail-link"
+                           data-bs-toggle="modal"
+                           data-bs-target="#payoutDetailModal"
+                           data-payout-type="direct"
+                           data-deposit-txid="{{ $payout->deposit_txid }}"
+                           data-deposit-amount="{{ $payout->deposit_amount }}"
+                           data-direct-percentage="{{ $payout->direct_percentage }}"
+                           data-total-payout="{{ $payout->total }}"
+                        >
+                          {{ $payout->deposit_txid }}
+                        </a>
+                      </td>
+                      <td>{{ number_format($payout->total, 4) }}</td>
+                      <td>Direct</td>
+                      <td>
+                        @if($payout->status == 1)
+                          <span class="badge bg-success">Completed</span>
+                        @else
+                          <span class="badge bg-danger">Failed</span>
+                        @endif
+                      </td>
+                      <td>{{ $payout->created_at ? \Carbon\Carbon::parse($payout->created_at)->format('Y-m-d H:i') : '-' }}</td>
+                    </tr>
+                  @empty
+                    <tr>
+                      <td colspan="5" class="text-center">No direct payout records found.</td>
+                    </tr>
+                  @endforelse
+                </tbody>
+              </table>
+              <div class="mt-3">
+                {{ $directPayoutRecords->appends(['active_tab' => 'direct_payout'])->links('vendor.pagination.bootstrap-5') }}
+              </div>
+            </div>
+          </div>
+        </div>
 
       <!-- Recent Transactions Tab -->
       <div class="tab-pane fade" id="transactionTab" role="tabpanel">

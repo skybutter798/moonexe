@@ -60,7 +60,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       });
     }
-
     
     // Separate function for updating table matching data initially.
     function updateTableRates(apiData) {
@@ -586,52 +585,57 @@ document.addEventListener('DOMContentLoaded', function() {
       const now = Date.now();
     
       document.querySelectorAll('.card').forEach(card => {
-        // 1) Progress bar & countdown (using pairEnd)
-        const pairStart   = parseInt(card.dataset.pairStart, 10);
-        const pairEnd     = parseInt(card.dataset.pairEnd, 10);
-        const progressBar = card.querySelector('.status-progress');
+        // 1) Retrieve data values
+        const pairStart    = parseInt(card.dataset.pairStart, 10);
+        const pairEnd      = parseInt(card.dataset.pairEnd, 10);
+        const progressBar  = card.querySelector('.status-progress');
         const progressText = card.querySelector('.progress-text_order');
     
-        // Calculate progress %
-        let progress;
-        if (now >= pairEnd) {
+        // Compute the order’s own end time (data-order-time is in hours)
+        const orderHours = parseInt(card.dataset.orderTime, 10) || 0;
+        const orderEnd   = pairStart + orderHours * 3600000; // ms
+    
+        let progress, countdownText;
+        // If the order time has been reached, force full progress and a "00:00:00" display
+        if (now >= orderEnd) {
           progress = 100;
-        } else if (now <= pairStart) {
-          progress = 0;
+          countdownText = "00:00:00";
         } else {
-          progress = ((now - pairStart) / (pairEnd - pairStart)) * 100;
+          // Otherwise, use the pairEnd to calculate progress and countdown
+          if (now >= pairEnd) {
+            progress = 100;
+          } else if (now <= pairStart) {
+            progress = 0;
+          } else {
+            progress = ((now - pairStart) / (pairEnd - pairStart)) * 100;
+          }
+          // Calculate remaining time from pairEnd
+          let remainingTime = pairEnd - now;
+          if (remainingTime < 0) remainingTime = 0;
+          const hh = String(Math.floor(remainingTime / 3600000)).padStart(2, '0');
+          const mm = String(Math.floor((remainingTime % 3600000) / 60000)).padStart(2, '0');
+          const ss = String(Math.floor((remainingTime % 60000) / 1000)).padStart(2, '0');
+          countdownText = `${hh}:${mm}:${ss}`;
         }
     
-        // Update bar width & aria
+        // Update progress bar style, width, and aria-value
         if (progressBar) {
           progressBar.style.width = progress.toFixed(2) + '%';
           progressBar.setAttribute('aria-valuenow', progress.toFixed(2));
+          // Optionally change color based on whether the pairEnd time is still in the future
           progressBar.style.backgroundColor = (pairEnd - now) > 0 ? '#2e396f' : '#343a40';
         }
     
-        // Calculate remaining time for countdown
-        let remainingTime = pairEnd - now;
-        if (remainingTime < 0) remainingTime = 0;
-    
-        // Format hh:mm:ss
-        const hh = String(Math.floor(remainingTime / 3600000)).padStart(2, '0');
-        const mm = String(Math.floor((remainingTime % 3600000) / 60000)).padStart(2, '0');
-        const ss = String(Math.floor((remainingTime % 60000) / 1000)).padStart(2, '0');
-        const countdownText = `${hh}:${mm}:${ss}`;
-    
-        // Update the countdown overlay text
+        // Update the countdown overlay text on the progress bar
         if (progressText) {
           progressText.innerText = countdownText;
         }
     
-        // 2) Footer button logic
+        // 2) Footer button logic – preserved as in your original code with just one change:
+        // When displaying the Resolving button (i.e. order time reached), we add the countdown beside it.
         const status = card.dataset.orderStatus;
         const footer = card.querySelector('.card-footer');
         if (!footer) return;
-    
-        // Compute order’s own end time (data-order-time in hours)
-        const orderHours = parseInt(card.dataset.orderTime, 10) || 0;
-        const orderEnd   = pairStart + orderHours * 3600_000; // ms
     
         if (status === 'completed') {
           footer.innerHTML = '<span class="btn btn-dark">Completed</span>';
@@ -640,9 +644,25 @@ document.addEventListener('DOMContentLoaded', function() {
           footer.innerHTML = '<button class="btn btn-primary claim-btn">Claim</button>';
         }
         else if (now >= orderEnd) {
-          footer.innerHTML = '<button class="btn btn-secondary" disabled>Resolving</button>';
+          // Compute pairEnd countdown for display beside the Resolving button
+          let pairRemainingTime = pairEnd - now;
+          if (pairRemainingTime < 0) pairRemainingTime = 0;
+          const hh = String(Math.floor(pairRemainingTime / 3600000)).padStart(2, '0');
+          const mm = String(Math.floor((pairRemainingTime % 3600000) / 60000)).padStart(2, '0');
+          const ss = String(Math.floor((pairRemainingTime % 60000) / 1000)).padStart(2, '0');
+          const pairCountdown = `${hh}:${mm}:${ss}`;
+          
+           footer.innerHTML =
+              '<div class="d-flex align-items-center">' +
+                '<button class="btn btn-dark" disabled>Resolving</button>' +
+                '<span class="badge bg-dark ms-2">' + pairCountdown + '</span>' +
+              '</div>' +
+              '<small class="d-block mt-1">' +
+                '*Your pair order is currently being processed. Please wait until the countdown has completed before claiming your return.' +
+              '</small>';
+
+
         }
-        // else (still live & not expired) → leave footer as-is (or clear)
       });
     }
 

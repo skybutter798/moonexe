@@ -74,6 +74,7 @@ Route::prefix('user-dashboard')->middleware(['auth', 'user.only'])->group(functi
     Route::post('/order/claim', [OrderController::class, 'claim'])->name('user.order.claim');
     Route::post('/send', [AssetsController::class, 'sendFunds'])->name('user.sendFunds');
     Route::post('/account/change-password', [AccountController::class, 'changePassword'])->name('user.changePassword');
+    Route::put('/account/update', [AccountController::class, 'updateProfile'])->name('user.updateProfile');
     Route::post('/apply-promotion', [DashboardController::class, 'applyPromotion'])->name('user.applyPromotion');
     
     //New layout

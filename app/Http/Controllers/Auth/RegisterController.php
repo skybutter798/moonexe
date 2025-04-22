@@ -8,6 +8,8 @@ use App\Models\Promotion;
 use Illuminate\Foundation\Auth\RegistersUsers;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\WelcomeMail;
 
 use App\Models\Wallet;
 use App\Models\Transfer;
@@ -106,7 +108,7 @@ class RegisterController extends Controller
                 'remark'      => 'bonus',
             ]);
         }
-    
+        Mail::to($user->email)->send(new WelcomeMail($user));
         return $user;
     }
 

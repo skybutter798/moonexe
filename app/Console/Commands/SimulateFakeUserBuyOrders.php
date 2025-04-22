@@ -127,9 +127,14 @@ class SimulateFakeUserBuyOrders extends Command
                 
                 $existingOrder = Order::where('pair_id', $pair->id)->first();
                 $randomDelta = mt_rand(1, 4) / 100;
+                $shouldAdd = mt_rand(0, 1) == 1;
+
                 $est_rate = ($existingOrder && $existingOrder->est_rate !== null)
-                                ? $existingOrder->est_rate
-                                : $pair->rate + $randomDelta;
+                            ? $existingOrder->est_rate
+                            : ($shouldAdd 
+                                ? $pair->rate + $randomDelta 
+                                : $pair->rate - $randomDelta);
+
                 $rate = $est_rate / 100;
 
                 

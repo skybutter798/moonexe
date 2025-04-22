@@ -23,6 +23,7 @@ class User extends Authenticatable
         'referral_link',
         'package',
         'bonus',
+        'avatar',
     ];
     
     protected $hidden = [
