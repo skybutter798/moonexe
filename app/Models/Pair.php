@@ -17,7 +17,8 @@ class Pair extends Model
         'gate_time',
         'min_rate',
         'max_rate',
-        'end_time'
+        'end_time',
+        'status',
     ];
 
     // Cast the gate_time attribute to a datetime instance.

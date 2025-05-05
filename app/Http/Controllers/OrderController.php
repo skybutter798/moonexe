@@ -80,7 +80,7 @@ class OrderController extends Controller
         
             // If both have the same expired status, sort by closingTimestamp.
             if ($aExpired === $bExpired) {
-                return $a->closingTimestamp <=> $b->closingTimestamp;
+                return $b->closingTimestamp <=> $a->closingTimestamp;
             }
         
             // If one is expired and the other is not, put the non-expired one first.
@@ -237,7 +237,7 @@ class OrderController extends Controller
                 'status'   => 'pending',
                 'earning'  => $earning,
                 'est_rate' => $est_rate,
-                'time'     => random_int(3, 18),
+                'time' => random_int(10800, 64800),
             ]);
     
             Log::channel('order')->info('Order successfully created.', [
@@ -295,6 +295,17 @@ class OrderController extends Controller
             Log::warning("Order ID: {$order->id} is not claimable. Status: {$order->status}");
             return response()->json(['success' => false, 'error' => 'Order has already been claimed or is not claimable.']);
         }
+        
+        $claimReadyAt = $order->created_at->addSeconds($order->time);
+        
+        if (now()->lessThan($claimReadyAt)) {
+            Log::warning("Order ID: {$order->id} cannot be claimed yet. Claim ready at: {$claimReadyAt}, now: " . now());
+            return response()->json([
+                'success' => false, 
+                'error' => 'Order is not ready to be claimed yet.'
+            ]);
+        }
+
         // Step 2: Calculate user's total and percentages using the UserRangeCalculator.
         $rangeCalculator = new \App\Services\UserRangeCalculator();
         $userRange = $rangeCalculator->calculate($user);

@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Wallet;
 use App\Models\User;
 use App\Models\Promotion;
+use App\Models\Annoucement;
 use App\Models\Transfer;
 
 class DashboardController extends Controller
@@ -64,6 +65,9 @@ class DashboardController extends Controller
             ->where('remark', 'package')
             ->exists();
         $forexRecords = \App\Models\MarketData::orderBy('symbol')->get();
+        $announcement = Annoucement::where('status', 1)
+                       ->orderBy('updated_at', 'desc')
+                       ->first();
         
         $data = [
             'title'              => 'Dashboard',
@@ -79,6 +83,9 @@ class DashboardController extends Controller
             'profitRecords'      => $profitRecords,
             'forexRecords'       => $forexRecords,
         ];
+        
+        $data['tradermadeApiKey'] = config('services.tradermade.key');
+        $data['announcement'] = $announcement;
         
         if ($user->isAdmin) {
             return view('admin.dashboard', $data);
@@ -136,5 +143,12 @@ class DashboardController extends Controller
         
         return redirect()->back()->withErrors(['promotion_code' => 'Invalid promotion code.']);
     }
+    
+    public function showAnnouncements()
+    {
+        $announcements = Annoucement::orderBy('updated_at','desc')->get();
+        return view('user.announcements', compact('announcements'));
+    }
+
 
 }

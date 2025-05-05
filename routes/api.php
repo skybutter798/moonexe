@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\WebhookController;
 
 use App\Models\Promotion;
 
@@ -51,3 +52,10 @@ Route::get('/promotion-info', function (Request $request) {
     }
     return response()->json(['error' => 'Promotion code not found'], 404);
 });
+
+/*Route::post('/response', function (Request $request) {
+    Log::info('Received Webhook:', $request->all());
+    return response()->json(['message' => 'Webhook received'], 200);
+});*/
+
+Route::post('/response', [WebhookController::class, 'handle']);

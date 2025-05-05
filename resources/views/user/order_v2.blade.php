@@ -117,6 +117,14 @@
           color: white;
         }
 
+        @keyframes blink {
+          0% { background-color: #a0cdff; }
+          100% { background-color: #ffffff; }
+        }
+        
+        .blink-highlight {
+          animation: blink 0.5s alternate 6;
+        }
 
     </style>
   </x-slot:headerFiles>
@@ -348,7 +356,7 @@
                   </span>
                 </p>
                 <div class="mb-2">
-                  <strong class="text-dark">Matching Progress: </strong>
+                  <strong class="text-dark">Pairing Progress: </strong>
                   <div class="progress" style="position: relative; height: 30px; border-radius: 10px;">
                     <div class="progress-bar status-progress" role="progressbar" style="width: 0%;" aria-valuemin="0" aria-valuemax="100"></div>
                     <!-- New overlay element -->
@@ -361,7 +369,7 @@
             <!-- Card Footer -->
             <div class="card-footer">
               <div class="pairing-cell">
-                <strong class="text-dark">Matching Rate: </strong>
+                <strong class="text-dark">Pairing Rate: </strong>
                 <span class="matching-rate btn" 
                       data-symbol="{{ str_replace(' ', '', str_replace('/', '', $order->pair->currency->c_name . $order->pair->pairCurrency->c_name)) }}"
                       data-base-rate="0.000000">
@@ -514,7 +522,41 @@
         
         updateCountdowns();
         setInterval(updateCountdowns, 1000);
-
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const symbol = localStorage.getItem('navigateSymbol');
+            if (symbol) {
+                localStorage.removeItem('navigateSymbol');
+                const baseCurrency = symbol.substring(0, 3).toUpperCase();
+                let found = false;
+        
+                document.querySelectorAll('.gateRow').forEach(card => {
+                    const cardCurrencyText = card.querySelector('.h5')?.innerText || '';
+                    const match = cardCurrencyText.match(/\/ (.*?) \//);
+                    const cardCurrency = match ? match[1].trim().toUpperCase() : '';
+        
+                    if (cardCurrency === baseCurrency) {
+                        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        found = true;
+        
+                        // Highlight the card with blinking effect
+                        card.classList.add('blink-highlight');
+        
+                        // Remove the highlight class after animation ends
+                        setTimeout(() => {
+                            card.classList.remove('blink-highlight');
+                        }, 3000); // after 3 seconds
+                    }
+                });
+        
+                if (!found) {
+                    console.log('No matching card found for base currency:', baseCurrency, '. Scrolling to top.');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            } else {
+                console.log('No symbol found in localStorage. Nothing to do.');
+            }
+        });
 
     </script>
   </x-slot:footerFiles>

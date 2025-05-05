@@ -120,6 +120,48 @@
         background-repeat: no-repeat;
         background-color: #faf9f9;
     }
+    
+    .tier-details {
+        font-size: 0.95rem;
+        line-height: 1.5;
+      }
+      .tier-details section + section {
+        margin-top: 1.5rem;
+        border-top: 1px solid #dee2e6;
+        padding-top: 1rem;
+      }
+      .tier-details h6 {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: white;
+            background-color: black;
+            padding: 10px;
+        }
+      .tier-details ul {
+        list-style: none;
+        padding-left: 0;
+        color: black;
+      }
+      .tier-details ul li {
+        position: relative;
+        padding-left: 1.5rem;
+        margin-bottom: 0.5rem;
+        color: black;
+      }
+      .tier-details ul li:before {
+        content: "•";
+        position: absolute;
+        left: 0;
+        color: black;
+      }
+      
+      .btn-question {
+        background: none !important;
+        color: black !important;
+        border: none;
+        padding: 0px;
+        font-size: 18px;
+      }
 
 
     </style>
@@ -199,6 +241,7 @@
             <div class="apply-reset d-flex align-items-center gap-2 mb-2">
               <button type="submit" class="btn btn-primary btn-sm">Apply</button>
               <a href="{{ route('user.referral') }}" class="btn btn-danger btn-sm">Refresh</a>
+              <button type="button" class="btn btn-question btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#referralInfoModal"> <i class="bi bi-question-circle"></i> </button>
             </div>
             <!-- Row 3: Quick Filters -->
             <div class="quick-filters d-flex align-items-center gap-2">
@@ -219,6 +262,7 @@
             <div class="apply-reset d-flex align-items-center gap-2">
               <button type="submit" class="btn btn-primary btn-sm">Apply</button>
               <a href="{{ route('user.referral') }}" class="btn btn-danger btn-sm">Refresh</a>
+              <button type="button" class="btn btn-question btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#referralInfoModal"> <i class="bi bi-question-circle"></i> </button>
             </div>
             <!-- Quick Filters -->
             <div class="quick-filters d-flex align-items-center gap-2">
@@ -248,32 +292,40 @@
           </div>
           
           <!-- Card: Direct & Matching Percentages -->
-          <div class="col-12 col-md-4 mb-3 d-flex">
-            <div class="summary-card flex-fill p-3">
-              <div class="d-flex align-items-center justify-content-around pt-2">
-                <!-- Direct Column -->
-                <div class="text-center">
-                  <p class="mb-1 h6"><strong>Referral</strong></p>
-                  <p class="mb-0 fs-4">
-                    <span class="badge badge-dark">
-                      {{ number_format($directPercentage * 100, 2) }}%
-                    </span>
-                  </p>
-                </div>
-                <!-- Vertical Separator -->
-                <div class="mx-3" style="border-left: 1px solid #dee2e6; height: 50px;"></div>
-                <!-- Matching Column -->
-                <div class="text-center">
-                  <p class="mb-1 h6"><strong>Matching</strong></p>
-                  <p class="mb-0 fs-4">
-                    <span class="badge badge-dark">
-                      {{ number_format($matchingPercentage * 100, 2) }}%
-                    </span>
-                  </p>
+            <div class="col-12 col-md-4 mb-3 d-flex position-relative">
+              <div class="summary-card flex-fill p-3">
+                <div class="d-flex align-items-center justify-content-around pt-2">
+                  <!-- Direct Column -->
+                  <div class="text-center">
+                    <p class="mb-1 h6"><strong>Referral</strong></p>
+                    <p class="mb-0 fs-4">
+                      <span class="badge badge-dark">
+                        {{ number_format($directPercentage * 100, 2) }}%
+                      </span>
+                    </p>
+                  </div>
+                  <!-- Vertical Separator -->
+                  <div class="mx-3" style="border-left: 1px solid #dee2e6; height: 50px;"></div>
+                  <!-- Matching Column -->
+                  <div class="text-center">
+                    <p class="mb-1 h6"><strong>Matching</strong></p>
+                    <p class="mb-0 fs-4">
+                      <span class="badge badge-dark">
+                        {{ number_format($matchingPercentage * 100, 2) }}%
+                      </span>
+                    </p>
+                  </div>
                 </div>
               </div>
+              <button type="button"
+                      class="btn btn-sm btn-question position-absolute"
+                      style="top: 50%; left: 50%; transform: translate(-80%, -50%);"
+                      data-bs-toggle="modal"
+                      data-bs-target="#referralInfoModal">
+                <i class="bi bi-question-circle"></i>
+              </button>
             </div>
-          </div>
+
         
           <!-- Card: My Trading Profit -->
         <div class="col-12 col-md-4 mb-3 d-flex">
@@ -468,6 +520,105 @@
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Tier Modal -->
+    <div class="modal fade" id="referralInfoModal" tabindex="-1" aria-labelledby="referralInfoModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content bg-white">
+          <div class="modal-header">
+            <h5 class="modal-title" id="referralInfoModalLabel">Tier & Task Details</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body tier-details">
+            <section>
+              <h6>Task 1: Deposit 100–990 USDT (Entry Tier)</h6>
+              <ul>
+                <li>You receive: 40% of monthly exchange spread profits (estimated 5%–8% per month)</li>
+                <li>Platform receives: 60% of profits</li>
+                <li>Unlocks:
+                  <ul>
+                    <p>-3% of total cumulative volume (Development Reward)</p>
+                    <p>-5% of team's daily spread profits (Matching Reward)</p>
+                  </ul>
+                </li>
+              </ul>
+            </section>
+            <section>
+              <h6>Task 2: Deposit 1,000–9,990 USDT (Mid Tier)</h6>
+              <ul>
+                <li>You receive: 45% of monthly exchange spread profits</li>
+                <li>Platform receives: 55% of profits</li>
+                <li>Unlocks:
+                  <ul>
+                    <p>5% of total cumulative volume (Development Reward)</p>
+                    <p>10% of team's daily spread profits (Matching Reward)</p>
+                  </ul>
+                </li>
+              </ul>
+            </section>
+            <section>
+              <h6>Task 3: Deposit 10,000–99,990 USDT (High Tier)</h6>
+              <ul>
+                <li>You receive: 50% of monthly exchange spread profits</li>
+                <li>Platform receives: 50% of profits</li>
+                <li>Unlocks:
+                  <ul>
+                    <p>8% of total cumulative volume (Development Reward)</p>
+                    <p>20% of team's daily spread profits (Matching Reward)</p>
+                  </ul>
+                </li>
+              </ul>
+            </section>
+            <section>
+              <h6>Task 4: Deposit 100,000+ USDT (VIP Tier)</h6>
+              <ul>
+                <li>You receive: 60% of monthly exchange spread profits</li>
+                <li>Platform receives: 40% of profits</li>
+                <li>Unlocks:
+                  <ul>
+                    <p>10% of total cumulative volume (Development Reward)</p>
+                    <p>30% of team's daily spread profits (Matching Reward)</p>
+                  </ul>
+                </li>
+              </ul>
+            </section>
+            <section>
+              <h6>Task 5: Team Cumulative Deposit 1,000,000+ USDT</h6>
+              <ul>
+                <li>Earn:
+                  <ul>
+                    <p>12% of total cumulative volume (Development Reward)</p>
+                    <p>40% of team's daily spread profits (Matching Reward)</p>
+                  </ul>
+                </li>
+              </ul>
+            </section>
+            <section>
+              <h6>Task 6: Team Cumulative Deposit 5,000,000+ USDT</h6>
+              <ul>
+                <li>Earn:
+                  <ul>
+                    <p>15% of total cumulative volume (Development Reward)</p>
+                    <p>50% of team's daily spread profits (Matching Reward)</p>
+                  </ul>
+                </li>
+              </ul>
+            </section>
+            <section>
+              <h6>Task 7: Team Cumulative Deposit 10,000,000+ USDT</h6>
+              <ul>
+                <li>Earn:
+                  <ul>
+                    <p>18% of total cumulative volume (Development Reward)</p>
+                    <p>60% of team's daily spread profits (Matching Reward)</p>
+                  </ul>
+                </li>
+              </ul>
+            </section>
           </div>
         </div>
       </div>

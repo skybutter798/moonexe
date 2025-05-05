@@ -8,6 +8,8 @@ use App\Models\Pair;
 use App\Models\Order;
 use App\Models\Asset;
 use App\Models\MarketData;
+use App\Models\Setting;
+
 use Illuminate\Support\Facades\Log;
 
 use App\Events\OrderUpdated;
@@ -31,6 +33,27 @@ class SeedAdminOrdersCron extends Command
             Log::channel('order')->info("No open pairs found at " . $now->toDateTimeString() . ".");
             return;
         }
+        
+        $buySettings = Setting::where('status', 1)
+        ->whereIn('name', [
+            'admin_buy_min_percent_low',
+            'admin_buy_max_percent_low',
+            'admin_buy_min_percent_mid',
+            'admin_buy_max_percent_mid',
+            'admin_buy_min_percent_high',
+            'admin_buy_max_percent_high',
+        ])
+        ->pluck('value', 'name')
+        ->toArray();
+        
+        $minLow = (int)($buySettings['admin_buy_min_percent_low'] ?? 5);
+        $maxLow = (int)($buySettings['admin_buy_max_percent_low'] ?? 10);
+        $minMid = (int)($buySettings['admin_buy_min_percent_mid'] ?? 10);
+        $maxMid = (int)($buySettings['admin_buy_max_percent_mid'] ?? 20);
+        $minHigh = (int)($buySettings['admin_buy_min_percent_high'] ?? 30);
+        $maxHigh = (int)($buySettings['admin_buy_max_percent_high'] ?? 50);
+
+
 
         // Process each open pair.
         foreach ($openPairs as $pair) {
@@ -42,7 +65,7 @@ class SeedAdminOrdersCron extends Command
             $remainingVolume = $pair->volume - $sumOrdersReceive;
             if ($remainingVolume <= 0) {
                 $this->warn("No remaining volume for pair id {$pair->id}. Skipping.");
-                Log::channel('order')->warning("No remaining volume for pair id {$pair->id}. Skipping.");
+                //Log::channel('order')->warning("No remaining volume for pair id {$pair->id}. Skipping.");
                 continue;
             }
 
@@ -68,18 +91,27 @@ class SeedAdminOrdersCron extends Command
             // Calculate how many minutes have passed since creation
             $createdAt      = Carbon::parse($pair->created_at);
             $minutesPassed  = $createdAt->diffInMinutes(now());
+            $gateTimeMinutes = $pair->gate_time;
+            $progress = ($minutesPassed / $gateTimeMinutes) * 100;
             
-            if ($minutesPassed >= 45) {
-                // After 45 minutes — buy all remaining
-                $randomVolume = round($remainingVolume, 2);
+            if ($progress < 30) {
+                $percentage = random_int($minLow, $maxLow) / 100;
+            } elseif ($progress < 60) {
+                $percentage = random_int($minMid, $maxMid) / 100;
+            } elseif ($progress < 95) {
+                $percentage = random_int($minHigh, $maxHigh) / 100;
             } else {
-                // Before 45 minutes — buy small amount (1–2%)
-                $percentage   = random_int(1, 2) / 100;
-                $randomVolume = round($remainingVolume * $percentage, 2);
+                $percentage = 1;
             }
             
-            //$percentage   = random_int(1, 2) / 100;
-            //$randomVolume = round($remainingVolume * $percentage, 2);
+            $randomVolume = round($remainingVolume * $percentage, 2);
+            
+            if ($randomVolume <= 0) {
+                $randomVolume = round(min(0.01, $remainingVolume), 2);
+            }
+
+
+
 
             // Ensure that the random volume is not 0.
             if ($randomVolume <= 0) {

@@ -4,16 +4,22 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\UserController;
-use App\Http\Controllers\PackageController;
+use App\Http\Controllers\DirectRangeController;
 use App\Http\Controllers\AssetsController;
 use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\AnnoucementController;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 use App\Http\Controllers\Admin\DepositController as AdminDepositController;
 use App\Http\Controllers\Admin\WithdrawalController as AdminWithdrawalController;
 use App\Http\Controllers\Admin\CurrencyController;
 use App\Http\Controllers\Admin\PairController;
+use App\Http\Controllers\Admin\WalletController;
+use App\Http\Controllers\Admin\ReferralController as AdminReferralController;
 
 require_once 'theme-routes.php';
 
@@ -31,14 +37,28 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::post('/users/{id}/enable', [UserController::class, 'enable'])->name('admin.users.enable');
     Route::put('/users/{id}', [UserController::class, 'update'])->name('admin.users.update');
 
-    // Package Management (Admin Work)
-    Route::prefix('packages')->name('admin.packages.')->group(function () {
-        Route::get('/', [PackageController::class, 'index'])->name('index');
-        Route::post('/', [PackageController::class, 'store'])->name('store');
-        Route::post('/{id}/disable', [PackageController::class, 'disable'])->name('disable');
-        Route::post('/{id}/enable', [PackageController::class, 'enable'])->name('enable');
-        Route::put('/{id}', [PackageController::class, 'update'])->name('update');
-    });
+    // DirectRange Management
+    Route::prefix('directranges')
+         ->name('admin.directranges.')
+         ->group(function () {
+             Route::get('/', [DirectRangeController::class, 'index'])
+                  ->name('index');
+             Route::post('/', [DirectRangeController::class, 'store'])
+                  ->name('store');
+             Route::put('{id}', [DirectRangeController::class, 'update'])
+                  ->name('update');
+             Route::delete('{id}', [DirectRangeController::class, 'destroy'])
+                  ->name('destroy');
+         });
+    
+    Route::post('/matchingranges', [\App\Http\Controllers\MatchingRangeController::class, 'store'])
+         ->name('admin.matchingranges.store');
+
+    Route::put('/matchingranges/{id}', [\App\Http\Controllers\MatchingRangeController::class, 'update'])
+         ->name('admin.matchingranges.update');
+
+    Route::delete('/matchingranges/{id}', [\App\Http\Controllers\MatchingRangeController::class, 'destroy'])
+         ->name('admin.matchingranges.destroy');
 
     // Deposit, Withdrawal, Currency, Pair, etc.
     Route::get('/deposits', [AdminDepositController::class, 'index'])->name('admin.deposits.index');
@@ -52,10 +72,26 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::get('/currencies', [CurrencyController::class, 'index'])->name('admin.currencies.index');
     Route::get('/currencies/create', [CurrencyController::class, 'create'])->name('admin.currencies.create');
     Route::post('/currencies', [CurrencyController::class, 'store'])->name('admin.currencies.store');
+    Route::patch('/currencies/{id}/toggle', [CurrencyController::class, 'toggleStatus']) ->name('admin.currencies.toggle');
 
     Route::get('/pairs', [PairController::class, 'index'])->name('admin.pairs.index');
     Route::get('/pairs/create', [PairController::class, 'create'])->name('admin.pairs.create');
     Route::post('/pairs', [PairController::class, 'store'])->name('admin.pairs.store');
+    Route::get('pairs/{pair}/edit', [PairController::class, 'edit']) ->name('admin.pairs.edit');
+    Route::patch('pairs/{pair}', [PairController::class, 'update']) ->name('admin.pairs.update');
+    Route::patch('pairs/{pair}/disable', [PairController::class, 'disable']) ->name('admin.pairs.disable');
+    
+    // Wallet Management
+    Route::get('/wallets', [WalletController::class, 'index'])->name('admin.wallets.index');
+    Route::get('/wallets/{user}/edit',[WalletController::class, 'edit'])->name('admin.wallets.edit');
+    Route::put('/wallets/{user}', [WalletController::class, 'update'])->name('admin.wallets.update');
+ 
+    Route::get('referrals', [AdminReferralController::class, 'index']) ->name('admin.referrals.index');
+    
+    Route::get('annoucement', [AnnoucementController::class, 'index']) ->name('admin.annoucement.index');
+    Route::post('annoucement', [AnnoucementController::class, 'store']) ->name('admin.annoucement.store');
+    Route::get('annoucement/{annoucement}/edit', [AnnoucementController::class, 'edit']) ->name('admin.annoucement.edit');
+    Route::patch('annoucement/{annoucement}', [AnnoucementController::class, 'update']) ->name('admin.annoucement.update');
 });
 
 // For regular users (with custom middleware to ensure non-admin)
@@ -83,5 +119,8 @@ Route::prefix('user-dashboard')->middleware(['auth', 'user.only'])->group(functi
     Route::get('/dashboard_v2', [DashboardController::class, 'index'])->name('user.dashboard_v2');
     Route::get('/referral_v2', [ReferralController::class, 'index'])->name('user.referral_v2');
     Route::get('/order_v2', [OrderController::class, 'index'])->name('user.order_v2');
+    Route::get('/annoucement', [DashboardController::class, 'showAnnouncements']) ->name('user.annoucement');
 
 });
+
+Route::post('/generate-wallet-address', [\App\Http\Controllers\UserController::class, 'generateWalletAddress'])->name('user.generateWalletAddress');

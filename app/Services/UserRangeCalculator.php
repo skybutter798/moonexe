@@ -14,6 +14,14 @@ class UserRangeCalculator
     
     public function calculate($user)
     {
+        if (!$user || $user->status == 0) {
+            return [
+                'total' => 0,
+                'direct_percentage' => 0,
+                'matching_percentage' => 0,
+            ];
+        }
+        
         // Calculate the group total which includes the user and all of their downlines.
         $total = $this->getUserGroupTotal($user);
     

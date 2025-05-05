@@ -13,4 +13,9 @@ class Withdrawal extends Model
         'trc20_address',
         'status',
     ];
+    
+    public function user()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'user_id');
+    }
 }

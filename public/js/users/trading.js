@@ -151,7 +151,7 @@ document.addEventListener('DOMContentLoaded', function() {
           
           const pairStart = parseInt(card.getAttribute('data-pair-start'));
           const orderHours = parseInt(card.getAttribute('data-order-time'), 10) || 0;
-          const orderEnd = pairStart + orderHours * 60 * 60 * 1000;
+          const orderEnd = pairStart + orderHours * 1000;
     
           // Update ROI dynamically
           if (now < orderEnd) {
@@ -590,18 +590,33 @@ document.addEventListener('DOMContentLoaded', function() {
         const pairEnd      = parseInt(card.dataset.pairEnd, 10);
         const progressBar  = card.querySelector('.status-progress');
         const progressText = card.querySelector('.progress-text_order');
+        const progressLabel = card.querySelector('.mb-2 strong.text-dark');
     
         // Compute the order’s own end time (data-order-time is in hours)
         const orderHours = parseInt(card.dataset.orderTime, 10) || 0;
-        const orderEnd   = pairStart + orderHours * 3600000; // ms
+        const orderEnd   = pairStart + orderHours * 1000; // ms
     
         let progress, countdownText;
         // If the order time has been reached, force full progress and a "00:00:00" display
         if (now >= orderEnd) {
-          progress = 100;
-          countdownText = "00:00:00";
+          if (progressLabel) progressLabel.textContent = 'Pairing Complete: ';
+        
+          const totalMs = pairEnd - pairStart; // total pairing period
+          const elapsedMs = orderEnd - pairStart; // freeze at orderEnd
+        
+          progress = (elapsedMs / totalMs) * 100;
+          if (progress > 100) progress = 100;
+        
+          // Convert orderTime (seconds) to HH:MM:SS
+          const orderSeconds = parseInt(card.dataset.orderTime, 10) || 0;
+          const hh = String(Math.floor(orderSeconds / 3600)).padStart(2, '0');
+          const mm = String(Math.floor((orderSeconds % 3600) / 60)).padStart(2, '0');
+          const ss = String(orderSeconds % 60).padStart(2, '0');
+        
+          countdownText = `${hh}:${mm}:${ss}`;
         } else {
           // Otherwise, use the pairEnd to calculate progress and countdown
+          if (progressLabel) progressLabel.textContent = 'Pairing Progress: ';
           if (now >= pairEnd) {
             progress = 100;
           } else if (now <= pairStart) {
@@ -632,7 +647,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     
         // 2) Footer button logic – preserved as in your original code with just one change:
-        // When displaying the Resolving button (i.e. order time reached), we add the countdown beside it.
+        // When displaying the In Progress button (i.e. order time reached), we add the countdown beside it.
         const status = card.dataset.orderStatus;
         const footer = card.querySelector('.card-footer');
         if (!footer) return;
@@ -644,7 +659,7 @@ document.addEventListener('DOMContentLoaded', function() {
           footer.innerHTML = '<button class="btn btn-primary claim-btn">Claim</button>';
         }
         else if (now >= orderEnd) {
-          // Compute pairEnd countdown for display beside the Resolving button
+          // Compute pairEnd countdown for display beside the In Progress button
           let pairRemainingTime = pairEnd - now;
           if (pairRemainingTime < 0) pairRemainingTime = 0;
           const hh = String(Math.floor(pairRemainingTime / 3600000)).padStart(2, '0');
@@ -654,13 +669,12 @@ document.addEventListener('DOMContentLoaded', function() {
           
            footer.innerHTML =
               '<div class="d-flex align-items-center">' +
-                '<button class="btn btn-dark" disabled>Resolving</button>' +
-                '<span class="badge bg-dark ms-2">' + pairCountdown + '</span>' +
+                '<button class="btn btn-dark" disabled>In Progress</button>' +
+                '<span class="btn btn-dark ms-2" style="pointer-events: none; opacity: 1;">' + pairCountdown + '</span>' +
               '</div>' +
-              '<small class="d-block mt-1">' +
+              '<small class="d-block mt-1 text-danger">' +
                 '*Your pair order is currently being processed. Please wait until the countdown has completed before claiming your return.' +
               '</small>';
-
 
         }
       });

@@ -1,135 +1,124 @@
 <!-- /resources/views/components/mobile-header.blade.php -->
 <div class="mobile-header">
-    <style>
-        /* ===========================
-           BASIC STYLES FOR HEADER
-           =========================== */
-        .mobile-header {
-            background-color: #fff;
-            color: #000;
-            /*border-bottom: 1px solid #ccc;*/
-            padding: 30px 10px 10px 10px;
-            font-family: Arial, sans-serif;
-        }
+  <style>
+    /* ===========================
+       BASIC STYLES FOR HEADER
+       =========================== */
+    .mobile-header {
+      background-color: #fff;
+      color: #000;
+      padding: 30px 10px 10px;
+      font-family: Arial, sans-serif;
+    }
+    .header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header-logo img {
+      max-height: 24px;
+    }
 
-        /* Top row styles */
-        .header-top {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        
-        .header-left {
-            width: 10px;
-        }
-        
-        .header-logo {
-            text-align:left;
-        }
-        
-        .header-logo img {
-            max-height: 20px;
-        }
-        .burger-menu {
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            background-color: #c5c5c5;
-            border-radius: 10px;
-            width: inherit;
-        }
-        
-        /* Marquee area */
-        .header-marquee {
-            margin-top: 0.5rem;
-        }
-        .currency-item {
-            display: inline-flex;
-            align-items: center;
-            margin-right: 1rem;
-        }
-        .flag-icon {
-            width: 16px;
-            height: 16px;
-            margin-right: 4px;
-        }
-        .arrow {
-            margin-left: 4px;
-            font-weight: bold;
-        }
-        .arrow.up {
-            color: green;
-        }
-        .arrow.down {
-            color: red;
-        }
+    /* ===========================
+       BURGER MENU
+       =========================== */
+    .burger-menu {
+      width: 2.5rem;              /* fixed square */
+      height: 2.5rem;
+      border: none;
+      border-radius: 0.5rem;
+      background-color: #c5c5c5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .burger-menu i {
+      font-size: 1.5rem;          /* icon size */
+      line-height: 1;
+    }
 
-        /* Notice text */
-        .text-danger {
-            display: block;
-            margin-top: 0.5rem;
-            color: #dc3545;
-            font-size: 0.875rem;
-        }
+    /* ===========================
+       DROPDOWN MENU
+       =========================== */
+    .dropdown-menu {
+      display: none;
+      background-color: #f8f9fa;
+      position: absolute;
+      right: 0;
+      border-radius: 0.25rem;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      padding: 0.5rem 0;
+      z-index: 999;
+      min-width: 8rem;
+    }
+    .dropdown-menu.show {
+      display: block;
+    }
+    .dropdown-menu a,
+    .dropdown-menu li > a {
+      display: flex;
+      align-items: center;
+      font-size: 1rem;            /* unified font size */
+      padding: 0.75rem 1rem;
+      color: #000;
+      text-decoration: none;
+    }
+    .dropdown-menu a i,
+    .dropdown-menu li > a i {
+      font-size: 1.25rem;         /* unified icon size */
+      margin-right: 0.5rem;
+    }
+    .dropdown-menu a:hover {
+      background-color: #e2e6ea;
+    }
+  </style>
 
-        /* ===========================
-           TOGGLE MENU STYLES
-           =========================== */
-        .dropdown-menu {
-            display: none;
-            background-color: #f8f9fa;
-            position: absolute;
-            right: 0;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            border-radius: 4px;
-            padding: 0.5rem 0;
-            z-index: 999;
-        }
-        .dropdown-menu.show {
-            display: block;
-        }
-        .dropdown-menu a {
-            display: block;
-            padding: 0.5rem 1rem;
-            color: #000;
-            text-decoration: none;
-        }
-        
-        .dropdown-menu a i {
-            margin-right: 0.5rem;
-        }
-        .dropdown-menu a:hover {
-            background-color: #e2e6ea;
-        }
-    </style>
-
-    <!-- Top Row: Logo in the Middle & Burger Menu on the Right -->
-    <div class="header-top">
-        <div class="header-left"></div>
-        <div class="header-logo">
-            <img src="{{ asset('img/main_logo.png') }}" alt="Main Logo">
-        </div>
-        <div class="header-right">
-            <button class="burger-menu" onclick="toggleMenu()">
-                <i class="bi bi-list"></i>
-            </button>
-        </div>
+  <!-- Top Row: Logo & Burger -->
+  <div class="header-top">
+    <div></div>
+    <div class="header-logo">
+      <img src="{{ asset('img/main_logo.png') }}" alt="Main Logo">
     </div>
+    <button class="burger-menu" onclick="toggleMenu()">
+      <i class="bi bi-list"></i>
+    </button>
+  </div>
 
-    <!-- Dropdown Menu (Hidden by default) -->
-    <div class="dropdown-menu" id="mobileDropdown">
-        <!-- Other menu items can go here -->
-        <a href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-            <i class="bi bi-box-arrow-right"></i> Logout
-        </a>
+  <!-- Dropdown Menu -->
+  <div class="dropdown-menu" id="mobileDropdown" onclick="toggleMenu()">
 
-    </div>
+      <a href="{{ route('user.annoucement') }}">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill=""
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+             class="feather feather-volume">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          <polyline points="16 17 21 12 16 7"></polyline>
+        </svg>
+        <span>Announcement</span>
+      </a>
+
+    <a href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+           class="feather feather-log-out">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+        <polyline points="16 17 21 12 16 7"></polyline>
+        <line x1="21" y1="12" x2="9" y2="12"></line>
+      </svg>
+      <span>Logout</span>
+    </a>
     
-    <!-- Hidden logout form -->
-    <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
-        @csrf
-    </form>
+    <hr>
+    
+    <div id="gtranslate-mobile" class="d-block d-sm-none"></div>
 
+  </div>
+
+  <!-- Hidden logout form -->
+  <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
+    @csrf
+  </form>
 
     <!-- Bottom Row: Currency Marquee -->
     <div class="header-marquee mt-4">
@@ -163,17 +152,10 @@
             </div>
         </marquee>
     </div>
-
-    {{--<span class="text-danger mt-3">
-        Moonexe is currently undergoing version updates. The layout may change gradually, 
-        and an announcement will be made once the update is complete.
-    </span>--}}
 </div>
 
-<!-- Inline JavaScript to handle toggling of the dropdown -->
 <script>
-    function toggleMenu() {
-        const dropdown = document.getElementById('mobileDropdown');
-        dropdown.classList.toggle('show');
-    }
+  function toggleMenu() {
+    document.getElementById('mobileDropdown').classList.toggle('show');
+  }
 </script>

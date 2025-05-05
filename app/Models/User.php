@@ -24,6 +24,9 @@ class User extends Authenticatable
         'package',
         'bonus',
         'avatar',
+        'wallet_address',
+        'wallet_qr',
+        'wallet_expired',
     ];
     
     protected $hidden = [

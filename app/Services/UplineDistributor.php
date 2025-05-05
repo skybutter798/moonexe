@@ -64,12 +64,12 @@ class UplineDistributor
                     'wallet'   => 'affiliates',
                     'status'   => 1,
                 ]);
+                
+                $currentMatching = $uplineMatching;
 
                 Log::channel('payout')->info("UplineDistributor: User {$upline->id} received affiliate payout of {$amount} (TXID: {$txid})");
             }
-
-            // Move up the referral chain.
-            $currentMatching = $uplineMatching;
+            
             $currentUser = $upline;
         }
 
@@ -121,12 +121,13 @@ class UplineDistributor
                     $wallet->affiliates_wallet += $payoutAmount;
                     $wallet->save();
                 }
+                
+                $currentDirect = $uplineDirect;
     
                 Log::channel('payout')->info("UplineDistributor (Direct): User {$upline->id} received direct payout of {$payoutAmount} with {$uplineDirect}% (TXID: {$transfer->txid})");
             }
-    
             // Move up one level.
-            $currentDirect = $uplineDirect;
+            
             $currentUser = $upline;
         }
     

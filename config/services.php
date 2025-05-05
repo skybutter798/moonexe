@@ -30,5 +30,16 @@ return [
         'secret' => env('AWS_SECRET_ACCESS_KEY'),
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
+    
+    'coinremitter' => [
+        'api_key' => env('COINREMITTER_API_KEY'),
+        'api_password' => env('COINREMITTER_API_PASSWORD'),
+        'base_url' => env('COINREMITTER_API_URL'),
+    ],
+    
+    'tradermade' => [
+        'key' => env('TRADERMADE_API_KEY'),
+    ],
+
 
 ];

@@ -52,7 +52,7 @@ class SimulateFakeUserBuyOrders extends Command
             if ($wallet->trading_wallet <= 0) {
                 $message = "User id {$user->id} has no trading wallet funds. Skipping.";
                 $this->warn($message);
-                Log::channel('order')->warning($message);
+                //Log::channel('order')->warning($message);
                 continue;
             }
 

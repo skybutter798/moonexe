@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Models\Payout;
 use Illuminate\Support\Str;
 use App\Services\UserRangeCalculator;
+use App\Services\CoinDepositService;
 
 class AssetsController extends Controller
 {
@@ -223,39 +224,47 @@ class AssetsController extends Controller
     
     public function transferTrading(Request $request)
     {
-        $request->validate([
-            'amount' => 'required|numeric|min:0.01',
-        ]);
-    
         $userId = auth()->id();
+        $user = User::find($userId);
         $wallet = Wallet::where('user_id', $userId)->first();
     
-        if (!$wallet) {
-            Log::channel('admin')->info("Wallet not found for user", ['user_id' => $userId]);
-            return redirect()->back()->withErrors('Wallet not found.');
+        if (!$user || !$wallet) {
+            Log::channel('admin')->info("User or Wallet not found", ['user_id' => $userId]);
+            return redirect()->back()->withErrors('Account or wallet not found.');
         }
-        Log::channel('admin')->info("Wallet found", ['user_id' => $userId]);
     
-        $amount = (float)$request->amount;
+        if ($userId <= 202) {
+            Log::channel('admin')->warning("Transfer attempt by ineligible user", ['user_id' => $userId]);
+            return redirect()->back()->withErrors('Your account is not eligible to transfer any bonus. Please contact support for more information.');
+        }
     
-        // Check if the trading wallet has sufficient funds
-        if ($wallet->trading_wallet < $amount) {
-            Log::channel('admin')->info("Insufficient trading wallet funds", [
+        // Check if account is already deactivated
+        if ($user->status == 0) {
+            Log::channel('admin')->warning("Transfer attempt by deactivated user", ['user_id' => $userId]);
+            return redirect()->back()->withErrors('Your account has been deactivated and cannot perform this action.');
+        }
+    
+        Log::channel('admin')->info("User and Wallet found", ['user_id' => $userId]);
+    
+        $amount = (float) $wallet->trading_wallet;
+    
+        // Check if there are funds to transfer
+        if ($amount <= 0) {
+            Log::channel('admin')->info("No trading wallet balance to transfer", [
                 'user_id' => $userId,
-                'required' => $amount,
-                'available' => $wallet->trading_wallet
+                'available' => $amount
             ]);
-            return redirect()->back()->withErrors('Insufficient balance in Trading Margin.');
+            return redirect()->back()->withErrors('No balance available for transfer.');
         }
         Log::channel('admin')->info("Sufficient funds confirmed", [
             'user_id' => $userId,
             'trading_wallet_balance' => $wallet->trading_wallet
         ]);
     
-        // Calculate a 20% fee on the entered amount
+        // Calculate 20% fee
         $feeRate = 0.20;
         $fee = $amount * $feeRate;
-        $netAmount = $amount - $fee; // Amount to be credited to Cash Wallet
+        $netAmount = $amount - $fee;
         Log::channel('admin')->info("Fee calculated", [
             'user_id' => $userId,
             'amount' => $amount,
@@ -264,7 +273,7 @@ class AssetsController extends Controller
         ]);
     
         // Update wallet balances
-        $wallet->trading_wallet -= $amount;
+        $wallet->trading_wallet = 0; // trading wallet fully cleared
         $wallet->cash_wallet += $netAmount;
         $wallet->save();
         Log::channel('admin')->info("Wallet balances updated", [
@@ -272,6 +281,11 @@ class AssetsController extends Controller
             'new_trading_wallet_balance' => $wallet->trading_wallet,
             'new_cash_wallet_balance' => $wallet->cash_wallet
         ]);
+    
+        // Deactivate the user account
+        $user->status = 0;
+        $user->save();
+        Log::channel('admin')->info("User account deactivated after transfer", ['user_id' => $userId]);
     
         // Generate unique transaction ID
         do {
@@ -292,7 +306,7 @@ class AssetsController extends Controller
         ]);
         Log::channel('admin')->info("Transfer record created", ['txid' => $txid]);
     
-        return redirect()->back()->with('success', 'Trading wallet transfer completed successfully. Fee deducted: ' . number_format($fee, 2) . ' USDT');
+        return redirect()->back()->with('success', 'Trading wallet transfer completed successfully. Your account has been deactivated. Fee deducted: ' . number_format($fee, 2) . ' USDT');
     }
     
     public function transfer(Request $request)
@@ -625,6 +639,18 @@ class AssetsController extends Controller
         ]);*/
     
         return redirect()->back()->with('success', 'Deposit submitted successfully.');
+    }
+    
+    public function coindeposit(Request $request, CoinDepositService $coinService)
+    {
+        $data = $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+        ]);
+    
+        $userId = auth()->id();
+        $coinService->depositToUser($userId, $data['amount'], auth()->user()->wallet_address);
+    
+        return redirect()->back()->with('success','Deposit submitted successfully.');
     }
     
     public function withdrawal(Request $request)

@@ -114,6 +114,24 @@
     {{$headerFiles}}
     <!-- END GLOBAL MANDATORY STYLES -->
     
+    <script>
+      window.gtranslateSettings = {
+        default_language: "en",
+        languages: ["en","cs","zh-CN","fr","de","it","pt","ro","es","tr","ja","ko","vi","id","hi"],
+        // ← we’ll override this per-wrapper below
+      };
+    </script>
+    <script src="https://cdn.gtranslate.net/widgets/latest/popup.js" defer></script>
+    <script>
+      // pick desktop vs mobile based on screen width & set wrapper_selector once
+      if (window.matchMedia("(min-width: 576px)").matches) {
+        window.gtranslateSettings.wrapper_selector = "#gtranslate-desktop";
+      } else {
+        window.gtranslateSettings.wrapper_selector = "#gtranslate-mobile";
+      }
+    </script>
+
+    
     <link rel="stylesheet" href="{{ asset('css/custom_v2.css') }}">
 </head>
 <body @class([

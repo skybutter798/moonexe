@@ -8,13 +8,23 @@ use App\Models\Currency;
 
 class CurrencyController extends Controller
 {
-    /**
-     * List all currencies.
-     */
     public function index()
     {
-        $currencies = Currency::orderBy('created_at', 'desc')->get();
+        $currencies = Currency::where('id','!=',1)
+                          ->orderBy('created_at','asc')
+                          ->get();
         return view('admin.currencies.index', compact('currencies'));
+    }
+
+    public function toggleStatus($id)
+    {
+        $currency = Currency::findOrFail($id);
+        $currency->status = $currency->status ? 0 : 1;
+        $currency->save();
+
+        return redirect()
+            ->route('admin.currencies.index')
+            ->with('success', 'Currency status updated.');
     }
 
     /**

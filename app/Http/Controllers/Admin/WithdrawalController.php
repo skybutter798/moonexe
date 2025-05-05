@@ -12,9 +12,45 @@ class WithdrawalController extends Controller
     /**
      * Display a list of withdrawal requests.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $withdrawals = Withdrawal::orderBy('created_at', 'desc')->get();
+        $query = Withdrawal::with('user')->orderBy('created_at', 'desc');
+
+        // Username
+        if ($request->filled('username')) {
+            $query->whereHas('user', function($q) use ($request) {
+                $q->where('name', 'like', '%'.$request->username.'%');
+            });
+        }
+
+        // TXID
+        if ($request->filled('txid')) {
+            $query->where('txid', 'like', '%'.$request->txid.'%');
+        }
+
+        // TRC20 address
+        if ($request->filled('trc20_address')) {
+            $query->where('trc20_address', 'like', '%'.$request->trc20_address.'%');
+        }
+
+        // Amount (match 2-decimal format)
+        if ($request->filled('amount')) {
+            $val = number_format((float)$request->amount, 2, '.', '');
+            $query->whereRaw('FORMAT(amount, 2) = ?', [$val]);
+        }
+
+        // Status
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        // Date
+        if ($request->filled('date')) {
+            $query->whereDate('created_at', $request->date);
+        }
+
+        $withdrawals = $query->paginate(15)->withQueryString();
+
         return view('admin.withdrawals.index', compact('withdrawals'));
     }
 

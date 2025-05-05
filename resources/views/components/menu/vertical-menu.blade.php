@@ -92,8 +92,8 @@
             </div>
           </li>
           <!-- Plans -->
-          <li class="menu {{ Request::routeIs('admin.packages.index') ? 'active' : '' }}">
-            <a href="{{ route('admin.packages.index') }}" aria-expanded="false" class="dropdown-toggle">
+          <li class="menu {{ Request::routeIs('admin.directranges.index') ? 'active' : '' }}">
+            <a href="{{ route('admin.directranges.index') }}" aria-expanded="false" class="dropdown-toggle">
               <div>
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -133,7 +133,7 @@
               </div>
             </a>
           </li>
-          <!-- Payouts (Disabled) -->
+          <!-- Payouts (Disabled) 
           <li class="menu">
             <a href="#" aria-expanded="false" class="dropdown-toggle disabled-menu">
               <div>
@@ -146,7 +146,7 @@
                 <span>Payouts</span>
               </div>
             </a>
-          </li>
+          </li>-->
 
           <!-- Finance Section Heading -->
           <li class="menu menu-heading">
@@ -175,6 +175,7 @@
                 </div>
               </a>
             </li>
+            
             <!-- Withdrawal -->
             <li class="menu {{ Request::routeIs('admin.withdrawals.index') ? 'active' : '' }}">
               <a href="{{ route('admin.withdrawals.index') }}" aria-expanded="false" class="dropdown-toggle">
@@ -190,43 +191,43 @@
                 </div>
               </a>
             </li>
-
+            
+            <!-- Wallets Control -->
+            <li class="menu {{ Request::routeIs('admin.wallets.index') ? 'active' : '' }}">
+              <a href="{{ route('admin.wallets.index') }}" aria-expanded="false" class="dropdown-toggle">
+                <div>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                         class="feather feather-settings">
+                      <circle cx="12" cy="12" r="3"></circle>
+                      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06
+                               a2 2 0 1 1-2.83 2.83l-.06-.06
+                               a1.65 1.65 0 0 0-1.82-.33
+                               1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09
+                               a1.65 1.65 0 0 0-1-1.51
+                               1.65 1.65 0 0 0-1.82.33l-.06.06
+                               a2 2 0 1 1-2.83-2.83l.06-.06
+                               a1.65 1.65 0 0 0 .33-1.82
+                               1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09
+                               a1.65 1.65 0 0 0 1.51-1
+                               1.65 1.65 0 0 0-.33-1.82L4.27 7.27
+                               a2 2 0 1 1 2.83-2.83l.06.06
+                               a1.65 1.65 0 0 0 1.82.33H9
+                               a1.65 1.65 0 0 0 1-1.51V3
+                               a2 2 0 1 1 4 0v.09
+                               a1.65 1.65 0 0 0 1 1.51
+                               1.65 1.65 0 0 0 1.82-.33l.06-.06
+                               a2 2 0 1 1 2.83 2.83l-.06.06
+                               a1.65 1.65 0 0 0-.33 1.82V9
+                               a1.65 1.65 0 0 0 1.51 1H21
+                               a2 2 0 1 1 0 4h-.09
+                               a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                  <span>Wallets Control</span>
+                </div>
+              </a>
+            </li>
           
-          <!-- Wallets Control (Disabled) -->
-          <li class="menu">
-            <a href="#" aria-expanded="false" class="dropdown-toggle disabled-menu">
-              <div>
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
-                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                     class="feather feather-settings">
-                  <circle cx="12" cy="12" r="3"></circle>
-                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06
-                           a2 2 0 1 1-2.83 2.83l-.06-.06
-                           a1.65 1.65 0 0 0-1.82-.33
-                           1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09
-                           a1.65 1.65 0 0 0-1-1.51
-                           1.65 1.65 0 0 0-1.82.33l-.06.06
-                           a2 2 0 1 1-2.83-2.83l.06-.06
-                           a1.65 1.65 0 0 0 .33-1.82
-                           1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09
-                           a1.65 1.65 0 0 0 1.51-1
-                           1.65 1.65 0 0 0-.33-1.82L4.27 7.27
-                           a2 2 0 1 1 2.83-2.83l.06.06
-                           a1.65 1.65 0 0 0 1.82.33H9
-                           a1.65 1.65 0 0 0 1-1.51V3
-                           a2 2 0 1 1 4 0v.09
-                           a1.65 1.65 0 0 0 1 1.51
-                           1.65 1.65 0 0 0 1.82-.33l.06-.06
-                           a2 2 0 1 1 2.83 2.83l-.06.06
-                           a1.65 1.65 0 0 0-.33 1.82V9
-                           a1.65 1.65 0 0 0 1.51 1H21
-                           a2 2 0 1 1 0 4h-.09
-                           a1.65 1.65 0 0 0-1.51 1z"></path>
-                </svg>
-                <span>Wallets Control</span>
-              </div>
-            </a>
-          </li>
 
           <!-- User Section Heading -->
           <li class="menu menu-heading">
@@ -285,9 +286,10 @@
               </div>
             </a>
           </li>
-          <!-- Referral Tree (Disabled) -->
-          <li class="menu">
-            <a href="#" aria-expanded="false" class="dropdown-toggle disabled-menu">
+          
+          <!-- Referral Tree -->
+          <li class="menu {{ Request::routeIs('admin.referrals.index') ? 'active' : '' }}">
+            <a href="{{ route('admin.referrals.index') }}" aria-expanded="false" class="dropdown-toggle">
               <div>
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -298,6 +300,23 @@
                   <line x1="18" y1="9" x2="6" y2="15"></line>
                 </svg>
                 <span>Referral Tree</span>
+              </div>
+            </a>
+          </li>
+          
+          <!-- Annoucements -->
+          <li class="menu {{ Request::routeIs('admin.annoucement.index') ? 'active' : '' }}">
+            <a href="{{ route('admin.annoucement.index') }}" aria-expanded="false" class="dropdown-toggle">
+              <div>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                     class="feather feather-volume">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                  <path d="M23 9a4 4 0 0 1-4 4"></path>
+                  <path d="M23 5a8 8 0 0 1-8 8"></path>
+                </svg>
+
+                <span>Annoucements</span>
               </div>
             </a>
           </li>

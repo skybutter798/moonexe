@@ -9,13 +9,40 @@ use App\Models\Wallet;
 
 class DepositController extends Controller
 {
-    /**
-     * Display a list of deposit requests.
-     */
-    public function index()
+    public function index(Request $request)
     {
-        // You may decide to only show pending requests or all requests.
-        $deposits = Deposit::orderBy('created_at', 'desc')->get();
+        $query = Deposit::with('user')->orderBy('created_at', 'desc');
+    
+        // username search
+        if ($request->filled('username')) {
+            $query->whereHas('user', function($q) use ($request) {
+                $q->where('name', 'like', '%'.$request->username.'%');
+            });
+        }
+    
+        // other filters
+        if ($request->filled('txid')) {
+            $query->where('txid', 'like', '%'.$request->txid.'%');
+        }
+        if ($request->filled('trc20_address')) {
+            $query->where('trc20_address', 'like', '%'.$request->trc20_address.'%');
+        }
+        if ($request->filled('amount')) {
+            // ensure we compare at 2 decimal places
+            $val = number_format((float)$request->amount, 2, '.', '');
+            $query->whereRaw('FORMAT(amount, 2) = ?', [$val]);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        if ($request->filled('date')) {
+            $query->whereDate('created_at', $request->date);
+        }
+    
+        // paginate, keep query string for filters
+        $deposits = $query->paginate(15)->withQueryString();
+    
         return view('admin.deposits.index', compact('deposits'));
     }
 

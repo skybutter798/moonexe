@@ -12,5 +12,11 @@ class Deposit extends Model
         'amount',
         'trc20_address',
         'status',
+        'external_txid',
     ];
+    
+    public function user()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'user_id');
+    }
 }

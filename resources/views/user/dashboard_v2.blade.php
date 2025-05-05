@@ -12,6 +12,7 @@
         <!-- BS5 Intro Tour CSS/JS (Local Files) -->
         <link href="{{ asset('css/users/bs5-intro-tour.css') }}" rel="stylesheet">
         <script src="{{ asset('js/users/bs5-intro-tour.js') }}"></script>
+        <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <style>
             /* Force Next button to display */
@@ -38,8 +39,6 @@
             .card-clickable {
               cursor: pointer;
               transition: box-shadow 0.3s ease;
-              border: 1px solid #4d80b5;
-              border-radius:0px;
             }
             .card-clickable:hover {
               box-shadow: 0 4px 12px rgba(0,0,0,0.15);
@@ -146,6 +145,20 @@
             .text-danger {
                 margin-top: 0px !important;
             }
+            
+            .form-control:disabled:not(.flatpickr-input), .form-control[readonly]:not(.flatpickr-input) {
+                background-color: none;
+                cursor: no-drop;
+                color: black;
+            }
+            
+            /* announcement modal & backdrop on top of everything */
+            #announcementModal.modal {
+              z-index: 20000 !important;
+            }
+            #announcementModal + .modal-backdrop {
+              z-index: 19999 !important;
+            }
         </style>
     </x-slot:headerFiles>
 
@@ -175,6 +188,28 @@
             <img src="/img/banner_1.png" alt="Banner" style="width: 100%; height: auto;">
           </div>
         </div>
+        
+        @if($announcement)
+          <!-- Announcement Modal -->
+          <div class="modal fade" id="announcementModal" tabindex="-1" aria-labelledby="announcementModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+              <div class="modal-content bg-white shadow-lg rounded-3 border-0">
+                <div class="modal-header bg-primary border-0 rounded-top">
+                  <h5 class="modal-title text-white" id="announcementModalLabel">{{ $announcement->name }}</h5>
+                  <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body px-4 py-3 text-black">
+                  {!! nl2br(e($announcement->content)) !!}
+                </div>
+                <div class="modal-footer border-0">
+                  <button type="button" class="btn btn-outline-primary px-4" data-bs-dismiss="modal">Close</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        @endif
+
+
         
         <!-- announcement -->
         <div class="col-12">
@@ -208,6 +243,8 @@
             <div class="row mb-4 mb-md-0 align-items-center">
                 <div class="col-md-6">
                     <strong class="text-dark">Hi, {{ $user->name }}</strong>
+                    <button id="restartTourBtn" type="button" class="btn btn-sm btn-link p-0 ms-2" title="Show tutorial again" style="font-size: 14px;"> <i class="bi bi-question-circle"></i> </button>
+                    
                     @if(isset($currentRange))
                         <p class="mt-1">
                             <span class="badge bg-custom text-white">{{ $currentRange->name }}</span>
@@ -229,7 +266,7 @@
                         <div class="col-3 col-md-auto text-center">
                           <div class="d-flex flex-column align-items-center">
                             <i class="bi bi-cash-coin fs-1 text-custom"></i>
-                            <button id="depositButton" class="btn p-1 action-btn custom-btn mt-2" data-bs-toggle="modal" data-bs-target="#depositModal">
+                            <button id="depositButton" class="btn p-1 action-btn custom-btn mt-2">
                               Deposit
                             </button>
                           </div>
@@ -286,46 +323,63 @@
                     </div>
                 </div>
             </div>
+            @php
+                $isDeactivated = $user->status == 0;
+            @endphp
             
             @if($user->bonus)
             <!-- Trading Wallet (with bonus) -->
             <div class="col-12 col-md-6 mb-3">
-                <div id="tradingWalletCard" class="card h-100 text-center p-2 position-relative assets" style="background-image: url('/img/trademargin.png'); background-repeat: no-repeat; background-position: left center;">
-
+                <div id="tradingWalletCard" class="card h-100 text-center p-2 position-relative assets"
+                     style="background-image: url('/img/trademargin.png'); background-repeat: no-repeat; background-position: left center; {{ $isDeactivated ? 'background-color: #f0f0f0; background-image: none;' : '' }}">
                     <div class="card-body d-flex flex-column">
                         <h5 class="text-custom">Trade Margin</h5>
                         <p class="sub-wallet-amount mb-1 value" style="position: relative;">
                             {{ number_format($wallets->trading_wallet, 2) }}
-                            <button type="button" 
-                                    class="btn btn-sm custom-btn" 
-                                    style="position: absolute; right: 5px; top: 10%; padding: 8px 12px; line-height: 1;border-radius: 100px;" 
-                                    data-bs-toggle="modal" 
-                                    data-bs-target="#tradingTransferModal">
+                            <button type="button"
+                                    class="btn btn-sm custom-btn"
+                                    style="position: absolute; right: 5px; top: 10%; padding: 8px 12px; line-height: 1; border-radius: 100px;"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#tradingTransferModal"
+                                    {{ $isDeactivated ? 'disabled' : '' }}>
                                 -
                             </button>
                         </p>
-                        <a href="{{ route('user.order') }}" class="btn wallet-btn btn-sm mt-2">Trade</a>
+                        <a href="{{ route('user.order') }}"
+                           class="btn wallet-btn btn-sm mt-2"
+                           {!! $isDeactivated ? 'onclick="return false;" style="background:#ccc;cursor:not-allowed;"' : '' !!}>
+                            Trade
+                        </a>
                         <p class="openorder"><small class="text-danger">*Open Order: ${{ number_format($pendingBuy, 4) }}</small></p>
                     </div>
                 </div>
             </div>
+            
             <!-- Bonus Margin Card -->
             <div class="col-12 col-md-6 mb-3">
-                <div id="bonusWalletCard" class="card h-100 text-center p-2 assets">
+                <div id="bonusWalletCard" class="card h-100 text-center p-2 assets" style="{{ $isDeactivated ? 'background-color: #f0f0f0;' : '' }}">
                     <div class="card-body d-flex flex-column">
                         <h5 class="text-custom">Bonus Margin</h5>
                         <p class="sub-wallet-amount mb-0 value">{{ number_format($wallets->bonus_wallet, 2) }}</p>
-                        <a href="{{ route('user.order') }}" class="btn wallet-btn btn-sm mt-2">Trade</a>
+                        <a href="{{ route('user.order') }}"
+                           class="btn wallet-btn btn-sm mt-2"
+                           {!! $isDeactivated ? 'onclick="return false;" style="background:#ccc;cursor:not-allowed;"' : '' !!}>
+                            Trade
+                        </a>
                     </div>
                 </div>
             </div>
             @else
             <!-- Trading Wallet (without bonus) -->
             <div class="col-12 col-md-6 mb-3">
-                <div id="tradingWalletCard" class="card h-100 text-center p-2 position-relative assets" style="background-image: url('/img/trademargin.png'); background-repeat: no-repeat; background-position: left center;">
+                <div id="tradingWalletCard" class="card h-100 text-center p-2 position-relative assets"
+                     style="background-image: url('/img/trademargin.png'); background-repeat: no-repeat; background-position: left center; {{ $isDeactivated ? 'background-color: #f0f0f0; background-image: none;' : '' }}">
                     @if(is_null($user->bonus))
                     <div class="col-12 mt-2">
-                        <button class="btn custom-btn btn-sm" style="position: absolute; top: 10px; left: 20px; height: 22px; padding: 5px; line-height: 1;" data-bs-toggle="modal" data-bs-target="#promotionModal">
+                        <button class="btn custom-btn btn-sm"
+                                style="position: absolute; top: 10px; left: 20px; height: 22px; padding: 5px; line-height: 1;"
+                                data-bs-toggle="modal" data-bs-target="#promotionModal"
+                                {{ $isDeactivated ? 'disabled' : '' }}>
                             Promotion Code
                         </button>
                     </div>
@@ -334,17 +388,22 @@
                         <h5 class="text-custom">Trade Margin</h5>
                         <p class="sub-wallet-amount mb-1 value" style="position: relative;">
                             {{ number_format($wallets->trading_wallet, 2) }}
-                            <button type="button" 
-                                    class="btn btn-sm custom-btn" 
-                                    style="position: absolute; right: 5px; top: 10%; padding: 8px 12px; line-height: 1;border-radius: 100px;" 
-                                    data-bs-toggle="modal" 
-                                    data-bs-target="#tradingTransferModal">
+                            <button type="button"
+                                    class="btn btn-sm custom-btn"
+                                    style="position: absolute; right: 5px; top: 10%; padding: 8px 12px; line-height: 1; border-radius: 100px;"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#tradingTransferModal"
+                                    {{ $isDeactivated ? 'disabled' : '' }}>
                                 -
                             </button>
                         </p>
                         <div class="row mt-2">
                             <div class="col-12">
-                                <a href="{{ route('user.order') }}" class="btn wallet-btn btn-sm">Trade</a>
+                                <a href="{{ route('user.order') }}"
+                                   class="btn wallet-btn btn-sm"
+                                   {!! $isDeactivated ? 'onclick="return false;" style="background:#ccc;cursor:not-allowed;"' : '' !!}>
+                                    Trade
+                                </a>
                             </div>
                         </div>
                         <p class="openorder"><small class="text-danger">*Open Order: ${{ number_format($pendingBuy, 4) }}</small></p>
@@ -352,6 +411,7 @@
                 </div>
             </div>
             @endif
+
             <!-- Earning Wallet -->
             <div class="col-12 col-md-6 mb-3">
                 <div id="tradingWalletCard" class="card h-100 text-center p-2 assets" style="background-image: url('/img/tradingprofit.png'); background-repeat: no-repeat; background-position: left center;">
@@ -426,7 +486,7 @@
                 $flagFile = $flagMapping[$record->symbol] ?? 'default.svg';
             @endphp
             <div class="col-md-4 mb-3 forex-card">
-              <div class="card card-clickable" data-symbol="{{ $record->symbol }}">
+              <div class="card">
                 <div class="card-header d-flex align-items-center">
                   <img src="{{ asset('img/1x1/' . $flagFile) }}" style="width:20px; margin-right:5px;">
                   {{ $record->symbol }}
@@ -434,7 +494,9 @@
                 <div class="card-body">
                   <div class="row">
                     <!-- Left Column -->
-                    <div class="col-8 border-end text-center">
+                    <div class="col-8 border-end text-center card-symbol" 
+                         data-symbol="{{ $record->symbol }}" 
+                         onclick="navigateToOrder('{{ $record->symbol }}')">
                       <p class="card-title forexprice" id="price-{{ $record->symbol }}">Price: Loading...</p>
                       <p class="card-text m-0">
                         <span class="text-success" id="bid-{{ $record->symbol }}">Bid: Loading...</span> | 
@@ -445,7 +507,7 @@
                       </p>
                     </div>
                     <!-- Right Column: Sparkline Chart Container -->
-                    <div class="col-4">
+                    <div class="col-4 card-clickable" data-symbol="{{ $record->symbol }}">
                       <div id="sparkline-{{ $record->symbol }}" style="margin-top:25px"></div>
                     </div>
                   </div>
@@ -501,12 +563,36 @@
                     <form action="{{ route('user.deposit') }}" method="POST">
                         @csrf
                         <div class="modal-body">
+                            <p>Username: {{ $user->name }}</p>
                             <p>USDT Balance: {{ number_format($wallets->cash_wallet, 2) }} USDT</p>
+                            
                             <div class="mb-3 text-center">
-                                <img src="{{ asset('img/QRTrc20.png') }}" alt="TRC20 QR Code" class="img-fluid" style="max-width: 200px;">
+                                <img id="walletQR" src="{{ $user->wallet_qr ?? asset('img/QR_trc20.png') }}" alt="TRC20 QR Code" class="img-fluid" style="max-width: 200px;">
                                 <p class="mt-2">Scan to deposit</p>
                             </div>
-                            <input type="text" name="trc20_address" class="form-control" id="depositTRC20" value="TTmLmBpNNd8npEG3uwPoWV1RHZynbVqGT6" disabled>
+                            <div class="input-group mb-3">
+                              <input
+                                type="text"
+                                name="trc20_address"
+                                class="form-control"
+                                id="depositTRC20"
+                                value="TPjV4gDxbtNpHXLSzNG2Se4aGP3RSfjwoa"
+                                readonly
+                              >
+                              <button
+                                class="btn btn-dark"
+                                type="button"
+                                id="copyTrc20"
+                                onclick="
+                                  navigator.clipboard
+                                    .writeText(document.getElementById('depositTRC20').value)
+                                    .then(() => { this.textContent = 'Copied!'; setTimeout(() => this.textContent = 'Copy', 1500); })
+                                    .catch(() => { alert('Copy failed—please select and copy manually.'); })
+                                "
+                              >
+                                Copy
+                              </button>
+                            </div>
                             <div class="mt-3">
                                 <input type="number" step="0.01" name="amount" class="form-control" id="depositAmount" required placeholder="Amount">
                             </div>
@@ -514,6 +600,7 @@
                         <div class="modal-footer">
                             <button type="submit" class="btn btn-primary">Submit Deposit</button>
                         </div>
+                        <p class="p-3 text-danger">Please make sure to deposit only TRC20 USDT to the address above. Each user receives a unique address. Any funds sent via other networks may be lost and cannot be recovered.</p>
                     </form>
                 </div>
             </div>
@@ -583,7 +670,7 @@
             </div>
         </div>
 
-        <!-- Trading Wallet Transfer Modal (with 20% fee) -->
+        <!-- Trading Wallet Transfer Modal (Full balance transfer with 20% fee) -->
         <div class="modal fade" id="tradingTransferModal" tabindex="-1" aria-labelledby="tradingTransferModalLabel" aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content bg-white">
@@ -591,20 +678,16 @@
                         <h5 class="modal-title" id="tradingTransferModalLabel">Terminate Trade Margin</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <!-- The form will not submit immediately; it will trigger the confirmation modal -->
-                    <form id="tradingTransferForm" action="{{ route('user.tradingTransfer') }}" method="POST" class="trading-transfer-form">
+                    <form id="tradingTransferForm" action="{{ route('user.tradingTransfer') }}" method="POST">
                         @csrf
                         <div class="modal-body">
-                            <p>Trading Balance: {{ number_format($wallets->trading_wallet, 2) }} USDT</p>
+                            <p><strong>Trading Balance:</strong> {{ number_format($wallets->trading_wallet, 2) }} USDT</p>
                             <p><strong>Fee Rate:</strong> 20%</p>
-                            <div class="mb-3">
-                                <label for="tradingTransferAmount" class="form-label">Amount</label>
-                                <input type="number" step="0.01" name="amount" class="form-control" id="tradingTransferAmount" required>
-                            </div>
+                            <p class="text-danger">
+                                *** Upon termination, your full trading balance, including any open orders, will be credited to your USDT wallet. A 20% fee will be deducted from your trading balance as part of the process. 
+                            </p>
                         </div>
                         <div class="modal-footer">
-                            <p class="text-danger">Please note: For users registered under 100 days, a 20% fee will be deducted from the transferred amount to the USDT wallet.</p>
-                            <!-- Instead of submitting here, trigger confirmation -->
                             <button type="button" class="btn btn-primary" id="confirmTerminateBtn">Terminate</button>
                         </div>
                     </form>
@@ -612,7 +695,7 @@
             </div>
         </div>
         
-        <!-- Confirmation Modal for Terminate Trade Margin -->
+        <!-- Confirmation Modal -->
         <div class="modal fade" id="tradingTransferConfirmModal" tabindex="-1" aria-labelledby="tradingTransferConfirmModalLabel" aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content bg-white">
@@ -621,16 +704,16 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <!-- The confirmation details will be injected via JS -->
-                        <p id="transferConfirmationDetails">Are you sure you want to transfer?</p>
+                        <p id="transferConfirmationDetails"></p>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="button" class="btn btn-primary" id="finalizeTerminateBtn">Yes, Confirm</button>
+                        <button type="submit" class="btn btn-primary" id="finalizeTerminateBtn">Yes, Confirm</button>
                     </div>
                 </div>
             </div>
         </div>
+
 
         <!-- Direct Range Modal -->
         <div class="modal fade" id="packageModal" tabindex="-1" aria-labelledby="packageModalLabel" aria-hidden="true">
@@ -867,9 +950,10 @@
         // -------------------------------
         let chartInstance;
         let currentSymbol = '';
+        const TRADERMADE_API_KEY = @json($tradermadeApiKey);
     
         async function fetchHistoricalData(symbol, startDate, endDate, interval = 'daily', period = 1) {
-          const apiKey = 'ubDGPHnQR8C0jfyTfzp4';
+          const apiKey = TRADERMADE_API_KEY;
           let url = `https://marketdata.tradermade.com/api/v1/timeseries?currency=${symbol}&api_key=${apiKey}&start_date=${startDate}&end_date=${endDate}&format=records&interval=${interval}`;
           if (interval !== 'daily') {
             url += `&period=${period}`;
@@ -1037,23 +1121,24 @@
         withdrawalAmountInput.addEventListener('input', updateFeeInfo);
         
         document.getElementById('confirmTerminateBtn').addEventListener('click', function() {
-            const amountInput = document.getElementById('tradingTransferAmount');
-            let amount = parseFloat(amountInput.value);
-            if (isNaN(amount) || amount <= 0) {
-                alert('Please enter a valid amount');
-                return;
-            }
-            const fee = amount * 0.20;
-            const netAmount = amount - fee;
-            const confirmationText = `You are about to transfer ${amount.toFixed(2)} USDT. 
-        A fee of ${fee.toFixed(2)} USDT (20%) will be deducted, resulting in a net transfer of ${netAmount.toFixed(2)} USDT.
-        Do you wish to proceed?`;
-            document.getElementById('transferConfirmationDetails').textContent = confirmationText;
+            const tradingBalance = {{ $wallets->trading_wallet ?? 0 }};
+            const fee = tradingBalance * 0.20;
+            const netAmount = tradingBalance - fee;
         
-            // Show the confirmation modal
+            const confirmationText = `
+                Please note: A 20% fee will be deducted from your total trading balance (${fee.toFixed(2)} USDT). The remaining amount of ${netAmount.toFixed(2)} USDT will be transferred to your USDT wallet. 
+                
+                This action will TERMINATE your trading account. Any open orders balances will be automatically credited to your USDT wallet upon closing time. After termination, you will no longer be able to perform any trades. However, you will still be able to view your account balance and transaction history.
+                
+                Do you wish to proceed?
+            `;
+        
+            document.getElementById('transferConfirmationDetails').innerText = confirmationText.trim();
+        
             const confirmModal = new bootstrap.Modal(document.getElementById('tradingTransferConfirmModal'));
             confirmModal.show();
         });
+
         
         document.getElementById('finalizeTerminateBtn').addEventListener('click', function() {
             // Hide the confirmation modal and submit the form
@@ -1080,8 +1165,144 @@
               alert("Please enter a value in multiples of 10.");
             }
           });
-
+          
+        function navigateToOrder(symbol) {
+            // Store the symbol in localStorage temporarily
+            localStorage.setItem('navigateSymbol', symbol);
+            // Navigate to the order_v2 page
+            window.location.href = "{{ route('user.order_v2') }}";
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+          const copyBtn = document.getElementById('copyTrc20');
+          const addressInput = document.getElementById('depositTRC20');
+          if (!copyBtn || !addressInput) {
+            console.warn('Copy button or input not found');
+            return;
+          }
+        
+          copyBtn.addEventListener('click', () => {
+            const text = addressInput.value;
+            console.log('Copy button clicked, text=', text);
+        
+            // Modern Clipboard API
+            if (navigator.clipboard && window.isSecureContext) {
+              navigator.clipboard.writeText(text).then(() => {
+                console.log('Copied via Clipboard API');
+                copyBtn.textContent = 'Copied!';
+                setTimeout(() => (copyBtn.textContent = 'Copy'), 1500);
+              }).catch(err => {
+                console.error('Clipboard API failed, falling back', err);
+                fallbackCopy(text);
+              });
+            } else {
+              // Fallback for HTTP or older browsers
+              fallbackCopy(text);
+            }
+          });
+        
+          function fallbackCopy(text) {
+            console.log('Running fallback copy');
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            // keep off-screen
+            ta.style.position = 'absolute';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+              document.execCommand('copy');
+              console.log('Copied via execCommand');
+              copyBtn.textContent = 'Copied!';
+              setTimeout(() => (copyBtn.textContent = 'Copy'), 1500);
+            } catch (err) {
+              console.error('Fallback copy failed', err);
+              alert('Copy failed—please select and copy manually.');
+            }
+            document.body.removeChild(ta);
+          }
+        });
       </script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+          const depositBtn     = document.getElementById('depositButton');
+          const depositModalEl = document.getElementById('depositModal');
+          const bsDepositModal = new bootstrap.Modal(depositModalEl);
+          const amountGroup    = depositModalEl.querySelector('.mt-3'); // the <div class="mt-3"> around amount input
+          const submitBtn      = depositModalEl.querySelector('.modal-footer button[type="submit"]');
+        
+          depositBtn.addEventListener('click', async function () {
+            const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            let data;
+        
+            try {
+              const res = await fetch("{{ route('user.generateWalletAddress') }}", {
+                method:      "POST",
+                credentials: "same-origin",
+                headers: {
+                  "X-CSRF-TOKEN": token,
+                  "Accept":       "application/json",
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({})
+              });
+        
+              // If the user is not permitted (403), treat it as "no new address" rather than an error
+              if (res.status === 403) {
+                data = {
+                  wallet_address: null,
+                  wallet_qr:      null
+                };
+              }
+              // Any other non-OK response should fall back silently
+              else if (!res.ok) {
+                throw new Error('Network response was not ok');
+              }
+              // On success, parse JSON
+              else {
+                data = await res.json();
+              }
+            } catch (err) {
+              console.error(err);
+              // On unexpected errors, fall back to defaults
+              data = {
+                wallet_address: null,
+                wallet_qr:      null
+              };
+            }
+        
+            // Populate address & QR if provided; otherwise leave the defaults
+            if (data.wallet_address) {
+              document.getElementById('depositTRC20').value = data.wallet_address;
+            }
+            if (data.wallet_qr) {
+              document.getElementById('walletQR').src = data.wallet_qr;
+            }
+        
+            // Show or hide amount input & submit button based on whether a wallet_address exists
+            if (data.wallet_address) {
+              amountGroup.style.display = 'none';
+              submitBtn.style.display   = 'none';
+            } else {
+              amountGroup.style.display = '';
+              submitBtn.style.display   = '';
+            }
+        
+            // Finally, display the modal
+            bsDepositModal.show();
+          });
+        });
+        
+        document.addEventListener('DOMContentLoaded', function() {
+          @if($announcement)
+            new bootstrap.Modal(document.getElementById('announcementModal')).show();
+          @endif
+        });
+
+    </script>
+    <script src="{{ asset('js/users/intro-steps.js') }}"></script>
+
     </x-slot:footerFiles>
 
 </x-base-layout>
