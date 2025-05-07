@@ -144,11 +144,23 @@ class DashboardController extends Controller
         return redirect()->back()->withErrors(['promotion_code' => 'Invalid promotion code.']);
     }
     
-    public function showAnnouncements()
+    public function showAnnouncements(Request $request)
     {
-        $announcements = Annoucement::orderBy('updated_at','desc')->get();
+        $query = Annoucement::query()->orderBy('created_at', 'desc');
+    
+        if ($request->filled('start_date')) {
+            $query->whereDate('created_at', '>=', $request->input('start_date'));
+        }
+    
+        if ($request->filled('end_date')) {
+            $query->whereDate('created_at', '<=', $request->input('end_date'));
+        }
+    
+        $announcements = $query->get();
+    
         return view('user.announcements', compact('announcements'));
     }
+
 
 
 }

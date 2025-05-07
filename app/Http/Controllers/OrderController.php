@@ -315,6 +315,7 @@ class OrderController extends Controller
         $claimService = new \App\Services\ClaimService();
         $claimAmounts = $claimService->calculate($order);
         $baseClaimAmount = $claimAmounts['base'];
+        $percentage = $claimAmounts['percentage'] ?? 50;
         
         \App\Models\Payout::create([
             'user_id'  => $user->id,
@@ -348,8 +349,11 @@ class OrderController extends Controller
         return response()->json([
             'success' => true, 
             'message' => 'Claimed success!',
-            'redirect_url' => route('user.assets')
+            'redirect_url' => route('user.assets'),
+            'claim_amount' => $baseClaimAmount,
+            'percentage' => $percentage ?? 50 // default if undefined
         ]);
+
 
     }
 

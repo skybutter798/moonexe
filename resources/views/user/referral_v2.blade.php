@@ -619,6 +619,44 @@
                 </li>
               </ul>
             </section>
+            <hr>
+            <section>
+              <h5 class="mt-4">TEAM REWARD SCENARIO</h5>
+            
+              <h6 class="mt-3">TEAM DEVELOPMENT UPGRADE REWARDS</h6>
+              <p><em>(Permanent cumulative calculation - differential tiered percentage model)</em></p>
+              <ul>
+                <li><strong>Scenario 1:</strong> Achieve 1,000,000 USDT Lifetime Team Volume<br>
+                  Earn: 12% of total cumulative volume<br>
+                  Example: 1,000,000 team = 120,000 bonus
+                </li>
+                <li><strong>Scenario 2:</strong> Achieve 5,000,000 USDT Lifetime Team Volume<br>
+                  Earn: 15% of total cumulative volume<br>
+                  Example: 5,000,000 team = 750,000 bonus
+                </li>
+                <li><strong>Scenario 3:</strong> Achieve 10,000,000 USDT Lifetime Team Volume<br>
+                  Earn: 18% of total cumulative volume<br>
+                  Example: 10,000,000 team = 1,800,000 bonus
+                </li>
+              </ul>
+            
+              <h6 class="mt-4">TEAM MATCHING REWARDS</h6>
+              <p><em>(Daily calculation - tiered matching percentage model)</em></p>
+              <ul>
+                <li><strong>Scenario 4:</strong> Reach 1,000,000 USDT Team Volume<br>
+                  Daily earn: 40% of team's total spread profits<br>
+                  Example: 5,000 daily profit = 2,000 reward
+                </li>
+                <li><strong>Scenario 5:</strong> Reach 5,000,000 USDT Team Volume<br>
+                  Daily earn: 50% of team's total spread profits<br>
+                  Example: 20,000 daily profit = 10,000 reward
+                </li>
+                <li><strong>Scenario 6:</strong> Reach 10,000,000 USDT Team Volume<br>
+                  Daily earn: 60% of team's total spread profits<br>
+                  Example: 50,000 daily profit = 30,000 reward
+                </li>
+              </ul>
+            </section>
           </div>
         </div>
       </div>

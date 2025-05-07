@@ -36,6 +36,7 @@
                 <thead class="bg-dark text-white">
                   <tr>
                     <th>ID</th>
+                    <th>Banner</th>
                     <th>Name</th>
                     <th>Content</th>
                     <th>Status</th>
@@ -48,6 +49,7 @@
                   @forelse($annoucements as $item)
                     <tr>
                       <td>{{ $item->id }}</td>
+                      <td> @if($item->banner_image) <img src="{{ asset('storage/' . $item->banner_image) }}" alt="Banner" style="width: 100px;"> @endif </td>
                       <td>{{ $item->name }}</td>
                       <td>{{ Str::limit($item->content, 50) }}</td>
                       <td class="text-center">
@@ -88,7 +90,7 @@
     {{-- Modal: Create Announcement --}}
     <div class="modal fade" id="annoucementModal" tabindex="-1" aria-labelledby="annoucementModalLabel" aria-hidden="true">
       <div class="modal-dialog">
-        <form action="{{ route('admin.annoucement.store') }}" method="POST">
+        <form action="{{ route('admin.annoucement.store') }}" method="POST" enctype="multipart/form-data">
           @csrf
           <div class="modal-content">
             <div class="modal-header">
@@ -128,7 +130,7 @@
     {{-- Edit Announcement Modal --}}
     <div class="modal fade" id="editAnnouncementModal" tabindex="-1" aria-labelledby="editAnnouncementModalLabel" aria-hidden="true">
       <div class="modal-dialog">
-        <form id="editAnnForm" method="POST" action="">
+        <form id="editAnnForm" method="POST" action="" enctype="multipart/form-data">
           @csrf 
           @method('PATCH')
           <div class="modal-content">
@@ -137,6 +139,11 @@
               <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
+              <div class="mb-3">
+                <label for="banner_image" class="form-label">Banner Image</label>
+                <input type="file" class="form-control" name="banner_image" accept="image/*">
+              </div>
+
               <div class="mb-3">
                 <label for="edit-ann-name" class="form-label">Name</label>
                 <input type="text" name="name" id="edit-ann-name" class="form-control" required>

@@ -134,6 +134,36 @@
     
     <link rel="stylesheet" href="{{ asset('css/custom_v2.css') }}">
 </head>
+<div id="supportModal" style="display:none; position:fixed; z-index:9999; inset:0; background:rgba(0,0,0,0.5);">
+  <div style="background:white; max-width:500px; margin:5% auto; padding:20px; border-radius:8px; position:relative;">
+    <h5>Contact Support</h5>
+    <form method="POST" action="{{ route('user.contact.support') }}">
+      @csrf
+      <div class="mb-3">
+        <label>Username</label>
+        <input type="text" name="username" class="form-control" value="{{ Auth::user()->name ?? '' }}" required>
+      </div>
+      <div class="mb-3">
+        <label>Email</label>
+        <input type="email" name="email" class="form-control" value="{{ Auth::user()->email ?? '' }}" required>
+      </div>
+      <div class="mb-3">
+        <label>Subject</label>
+        <input type="text" name="subject" class="form-control" required>
+      </div>
+      <div class="mb-3">
+        <label>Question</label>
+        <textarea name="question" class="form-control" rows="4" required></textarea>
+      </div>
+      <small class="text-muted d-block mb-3">
+        Thank you for reaching out. Due to high support volume, our response time may take between 24 to 48 hours.
+      </small>
+      <button type="submit" class="btn btn-primary">Submit</button>
+      <button type="button" class="btn btn-secondary" onclick="closeSupportModal()">Cancel</button>
+    </form>
+  </div>
+</div>
+
 <body @class([
         // 'layout-dark' => $isDark,
         'layout-boxed' => $isBoxed,
@@ -297,4 +327,23 @@
          
         {{ $footerFiles }}
 </body>
+
+<script>
+  function openSupportModal() {
+    document.getElementById('supportModal').style.display = 'block';
+  }
+
+  function closeSupportModal() {
+    document.getElementById('supportModal').style.display = 'none';
+  }
+
+  // Optional: close modal when clicking outside
+  window.onclick = function(event) {
+    const modal = document.getElementById('supportModal');
+    if (event.target === modal) {
+      closeSupportModal();
+    }
+  }
+</script>
+
 </html>

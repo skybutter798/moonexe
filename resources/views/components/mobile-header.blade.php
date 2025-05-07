@@ -15,8 +15,17 @@
       align-items: center;
       justify-content: space-between;
     }
+    
+    .header-top .d-flex a {
+      margin-right: 10px;
+    }
+
     .header-logo img {
       max-height: 24px;
+    }
+    
+    .header-logo {
+      text-align:left;
     }
 
     /* ===========================
@@ -72,48 +81,77 @@
     .dropdown-menu a:hover {
       background-color: #e2e6ea;
     }
+    
+    .gt_container--d8uhf3 a.glink span {
+        font-size:14px !important;
+    }
+    
+    .glink span:last-child {
+      display: none;
+    }
+    
+    .glink img {
+      width: 18px;
+      height: 18px;
+    }
+    
+    .icon-row {
+      display: flex;
+      align-items: center;
+      gap: 12px; /* adjust spacing as needed */
+    }
+
+
   </style>
 
   <!-- Top Row: Logo & Burger -->
   <div class="header-top">
     <div></div>
     <div class="header-logo">
-      <img src="{{ asset('img/main_logo.png') }}" alt="Main Logo">
+      <a href="{{ route('user.dashboard') }}">
+        <img src="{{ asset('img/main_logo.png') }}" alt="Main Logo">
+      </a>
     </div>
-    <button class="burger-menu" onclick="toggleMenu()">
-      <i class="bi bi-list"></i>
-    </button>
-  </div>
 
-  <!-- Dropdown Menu -->
-  <div class="dropdown-menu" id="mobileDropdown" onclick="toggleMenu()">
-
+    
+    <div class="icon-row">
+      <div id="gtranslate-mobile" class="d-block d-sm-none"></div>
+    
       <a href="{{ route('user.annoucement') }}">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill=""
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
              class="feather feather-volume">
           <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
           <polyline points="16 17 21 12 16 7"></polyline>
         </svg>
-        <span>Announcement</span>
       </a>
-
-    <a href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
-           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-           class="feather feather-log-out">
-        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-        <polyline points="16 17 21 12 16 7"></polyline>
-        <line x1="21" y1="12" x2="9" y2="12"></line>
-      </svg>
-      <span>Logout</span>
-    </a>
     
-    <hr>
+      <a href="javascript:void(0);" onclick="openSupportModal()" class="dropdown-toggle">
+        <i class="bi bi-headset" style="font-size: 1.5rem;"></i>
+      </a>
     
-    <div id="gtranslate-mobile" class="d-block d-sm-none"></div>
+      <a href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+             class="feather feather-log-out">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+          <polyline points="16 17 21 12 16 7"></polyline>
+          <line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>
+      </a>
+    </div>
 
+    
+    <!--<button class="burger-menu" onclick="toggleMenu()">
+      <i class="bi bi-list"></i>
+    </button>-->
   </div>
+    
+  
+  
+  <!--<div class="dropdown-menu" id="mobileDropdown" onclick="toggleMenu()">
+    <hr>
+  </div>-->
 
   <!-- Hidden logout form -->
   <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
@@ -154,8 +192,8 @@
     </div>
 </div>
 
-<script>
+<!--<script>
   function toggleMenu() {
     document.getElementById('mobileDropdown').classList.toggle('show');
   }
-</script>
+</script>-->

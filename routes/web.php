@@ -120,6 +120,8 @@ Route::prefix('user-dashboard')->middleware(['auth', 'user.only'])->group(functi
     Route::get('/referral_v2', [ReferralController::class, 'index'])->name('user.referral_v2');
     Route::get('/order_v2', [OrderController::class, 'index'])->name('user.order_v2');
     Route::get('/annoucement', [DashboardController::class, 'showAnnouncements']) ->name('user.annoucement');
+    Route::post('/contact-support', [UserController::class, 'contactSupport'])->name('user.contact.support');
+
 
 });
 

@@ -4,11 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\DirectRange;
-use Illuminate\Http\Request;
+use App\Mail\SupportContactMail;
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+
+use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon; 
 
 class UserController extends Controller
@@ -207,5 +210,21 @@ class UserController extends Controller
     
         return response()->json(['error' => 'Failed to generate wallet address'], 500);
     }
+    
+    public function contactSupport(Request $request)
+    {
+        $data = $request->validate([
+            'username' => 'required|string',
+            'email'    => 'required|email',
+            'subject'  => 'required|string',
+            'question' => 'required|string',
+        ]);
+    
+        // Send to support inbox
+        Mail::to('support@moonexe.com')->send(new SupportContactMail($data));
+    
+        return back()->with('success', 'Support message sent successfully. We will respond as soon as possible.');
+    }
+
     
 }

@@ -325,7 +325,7 @@
       @endphp
     
         <div class="col-12 col-lg-6">
-          <div class="card mb-4" data-order-id="{{ $order->id }}" data-pair-start="{{ $pairStartTimestamp }}" data-pair-end="{{ $pairEndTimestamp }}" data-order-status="{{ $order->status }}" data-order-time="{{ $order->time }}">
+          <div class="card mb-4" data-order-id="{{ $order->id }}" data-order-txid="{{ $order->txid }}" data-pair-start="{{ $pairStartTimestamp }}" data-pair-end="{{ $pairEndTimestamp }}" data-order-status="{{ $order->status }}" data-order-time="{{ $order->time }}">
             <!-- Card Header 
             <div class="card-header d-flex justify-content-between align-items-center" data-pair="{{ $displayPair }}">
               <h5 class="mb-0 text-white">{{ $displayPair }}</h5>

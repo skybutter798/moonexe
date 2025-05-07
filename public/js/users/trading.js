@@ -815,6 +815,7 @@ document.addEventListener('click', function (e) {
       if (result.success) {
         // Extract details from the card
         const orderID = row.getAttribute('data-order-id') || '-';
+        const orderTXID = row.getAttribute('data-order-txid') || '-';
         const pair = row.querySelector('.card-header')?.getAttribute('data-pair') || '-';
         const estRate = row.querySelector('.est-roi')?.getAttribute('data-roi')?.split('/')[1]?.trim() || '-';
         const returnProfit = row.querySelector('.computed-value')?.innerText || '-';
@@ -822,9 +823,10 @@ document.addEventListener('click', function (e) {
         // Build detail HTML
         const detailsHTML = `
           <div id="tradeOrderDetails" class="mt-3 text-start small border-top pt-2">
-            <div><strong>Order ID:</strong> ${orderID}</div>
-            <div><strong>Actual Profit:</strong> ${estRate}%</div>
-            <div><strong>Return Profit:</strong> ${returnProfit}</div>
+            <div><strong>Order TXID:</strong> ${orderTXID}</div>
+            <div><strong>Spread Profit:</strong> ${result.percentage || '-'}%</div>
+            <div><strong>Actual Rate:</strong> ${estRate}%</div>
+            <div><strong>Actual Profit:</strong> ${result.claim_amount || '-'} USD</div>
           </div>
         `;
     

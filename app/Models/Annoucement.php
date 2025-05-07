@@ -13,5 +13,6 @@ class Annoucement extends Model
         'name',
         'content',
         'status',
+        'banner_image',
     ];
 }

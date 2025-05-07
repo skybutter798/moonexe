@@ -7,7 +7,15 @@
 */
 
 --}}
-
+<style>
+    .gt_container-l20m6l a.glink span {
+        font-size: 14px !important;
+    }
+    
+    .gt_container-l20m6l {
+        margin-top: 5px;
+    }
+</style>
 <!--  BEGIN NAVBAR  -->
 <div class="header-container container-xxl desktop-menu">
     <header class="header navbar navbar-expand-sm expand-header">
@@ -35,6 +43,13 @@
             
             <div id="gtranslate-desktop" class="d-none d-sm-block"></div>
             
+            <li class="nav-item theme-toggle-item">
+                  <a href="javascript:void(0);" onclick="openSupportModal()" class="dropdown-toggle">
+                    <div>
+                      <i class="bi bi-headset" style="font-size: 1.5rem;"></i>
+                    </div>
+                  </a>
+            </li>
             <li class="nav-item theme-toggle-item">
                 <a href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
                     <i class="bi bi-box-arrow-right" style="font-size:25px"></i> <span style="font-size:20px"></span>

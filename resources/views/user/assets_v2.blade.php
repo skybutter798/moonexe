@@ -219,6 +219,7 @@
                   <th>Txid</th>
                   <th>Total Payout</th>
                   <th>Actual Earning</th>
+                  <th>Spread Profit</th>
                   <th>Date</th>
                 </tr>
               </thead>
@@ -229,6 +230,7 @@
                     <td>{{ $roi->txid }}</td>
                     <td>{{ number_format($roi->total, 4) }}</td>
                     <td>{{ isset($roi->actual) ? number_format($roi->actual, 4) : '-' }}</td>
+                    <td> @if(isset($roi->actual) && $roi->total > 0) {{ number_format(($roi->actual / $roi->total) * 100, 2) }}% @else - @endif </td>
                     <td>{{ $roi->created_at ? \Carbon\Carbon::parse($roi->created_at)->format('Y-m-d H:i') : '-' }}</td>
                   </tr>
                 @empty
