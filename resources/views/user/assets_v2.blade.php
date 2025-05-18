@@ -424,6 +424,7 @@
                   <th>Order ID</th>
                   <th>Type</th>
                   <th>Amount</th>
+                  <th>TRX Gas</th>
                   <th>TRC20 Address</th>
                   <th>Status</th>
                   <th>Date</th>
@@ -436,6 +437,7 @@
                     <td>{{ $deposit->txid }}</td>
                     <td>Deposit</td>
                     <td>{{ number_format($deposit->amount, 4) }}</td>
+                    <td>{{ number_format($deposit->fee, 4) }}</td>
                     <td>{{ $deposit->trc20_address }}</td>
                     <td>
                       @if($deposit->status == 'Pending')

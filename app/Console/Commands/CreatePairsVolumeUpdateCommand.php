@@ -10,58 +10,56 @@ use Carbon\Carbon;
 class CreatePairsVolumeUpdateCommand extends Command
 {
     protected $signature = 'pairs:update';
-    protected $description = 'Update active pairs by adding volume every hour';
+    protected $description = 'Update active pairs by adding volume with randomness and guaranteed final drip';
 
     public function handle()
     {
         $now   = Carbon::now('Asia/Kuala_Lumpur');
         $today = Carbon::today('Asia/Kuala_Lumpur');
 
-        // only today’s pairs
         $pairs = Pair::whereDate('created_at', $today)->get();
 
         foreach ($pairs as $pair) {
-            // 1) compute gate hours and active drip window
-            $gateHours = (int) floor($pair->gate_time / 60);    // e.g. 60 min → 1
-            $gateHours = max($gateHours, 1);                    // at least 1
-            $activeHrs = max($gateHours - 1, 0);                // subtract final hour, allow 0
+            // 1. Convert gate_time to hours
+            $gateHours = max((int) floor($pair->gate_time / 60), 1);
+            $activeHrs = max($gateHours - 1, 0); // 1 hour reserved at the end
 
-            // if there's no drip window, skip
-            if ($activeHrs === 0) {
-                continue;
-            }
+            if ($activeHrs === 0) continue;
 
-            // 2) hours since creation
+            // 2. Time tracking
             $elapsedHrs = $pair->created_at->diffInHours($now);
-
-            // 3) hours since last update
             $lastRunHrs = $pair->created_at->diffInHours($pair->updated_at);
 
-            // 4) how many drips we should have done vs. already did
             $shouldHaveRun = min($elapsedHrs, $activeHrs);
             $alreadyRun    = min($lastRunHrs, $activeHrs);
 
-            if ($shouldHaveRun <= $alreadyRun) {
-                // nothing new to do
+            if ($shouldHaveRun <= $alreadyRun) continue;
+
+            // 3. Is this the final eligible drip hour?
+            $isFinalDripHour = ($elapsedHrs === $activeHrs);
+
+            // 4. Skip randomly unless it's the final drip hour
+            if (!$isFinalDripHour && rand(0, 1) === 0) {
+                Log::channel('pair')->info("Pair #{$pair->id} skipped randomly.");
                 continue;
             }
 
-            // 5) compute how many new chunks to apply
+            // 5. How many missed drips
             $toDo = $shouldHaveRun - $alreadyRun;
 
-            // 6) recover the original per-hour chunk
-            //    since volume after N drips = initialChunk × (N + 1)
+            // 6. Calculate base chunk from current volume
             $initialChunk = $pair->volume / ($alreadyRun + 1);
 
-            // 7) apply all missing chunks in one go
-            $addition        = $initialChunk * $toDo;
-            $pair->volume   += $addition;
+            // 7. Apply random multiplier (80–120%)
+            $multiplier = rand(80, 120) / 100;
+            $chunk = $initialChunk * $multiplier;
 
-            // save() updates updated_at, marking this work as done
+            // 8. Apply missed chunks
+            $addition = $chunk * $toDo;
+            $pair->volume += $addition;
             $pair->save();
 
-            Log::channel('pair')
-               ->info("Pair #{$pair->id}: +{$addition} over {$toDo} hrs; new volume {$pair->volume}");
+            Log::channel('pair')->info("Pair #{$pair->id}: +{$addition} (toDo: {$toDo}, multiplier: {$multiplier}) → new volume: {$pair->volume}");
         }
 
         return 0;

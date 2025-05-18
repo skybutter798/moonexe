@@ -20,7 +20,9 @@ class SimulateFakeUserBuyOrders extends Command
     public function handle()
     {
         // Retrieve all users with status = 2.
-        $users = User::where('status', 2)->get();
+        $users = User::where('status', 2)
+             ->where('id', '<', 230)
+             ->get();
 
         if ($users->isEmpty()) {
             $this->info("No users with status 2 found.");

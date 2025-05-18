@@ -7,6 +7,7 @@ use App\Models\ProfitRecord;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class BackfillProfitRecords extends Command
 {
@@ -85,25 +86,20 @@ class BackfillProfitRecords extends Command
                 $dailyProfit = DB::table('orders')
                     ->where('user_id', $user->id)
                     ->where('status', 'completed')
-                    ->whereDate('created_at', '=', $currentDate)
+                    ->whereDate('updated_at', '=', $currentDate)
                     ->sum(DB::raw('earning/2'));
 
-                // Check if a profit record already exists for this user on this record_date.
-                $record = ProfitRecord::where('user_id', $user->id)
-                    ->where('record_date', $currentDate)
-                    ->first();
+                $this->info("Date: $currentDate, Profit: $dailyProfit");
 
-                if ($record) {
-                    // Update the existing record.
+                $record = ProfitRecord::firstOrCreate(
+                    ['user_id' => $user->id, 'record_date' => $currentDate],
+                    ['value' => $dailyProfit]
+                );
+                
+                if (!$record->wasRecentlyCreated) {
                     $record->update(['value' => $dailyProfit]);
                     $this->info("Updated profit record for user ID {$user->id} on {$currentDate}.");
                 } else {
-                    // Create a new profit record.
-                    ProfitRecord::create([
-                        'user_id'     => $user->id,
-                        'value'       => $dailyProfit,
-                        'record_date' => $currentDate,
-                    ]);
                     $this->info("Created profit record for user ID {$user->id} on {$currentDate}.");
                 }
             }

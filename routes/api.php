@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WebhookController;
+use App\Http\Controllers\TelegramWebhookController;
 
 use App\Models\Promotion;
 
@@ -59,3 +60,4 @@ Route::get('/promotion-info', function (Request $request) {
 });*/
 
 Route::post('/response', [WebhookController::class, 'handle']);
+Route::post('/telegram/webhook', [TelegramWebhookController::class, 'handle']);

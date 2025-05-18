@@ -13,6 +13,7 @@ class Deposit extends Model
         'trc20_address',
         'status',
         'external_txid',
+        'fee',
     ];
     
     public function user()

@@ -199,7 +199,7 @@
                   <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body px-4 py-3 text-black">
-                  {!! nl2br(e($announcement->content)) !!}
+                  {!! nl2br($announcement->content) !!}
                 </div>
                 <div class="modal-footer border-0">
                   <button type="button" class="btn btn-outline-primary px-4" data-bs-dismiss="modal">Close</button>
@@ -243,7 +243,7 @@
             <div class="row mb-4 mb-md-0 align-items-center">
                 <div class="col-md-6">
                     <strong class="text-dark">Hi, {{ $user->name }}</strong>
-                    <button id="restartTourBtn" type="button" class="btn btn-sm btn-link p-0 ms-2" title="Show tutorial again" style="font-size: 14px;"> <i class="bi bi-question-circle"></i> </button>
+                    <button id="restartTourBtn" type="button" class="btn btn-sm btn-link p-0 ms-2" title="Show tutorial again" style="font-size: 14px;"> <i class="bi bi-exclamation-circle"></i> </button>
                     
                     @if(isset($currentRange))
                         <p class="mt-1">
@@ -600,8 +600,15 @@
                         <div class="modal-footer">
                             <button type="submit" class="btn btn-primary">Submit Deposit</button>
                         </div>
-                        <p class="p-3 text-danger">Please make sure to deposit only TRC20 USDT to the address above. Each user receives a unique address. Any funds sent via other networks may be lost and cannot be recovered.</p>
-                    </form>
+                        <div class="alert alert-warning">
+                            
+                            <strong>⚠️ Important Notice:</strong><br>
+                            • Please deposit <strong>only USDT (TRC20)</strong> to the address above.<br>
+                            • Each user receives a <strong>unique wallet address</strong>.<br>
+                            • <span class="text-danger fw-bold">DO NOT send USDT via other networks (e.g. ERC20, BEP20) — FUNDS WILL BE LOST AND CANNOT BE RECOVERED</span>.<br>
+                        </div>
+
+                        </form>
                 </div>
             </div>
         </div>
@@ -628,7 +635,7 @@
                             </div>
                             <!-- This paragraph will be updated to show the fee and final received amount -->
                             <p class="text-danger" id="withdrawalFeeInfo">
-                                Withdrawal will charge a withdrawal fee of 3% upon success, you will receive a total of 0 USDT on completion.
+                                Withdrawal will charge a fee of 3% or minimum 7 USDT (whichever is higher). You will receive a total of 0 USDT on completion.
                             </p>
                         </div>
                         <div class="modal-footer">
@@ -656,7 +663,7 @@
                         @csrf
                         <div class="modal-body">
                             <p id="sourceWalletBalance"></p>
-                            <input type="hidden" id="transferTypeHidden" name="transfer_type" value="affiliates_to_cash">
+                            <input type="hidden" id="transferTypeHidden" name="transfer_type" value="">
                             <div class="mb-3">
                                 <label for="transferAmountDynamic" class="form-label">Amount</label>
                                 <input type="number" step="0.01" name="amount" class="form-control" id="transferAmountDynamic" required>
@@ -765,6 +772,7 @@
                                     <div class="mb-2">
                                         <input type="number" name="topup_amount" class="form-control" placeholder="Enter top-up amount" min="10" step="10" required>
                                     </div>
+                                    <strong class="text-danger">*Top-up must be in multiples of 10. No decimal values allowed.</strong>
                                     <button type="submit" class="btn btn-primary w-100">Top-up</button>
                                 </form>
                             </div>
@@ -837,7 +845,32 @@
     </div>
     
     <x-slot:footerFiles>
-      <script>
+    <script>
+        window.hasFlashMessage = @json(session('success') || $errors->any());
+        window.announcement     = @json($announcement ?? null);
+    </script>
+    
+    @if(session('success') || $errors->any())
+        <div class="position-fixed top-50 start-50 translate-middle" style="z-index: 99999; min-width: 300px;">
+            <div id="flashToast"
+                 class="toast show text-white bg-{{ session('success') ? 'success' : 'danger' }} border-0 shadow-lg"
+                 role="alert" aria-live="assertive" aria-atomic="true"
+                 style="padding: 10px; border-radius: 12px;">
+              <div class="d-flex align-items-center justify-content-between">
+                <div class="toast-body w-100 text-center">
+                  {!! session('success') ?? $errors->first() !!}
+                </div>
+                <button type="button" class="btn-close btn-close-white ms-3"
+                        data-bs-dismiss="toast" aria-label="Close"></button>
+              </div>
+            </div>
+        </div>
+    @endif
+
+
+
+          
+    <script>
         // -------------------------------
         // Load More Functionality for Forex Cards
         // -------------------------------
@@ -846,14 +879,14 @@
             const itemsToShowPerClick = 9;
             const forexCards = document.querySelectorAll(".forex-card");
             const loadMoreBtn = document.getElementById("loadMoreBtn");
-
+    
             // Hide all forex cards after the initial group
             forexCards.forEach((card, index) => {
                 if (index >= itemsToShowInitially) {
                     card.style.display = "none";
                 }
             });
-
+    
             loadMoreBtn.addEventListener("click", function() {
                 let hiddenCards = Array.from(forexCards).filter(card => card.style.display === "none");
                 hiddenCards.slice(0, itemsToShowPerClick).forEach(card => {
@@ -865,8 +898,23 @@
                     loadMoreBtn.style.display = "none";
                 }
             });
+            
+            document.querySelectorAll('.wallet-transfer-btn').forEach(button => {
+                button.addEventListener('click', () => {
+                    const transferType = button.getAttribute('data-transfer-type');
+                    const balance = button.getAttribute('data-wallet-balance');
+                    const name = button.getAttribute('data-wallet-name');
+        
+                    // Update hidden field in modal form
+                    document.getElementById('transferTypeHidden').value = transferType;
+        
+                    // Optionally show current balance
+                    const balanceLabel = document.getElementById('sourceWalletBalance');
+                    balanceLabel.textContent = `${name} Balance: ${parseFloat(balance).toFixed(2)} USDT`;
+                });
+            });
         });
-
+    
         // -------------------------------
         // MARKET DATA & DISPLAY CODE (unchanged)
         // -------------------------------
@@ -1138,7 +1186,7 @@
             const confirmModal = new bootstrap.Modal(document.getElementById('tradingTransferConfirmModal'));
             confirmModal.show();
         });
-
+    
         
         document.getElementById('finalizeTerminateBtn').addEventListener('click', function() {
             // Hide the confirmation modal and submit the form
@@ -1222,85 +1270,120 @@
             document.body.removeChild(ta);
           }
         });
-      </script>
+    </script>
     
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-          const depositBtn     = document.getElementById('depositButton');
-          const depositModalEl = document.getElementById('depositModal');
-          const bsDepositModal = new bootstrap.Modal(depositModalEl);
-          const amountGroup    = depositModalEl.querySelector('.mt-3'); // the <div class="mt-3"> around amount input
-          const submitBtn      = depositModalEl.querySelector('.modal-footer button[type="submit"]');
-        
-          depositBtn.addEventListener('click', async function () {
-            const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-            let data;
-        
-            try {
-              const res = await fetch("{{ route('user.generateWalletAddress') }}", {
-                method:      "POST",
-                credentials: "same-origin",
-                headers: {
-                  "X-CSRF-TOKEN": token,
-                  "Accept":       "application/json",
-                  "Content-Type": "application/json"
-                },
-                body: JSON.stringify({})
+            const depositBtn     = document.getElementById('depositButton');
+            const depositModalEl = document.getElementById('depositModal');
+            const bsDepositModal = new bootstrap.Modal(depositModalEl);
+            const amountGroup    = depositModalEl.querySelector('.mt-3'); // the <div class="mt-3"> around amount input
+            const submitBtn      = depositModalEl.querySelector('.modal-footer button[type="submit"]');
+            
+            depositBtn.addEventListener('click', async function () {
+                const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                let data;
+            
+                try {
+                  const res = await fetch("{{ route('user.generateWalletAddress') }}", {
+                    method:      "POST",
+                    credentials: "same-origin",
+                    headers: {
+                      "X-CSRF-TOKEN": token,
+                      "Accept":       "application/json",
+                      "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({})
+                  });
+            
+                  // If the user is not permitted (403), treat it as "no new address" rather than an error
+                  if (res.status === 403) {
+                    data = {
+                      wallet_address: null,
+                      wallet_qr:      null
+                    };
+                  }
+                  // Any other non-OK response should fall back silently
+                  else if (!res.ok) {
+                    throw new Error('Network response was not ok');
+                  }
+                  // On success, parse JSON
+                  else {
+                    data = await res.json();
+                  }
+                } catch (err) {
+                  console.error(err);
+                  // On unexpected errors, fall back to defaults
+                  data = {
+                    wallet_address: null,
+                    wallet_qr:      null
+                  };
+                }
+            
+                // Populate address & QR if provided; otherwise leave the defaults
+                if (data.wallet_address) {
+                  document.getElementById('depositTRC20').value = data.wallet_address;
+                }
+                if (data.wallet_qr) {
+                  document.getElementById('walletQR').src = data.wallet_qr;
+                }
+            
+                // Show or hide amount input & submit button based on whether a wallet_address exists
+                if (data.wallet_address) {
+                  amountGroup.style.display = 'none';
+                  submitBtn.style.display   = 'none';
+                } else {
+                  amountGroup.style.display = '';
+                  submitBtn.style.display   = '';
+                }
+            
+                // Finally, display the modal
+                bsDepositModal.show();
               });
-        
-              // If the user is not permitted (403), treat it as "no new address" rather than an error
-              if (res.status === 403) {
-                data = {
-                  wallet_address: null,
-                  wallet_qr:      null
-                };
-              }
-              // Any other non-OK response should fall back silently
-              else if (!res.ok) {
-                throw new Error('Network response was not ok');
-              }
-              // On success, parse JSON
-              else {
-                data = await res.json();
-              }
-            } catch (err) {
-              console.error(err);
-              // On unexpected errors, fall back to defaults
-              data = {
-                wallet_address: null,
-                wallet_qr:      null
-              };
+          
+            const ann = window.announcement;
+            const hasToast = window.hasFlashMessage;
+            
+            if (ann && !hasToast) {
+              const key = `announcement_${ann.id}_shown`;
+              const modal = new bootstrap.Modal(document.getElementById('announcementModal'));
+              modal.show();
+              localStorage.setItem(key, '1');
             }
-        
-            // Populate address & QR if provided; otherwise leave the defaults
-            if (data.wallet_address) {
-              document.getElementById('depositTRC20').value = data.wallet_address;
+            
+            const toastEl = document.getElementById('flashToast');
+            if (toastEl) new bootstrap.Toast(toastEl, { delay: 6000 }).show();
+            
+            const pkgForm = document.querySelector('form.package-form');
+            if (pkgForm) {
+                pkgForm.addEventListener('submit', e => {
+                    const val = parseFloat(pkgForm.querySelector('input[name="topup_amount"]').value);
+                        if (!Number.isInteger(val) || val < 10 || val % 10 !== 0) {
+                          e.preventDefault();
+                          alert("Top-up must be an integer ≥ 10 and in multiples of 10.");
+                    }
+                });
             }
-            if (data.wallet_qr) {
-              document.getElementById('walletQR').src = data.wallet_qr;
-            }
-        
-            // Show or hide amount input & submit button based on whether a wallet_address exists
-            if (data.wallet_address) {
-              amountGroup.style.display = 'none';
-              submitBtn.style.display   = 'none';
-            } else {
-              amountGroup.style.display = '';
-              submitBtn.style.display   = '';
-            }
-        
-            // Finally, display the modal
-            bsDepositModal.show();
-          });
-        });
-        
-        document.addEventListener('DOMContentLoaded', function() {
-          @if($announcement)
-            new bootstrap.Modal(document.getElementById('announcementModal')).show();
-          @endif
+            
+            const amountInput = document.getElementById('withdrawalAmount');
+            const feeInfo = document.getElementById('withdrawalFeeInfo');
+    
+            amountInput.addEventListener('input', function () {
+                const amount = parseFloat(amountInput.value);
+                if (!isNaN(amount) && amount > 0) {
+                    const feePercent = amount * 0.03;
+                    const fee = Math.max(7, feePercent); // updated minimum fee to 7
+                    const finalAmount = amount - fee;
+    
+                    feeInfo.textContent = `Withdrawal will charge a fee of 3% or minimum 7 USDT (whichever is higher). You will receive a total of ${finalAmount.toFixed(2)} USDT on completion.`;
+                } else {
+                    feeInfo.textContent = `Withdrawal will charge a fee of 3% or minimum 7 USDT (whichever is higher). You will receive a total of 0 USDT on completion.`;
+                }
+            });
         });
 
     </script>
+    
     <script src="{{ asset('js/users/intro-steps.js') }}"></script>
 
     </x-slot:footerFiles>

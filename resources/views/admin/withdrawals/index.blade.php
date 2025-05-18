@@ -66,6 +66,7 @@
                             <th>Username</th>
                             <th>TXID</th>
                             <th>Amount</th>
+                            <th>Fee</th>
                             <th>TRC20 Address</th>
                             <th>Status</th>
                             <th>Created At</th>
@@ -79,6 +80,7 @@
                               <td>{{ $w->user->name }}</td>
                               <td>{{ $w->txid }}</td>
                               <td>{{ number_format($w->amount, 2) }}</td>
+                              <td>{{ number_format($w->fee, 2) }}</td>
                               <td>{{ $w->trc20_address }}</td>
                               <td>
                                 <span class="badge
@@ -88,7 +90,7 @@
                                   {{ $w->status }}
                                 </span>
                               </td>
-                              <td>{{ $w->created_at->format('d M Y') }}</td>
+                              <td>{{ $w->created_at->format('d M Y H:i') }}</td>
                               <td class="text-center">
                                 @if($w->status === 'Pending')
                                   <form action="{{ route('admin.withdrawals.approve', $w->id) }}"

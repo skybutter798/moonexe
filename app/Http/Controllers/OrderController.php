@@ -29,6 +29,11 @@ class OrderController extends Controller
         // Get the current user and package profit (if available)
         $user = auth()->user();
         
+        if ($user->status == 0) {
+            Log::channel('admin')->warning("Blocked access to /order for deactivated user", ['user_id' => $user->id]);
+            return redirect()->route('user.dashboard')->withErrors('Your account has been deactivated and cannot access the trading page. Any balance from unclaimed orders will be returned to your cash wallet once the order pair completes within 24 hours.');
+        }
+        
     
         // Eager load orders with each pair and filter pairs created in the last 24 hours.
         $pairs = Pair::with('orders', 'currency', 'pairCurrency')

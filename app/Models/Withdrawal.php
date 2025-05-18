@@ -12,6 +12,7 @@ class Withdrawal extends Model
         'amount',
         'trc20_address',
         'status',
+        'fee',
     ];
     
     public function user()

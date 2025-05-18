@@ -86,9 +86,10 @@
         font-size:14px !important;
     }
     
-    .glink span:last-child {
-      display: none;
-    }
+    .glink span:nth-of-type(2) {
+  display: none;
+}
+
     
     .glink img {
       width: 18px;

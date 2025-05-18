@@ -3100,3 +3100,11 @@
 [12-Apr-2025 11:54:01 Asia/Kuala_Lumpur] PHP Fatal error:  Unparenthesized `a ? b : c ? d : e` is not supported. Use either `(a ? b : c) ? d : e` or `a ? b : (c ? d : e)` in /home/moonexe/app/app/Console/Commands/SimulateFakeUserBuyOrders.php on line 132
 [12-Apr-2025 11:55:01 Asia/Kuala_Lumpur] PHP Fatal error:  Unparenthesized `a ? b : c ? d : e` is not supported. Use either `(a ? b : c) ? d : e` or `a ? b : (c ? d : e)` in /home/moonexe/app/app/Console/Commands/SimulateFakeUserBuyOrders.php on line 132
 [23-Apr-2025 10:36:01 Asia/Kuala_Lumpur] PHP Fatal error:  Cannot use App\Http\Controllers\Admin\ReferralController as ReferralController because the name is already in use in /home/moonexe/app/routes/web.php on line 18
+[15-May-2025 18:47:50 Asia/Kuala_Lumpur] PHP Fatal error:  Allowed memory size of 33554432 bytes exhausted (tried to allocate 53248 bytes) in /home/moonexe/app/vendor/composer/autoload_classmap.php on line 1543
+[15-May-2025 18:47:50 Asia/Kuala_Lumpur] PHP Fatal error:  Allowed memory size of 33554432 bytes exhausted (tried to allocate 32768 bytes) in /home/moonexe/app/vendor/laravel/framework/src/Illuminate/Auth/SessionGuard.php on line 1
+[15-May-2025 18:48:03 Asia/Kuala_Lumpur] PHP Fatal error:  Allowed memory size of 33554432 bytes exhausted (tried to allocate 53248 bytes) in /home/moonexe/app/vendor/composer/autoload_classmap.php on line 1543
+[15-May-2025 18:48:03 Asia/Kuala_Lumpur] PHP Fatal error:  Allowed memory size of 33554432 bytes exhausted (tried to allocate 32768 bytes) in /home/moonexe/app/vendor/laravel/framework/src/Illuminate/Auth/SessionGuard.php on line 1
+[15-May-2025 10:48:35 UTC] PHP Fatal error:  Uncaught Error: Class "App\Services\TelegramService" not found in Command line code:1
+Stack trace:
+#0 {main}
+  thrown in Command line code on line 1

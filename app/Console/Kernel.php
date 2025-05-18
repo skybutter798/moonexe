@@ -4,6 +4,7 @@ namespace App\Console;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+use Carbon\Carbon;
 
 class Kernel extends ConsoleKernel
 {
@@ -22,7 +23,18 @@ class Kernel extends ConsoleKernel
         $schedule->command('seed:claim-orders 19 192')->everyThreeHours();
         $schedule->command('seed:admin-orders')->cron('*/2 * * * *');
         $schedule->command('cron:aggregate-matching')->everyFiveMinutes();
-        $schedule->command('pairs:update')->hourly();
+        $schedule->command('pairs:update')->everyTenMinutes();
+        
+        //$schedule->command('wallets:recalculate --userIds=3,500')->twiceDaily(0, 12);
+        
+        // Backfill for yesterday only
+        $yesterday = Carbon::yesterday()->toDateString();
+    
+        $schedule->command("record:assets:backfill --userIds=3,500 --start={$yesterday}")
+                 ->dailyAt('01:00');
+    
+        $schedule->command("record:profit:backfill --userIds=3,500 --start={$yesterday}")
+                 ->dailyAt('02:00');
     }
 
     /**
@@ -48,5 +60,9 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\BackfillAssetsRecords::class,
         \App\Console\Commands\BackfillProfitRecords::class,
         \App\Console\Commands\AggregateMatchingRecords::class,
+        \App\Console\Commands\SeedRandomOrders::class,
+        \App\Console\Commands\HistoryClaimOrders::class,
+        \App\Console\Commands\RecalculateWallets::class,
+        \App\Console\Commands\TelegramOneShot::class,
     ];
 }

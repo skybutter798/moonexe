@@ -13,8 +13,10 @@ use App\Models\Asset;
 use App\Models\User;
 use App\Models\Payout;
 use Illuminate\Support\Str;
+
 use App\Services\UserRangeCalculator;
 use App\Services\CoinDepositService;
+use App\Services\TelegramService;
 
 class AssetsController extends Controller
 {
@@ -316,6 +318,7 @@ class AssetsController extends Controller
             'amount'        => 'required|numeric|min:0.01',
             'transfer_type' => 'required|string|in:earning_to_cash,affiliates_to_cash',
         ]);
+        Log::debug('Requested transfer type', ['type' => $request->transfer_type]);
 
         $userId = auth()->id();
         $wallet = Wallet::firstOrCreate(['user_id' => $userId]);
@@ -411,6 +414,13 @@ class AssetsController extends Controller
     public function buyPackage(Request $request)
     {
         $user = auth()->user();
+        
+        // Prevent deactivated or inactive users
+        if ($user->status === 0) {
+            Log::channel('payout')->warning("Blocked package purchase: user status = 0", ['user_id' => $user->id]);
+            return redirect()->back()->withErrors('Your account has been deactivated and is no longer eligible for package activation or top-up. Any balance from unclaimed orders will be returned to your cash wallet once the order pair completes within 24 hours.');
+        }
+
         $userId = $user->id;
         Log::channel('payout')->info("--------> Buy package initiated", ['user_id' => $userId]);
         
@@ -585,7 +595,7 @@ class AssetsController extends Controller
         }
         // --- END BONUS LOGIC ---
         
-        return redirect()->back()->with('success', 'Trade activated successfully.');
+        return redirect()->back()->with('success', 'Trade Margin top-up successfully!');
     }
     
     public function deposit(Request $request)
@@ -671,11 +681,14 @@ class AssetsController extends Controller
 
         // Check that the cash wallet has enough funds.
         if ($wallet->cash_wallet < $request->amount) {
-            return redirect()->back()->withErrors('Insufficient balance in USDT wallet.');
+            return redirect()->back()->withErrors('Insufficient balance in Cash Wallet.');
         }
 
+        $feePercentage = 0.03;
+        $fee = round($request->amount * $feePercentage, 2);
+        $netAmount = $request->amount - $fee;
+        
         do {
-            // Generate an 8-digit number with leading zeros if necessary
             $randomNumber = str_pad(random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
             $txid = 'w_' . $randomNumber;
         } while (Withdrawal::where('txid', $txid)->exists());
@@ -683,15 +696,31 @@ class AssetsController extends Controller
         Withdrawal::create([
             'user_id'       => $userId,
             'txid'          => $txid,
-            'amount'        => $request->amount,
+            'amount'        => $netAmount, // user receives this
+            'fee'           => $fee,        // fee saved
             'trc20_address' => $request->trc20_address,
             'status'        => 'Pending',
         ]);
-
-
-        // Optionally, deduct the requested amount from the cash wallet immediately.
-        $wallet->cash_wallet = $wallet->cash_wallet - $request->amount;
+        
+        $wallet->cash_wallet -= $request->amount; // deduct full amount (net + fee)
         $wallet->save();
+        
+        $user = User::find($userId);
+        $chatId = '-1002561840571';
+        
+        $message = "<b>Withdrawal Request</b>\n"
+                 . "User ID: {$userId}\n"
+                 . "Name: {$user->name}\n"
+                 . "Email: {$user->email}\n"
+                 . "Request: {$request->amount} USDT\n"
+                 . "Fee: {$fee} USDT\n"
+                 . "Net Amount: {$netAmount} USDT\n"
+                 . "To Address: {$request->trc20_address}\n"
+                 . "TXID: {$txid}";
+        
+        $telegram = new TelegramService();
+        $telegram->sendMessage($message, $chatId);
+
 
         return redirect()->back()->with('success', 'Withdrawal request submitted successfully.');
     }

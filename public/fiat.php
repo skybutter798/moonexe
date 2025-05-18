@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Tronscan Dummy Full Clone (Fiat Edition)</title>
+  <title>SETTLEMENT LEDGER (Fiat Edition)</title>
   <style>
     /* =============== RESET & GLOBAL =============== */
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -139,13 +139,105 @@
       border-top: 1px solid #eee; margin-top: 16px; padding-top: 12px;
       text-align: center; font-size: 0.75rem; color: #999;
     }
+    
+    .nav-toggle {
+      display: none;
+      background: none;
+      border: none;
+      font-size: 1.6rem;
+    }
+    @media (max-width: 768px) {
+      .nav-toggle {
+        display: block;
+        margin-left: auto;
+      }
+    }
   </style>
+  <!--<style>
+    /* ===== Mobile Responsive (≤768px) ===== */
+    @media (max-width: 768px) {
+      /* Header & Nav */
+      .nav-inner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+      nav ul {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        gap: 0;
+      }
+      nav li {
+        width: 100%;
+        padding: 8px 0;
+        border-bottom: 1px solid #eee;
+      }
+      nav li.active::after { display: none; }
+    
+      /* Search */
+      .search-box input {
+        width: 100%;
+        max-width: 100%;
+      }
+    
+      /* Stats cards: stack */
+      .stats {
+        grid-template-columns: 1fr;
+      }
+    
+      /* Overview panel: column */
+      .trx-panel {
+        flex-direction: column;
+      }
+      .trx-panel .chart {
+        order: -1;   /* show chart on top */
+        width: 100%;
+        margin-bottom: 16px;
+      }
+      .trx-info {
+        padding: 16px;
+      }
+    
+      /* Settlement Batches scroller stays—but shrink cards */
+      .block-card {
+        flex: 0 0 140px;
+      }
+    
+      /* Tables: overflow horizontally */
+      table {
+        display: block;
+        overflow-x: auto;
+      }
+    
+      /* Top Methods + USDT panel: stack */
+      .two-col {
+        flex-direction: column;
+      }
+      .methods-table,
+      .usdt-panel {
+        width: 100%;
+      }
+    
+      /* Analytics charts: one-column grid */
+      .charts-grid {
+        grid-template-columns: 1fr;
+      }
+    
+      /* Footer: stack columns */
+      .footer-inner {
+        flex-direction: column;
+        gap: 24px;
+      }
+    }
+  </style>-->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <!-- HEADER -->
   <header>
     <div class="container nav-inner">
-      <div class="logo">PAYMENTSCAN</div>
+      <div class="logo">SETTLEMENT LEDGER</div>
       <nav>
         <ul>
           <li class="active">Overview</li>
@@ -159,9 +251,9 @@
   </header>
 
   <div class="container">
-    <!-- SEARCH + TRENDING (optional, kept for structure) -->
+    <!-- SEARCH + TRENDING -->
     <div class="search-box">
-      <input type="text" placeholder="Search by Batch / Txn ID / Merchant / Customer">
+      <input type="text" placeholder="Search by Batch / Txn ID / Merchant / App Crypt">
       <div class="trending">
         Trending Methods:
         <a>Visa</a><a>Mastercard</a><a>PayPal</a><a>Stripe</a><a>AMEX</a>
@@ -211,7 +303,14 @@
       <h3>Recent Payments</h3>
       <table>
         <thead>
-          <tr><th>Pay ID</th><th>Method</th><th>Merchant</th><th>Customer</th><th>Amount</th><th>Status</th></tr>
+          <tr>
+            <th>Pay ID</th>
+            <th>Method</th>
+            <th>Merchant</th>
+            <th>App Crypt</th>
+            <th>Amount</th>
+            <th>Status</th>
+          </tr>
         </thead>
         <tbody id="txTable"></tbody>
       </table>
@@ -223,11 +322,15 @@
       <div class="two-col">
         <div class="methods-table">
           <table>
-            <thead><tr><th>#</th><th>Method</th><th>Vol (24h)</th><th>Txns</th></tr></thead>
+            <thead>
+              <tr><th>#</th><th>Method</th><th>Vol (24h)</th><th>Txns</th></tr>
+            </thead>
             <tbody id="methodsTable"></tbody>
           </table>
         </div>
-        <div class="usdt-panel">[ Real-time Processing Volume Chart ]</div>
+        <div class="usdt-panel">
+          <canvas id="realtimeVolumeChart" height="160"></canvas>
+        </div>
       </div>
     </div>
 
@@ -254,6 +357,5 @@
   </footer>
 
   <script src="payment.js"></script>
-
 </body>
 </html>

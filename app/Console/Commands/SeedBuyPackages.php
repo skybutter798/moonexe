@@ -4,156 +4,115 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\Transfer;
+use App\Services\UserRangeCalculator;
+use App\Services\UplineDistributor;
 
 class SeedBuyPackages extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * Run with optional user id range:
-     * php artisan seed:buy-packages {from?} {to?}
-     *
-     * @var string
-     */
-    protected $signature = 'seed:buy-packages {from? : Starting user ID} {to? : Ending user ID}';
+    protected $signature = 'seed:buy-packages {from?} {to?}';
+    protected $description = 'Seed package purchases based on users’ wallet balance and real package logic';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Seed package purchases for users based on their cash wallet amount, with an optional user ID range';
-
-    /**
-     * Execute the console command.
-     *
-     * @return int
-     */
     public function handle()
     {
-        // Get optional user ID range arguments
         $from = $this->argument('from');
         $to   = $this->argument('to');
 
-        if ($from && $to) {
-            $users = User::whereBetween('id', [$from, $to])->get();
-            $this->info("Processing users with IDs between {$from} and {$to}");
-        } else {
-            $users = User::all();
-            $this->info("Processing all users");
-        }
+        $users = ($from && $to)
+            ? User::whereBetween('id', [$from, $to])->get()
+            : User::all();
 
         foreach ($users as $user) {
-            // Fetch user's wallet
             $wallet = Wallet::where('user_id', $user->id)->first();
             if (!$wallet) {
                 $this->error("Wallet not found for user ID: {$user->id}");
                 continue;
             }
 
-            // Determine the package based on the user's cash wallet amount
-            $cashAmount = $wallet->cash_wallet;
-            $selectedPackageId = null;
+            $cash = $wallet->cash_wallet;
+            if ($cash < 10 || $cash % 10 !== 0) {
+                $this->info("User ID {$user->id} skipped (invalid cash wallet amount: {$cash})");
+                continue;
+            }
 
-            if ($cashAmount == 1000) {
-                $selectedPackageId = 1;
-            } elseif ($cashAmount == 5000) {
-                $selectedPackageId = 2;
-            } elseif ($cashAmount == 10000) {
-                $selectedPackageId = 3;
+            // Determine first-time activation vs top-up
+            $isFirstTime = !$user->package;
+            $amount = $cash;
+
+            // Check and assign direct range
+            if ($isFirstTime) {
+                $range = DB::table('directranges')
+                    ->whereIn('id', [1, 2, 3])
+                    ->where('min', '<=', $amount)
+                    ->where(function ($q) use ($amount) {
+                        $q->where('max', '>=', $amount)->orWhereNull('max');
+                    })->first();
             } else {
-                $this->info("User ID {$user->id} with cash wallet {$cashAmount} does not match any predefined package.");
+                $range = DB::table('directranges')->where('id', $user->package)->first();
+            }
+
+            if (!$range) {
+                $this->info("User ID {$user->id} skipped (no range matched for amount: {$amount})");
                 continue;
             }
 
-            // Retrieve the chosen package (the "new package")
-            $newPackage = DB::table('packages')->where('id', $selectedPackageId)->first();
-            if (!$newPackage) {
-                $this->error("Package ID {$selectedPackageId} not found for user ID: {$user->id}");
-                continue;
-            }
-
-            // Override the package's eshare value with the full cash wallet amount
-            $newPackage->eshare = $cashAmount;
-
-            // Check that the user has enough funds (should be true if the amount matches)
-            if ($wallet->cash_wallet < $newPackage->eshare) {
-                $this->error("Insufficient funds for user ID: {$user->id}");
-                continue;
-            }
-
-            // Perform the transfer: deduct from cash_wallet and add to trading_wallet
-            $wallet->cash_wallet -= $newPackage->eshare;
-            $wallet->trading_wallet += $newPackage->eshare;
+            // Perform transfer
+            $wallet->cash_wallet -= $amount;
+            $wallet->trading_wallet += $amount;
             $wallet->save();
 
-            // Generate a unique transaction id for the package transfer
             do {
-                $randomNumber = str_pad(random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
-                $txid = 't_' . $randomNumber;
+                $txid = 't_' . str_pad(random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
             } while (Transfer::where('txid', $txid)->exists());
 
-            // Record the transfer with a remark indicating this is from the seed command
             $transfer = Transfer::create([
                 'user_id'     => $user->id,
                 'txid'        => $txid,
                 'from_wallet' => 'cash_wallet',
                 'to_wallet'   => 'trading_wallet',
-                'amount'      => $newPackage->eshare,
+                'amount'      => $amount,
                 'status'      => 'Completed',
-                'remark'      => 'package seed',
+                'remark'      => 'package (seeded)',
             ]);
 
-            // Check current package profit (if any) to decide whether to update package.
-            $currentPackageProfit = 0;
-            if ($user->package) {
-                $currentPackage = DB::table('packages')->where('id', $user->package)->first();
-                if ($currentPackage) {
-                    $currentPackageProfit = $currentPackage->eshare;
-                }
-            }
-            $updatePackage = true;
-            if ($currentPackageProfit > $newPackage->eshare) {
-                $updatePackage = false;
-            }
-            if ($updatePackage) {
-                $user->package = $newPackage->id;
+            // Recalculate total for range adjustment
+            $rangeData = (new UserRangeCalculator())->calculate($user);
+            $total = $rangeData['total'];
+
+            $newRange = DB::table('directranges')
+                ->where('min', '<=', $total)
+                ->where(function ($q) use ($total) {
+                    $q->where('max', '>=', $total)->orWhereNull('max');
+                })->first();
+
+            if ($newRange && $newRange->id !== $user->package) {
+                $user->package = $newRange->id;
                 $user->save();
             }
 
-            // New Direct Upline Distribution
-            // Make sure the UplineDistributor service exists and is properly configured.
-            $uplineDistributor = new \App\Services\UplineDistributor();
-            $uplineDistributor->distributeDirect($transfer, $newPackage, $user);
+            // Distribute to upline
+            (new UplineDistributor())->distributeDirect($transfer, $range, $user);
 
-            // --- BONUS TRANSFER LOGIC ---
+            // Bonus logic
             if (!empty($user->bonus)) {
-                // Normalize the bonus code (example: uppercase)
                 $bonusCode = strtoupper($user->bonus);
-                
-                // Find the promotion record using a case-insensitive search
                 $promotion = DB::table('promotions')
                     ->whereRaw('LOWER(code) = ?', [strtolower($bonusCode)])
                     ->first();
-                    
+
                 if ($promotion) {
-                    // Calculate bonus amount using the promotion's multiply factor
-                    $multiply = $promotion->multiply; // e.g., 1.0
-                    $bonusAmount = $newPackage->eshare * $multiply;
-        
-                    // Update the bonus wallet by adding the bonus amount
+                    $bonusAmount = $amount * $promotion->multiply;
                     $wallet->bonus_wallet += $bonusAmount;
                     $wallet->save();
-        
-                    // Generate a bonus transfer txid ensuring uniqueness
+
                     do {
                         $bonusTxid = 'b_' . rand(10000, 99999);
                     } while (Transfer::where('txid', $bonusTxid)->exists());
-        
-                    // Create a bonus transfer record
+
                     Transfer::create([
                         'user_id'     => $user->id,
                         'txid'        => $bonusTxid,
@@ -161,16 +120,15 @@ class SeedBuyPackages extends Command
                         'to_wallet'   => 'bonus_wallet',
                         'amount'      => $bonusAmount,
                         'status'      => 'Completed',
-                        'remark'      => 'bonus',
+                        'remark'      => 'bonus (seeded)',
                     ]);
                 }
             }
-            // --- END BONUS LOGIC ---
 
-            $this->info("Processed user ID {$user->id} using package ID {$newPackage->id} for amount {$newPackage->eshare}");
+            $this->info("User {$user->id} seeded with range ID {$range->id} and amount {$amount}");
         }
 
-        $this->info("Package seeding completed.");
+        $this->info("All seeding completed.");
         return 0;
     }
 }

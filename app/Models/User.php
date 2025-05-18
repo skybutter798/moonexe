@@ -18,6 +18,7 @@ class User extends Authenticatable
         'password',
         'last_login',
         'role',
+        'status',
         'referral',
         'referral_code',
         'referral_link',
@@ -43,10 +44,11 @@ class User extends Authenticatable
     {
         static::created(function ($user) {
             $user->wallet()->create([
-                'cash_wallet' => 0.00,
-                'register_wallet' => 0.00,
-                'epoint_wallet' => 0.00,
-                'status' => 1,
+                'cash_wallet'       => 0.00,
+                'trading_wallet'    => 0.00,
+                'earning_wallet'    => 0.00,
+                'affiliates_wallet' => 0.00,
+                'status'            => 1,
             ]);
         });
     }

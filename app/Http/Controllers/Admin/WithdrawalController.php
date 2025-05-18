@@ -6,12 +6,12 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Withdrawal;
 use App\Models\Wallet;
+use App\Services\TelegramService;
+use App\Models\User;
 
 class WithdrawalController extends Controller
 {
-    /**
-     * Display a list of withdrawal requests.
-     */
+
     public function index(Request $request)
     {
         $query = Withdrawal::with('user')->orderBy('created_at', 'desc');
@@ -54,9 +54,6 @@ class WithdrawalController extends Controller
         return view('admin.withdrawals.index', compact('withdrawals'));
     }
 
-    /**
-     * Approve a withdrawal request.
-     */
     public function approve($id)
     {
         $withdrawal = Withdrawal::findOrFail($id);
@@ -64,41 +61,68 @@ class WithdrawalController extends Controller
             return redirect()->back()->with('error', 'This withdrawal has already been processed.');
         }
 
-        // Find the user's wallet.
-        $wallet = Wallet::where('user_id', $withdrawal->user_id)->first();
-        if (!$wallet) {
-            return redirect()->back()->with('error', 'User wallet not found.');
-        }
-
-        // Check if the user has sufficient funds in the Cash Wallet.
-        if ($wallet->cash_wallet < $withdrawal->amount) {
-            return redirect()->back()->with('error', 'Insufficient funds in the user wallet.');
-        }
-
-        // Deduct the amount from the user's Cash Wallet.
-        $wallet->cash_wallet -= $withdrawal->amount;
-        $wallet->save();
-
         // Update the withdrawal status.
         $withdrawal->status = 'Completed';
         $withdrawal->save();
+        
+        // Notify Telegram
+        $user = User::find($withdrawal->user_id);
+        $chatId = '-1002561840571'; // your group ID
+        
+        $scanLink = "https://tronscan.org/#/address/{$withdrawal->trc20_address}";
+
+        $message = "<b>Withdrawal Approved ✅</b>\n"
+                 . "User ID: {$user->id}\n"
+                 . "Name: {$user->name}\n"
+                 . "Email: {$user->email}\n"
+                 . "Amount: {$withdrawal->amount} USDT\n"
+                 . "Fee: {$withdrawal->fee} USDT\n"
+                 . "Address: <a href=\"{$scanLink}\">{$withdrawal->trc20_address}</a>\n"
+                 . "TXID: {$withdrawal->txid}";
+
+        
+        $telegram = new TelegramService();
+        $telegram->sendMessage($message, $chatId);
+
 
         return redirect()->back()->with('success', 'Withdrawal approved successfully.');
     }
 
-    /**
-     * Reject a withdrawal request.
-     */
     public function reject($id)
     {
         $withdrawal = Withdrawal::findOrFail($id);
+    
         if ($withdrawal->status !== 'Pending') {
             return redirect()->back()->with('error', 'This withdrawal has already been processed.');
         }
-
+    
+        // Refund: add full requested amount (net + fee) back to wallet
+        $wallet = \App\Models\Wallet::where('user_id', $withdrawal->user_id)->first();
+        if ($wallet) {
+            $wallet->cash_wallet += ($withdrawal->amount + $withdrawal->fee);
+            $wallet->save();
+        }
+    
+        // Update status to rejected
         $withdrawal->status = 'Rejected';
         $withdrawal->save();
-
-        return redirect()->back()->with('success', 'Withdrawal rejected.');
+    
+        // Notify Telegram
+        $user = \App\Models\User::find($withdrawal->user_id);
+        $chatId = '-1002561840571';
+    
+        $message = "<b>Withdrawal Rejected ❌</b>\n"
+                 . "User ID: {$user->id}\n"
+                 . "Name: {$user->name}\n"
+                 . "Email: {$user->email}\n"
+                 . "Refunded: " . number_format($withdrawal->amount + $withdrawal->fee, 2) . " USDT\n"
+                 . "Address: {$withdrawal->trc20_address}\n"
+                 . "TXID: {$withdrawal->txid}";
+    
+        $telegram = new \App\Services\TelegramService();
+        $telegram->sendMessage($message, $chatId);
+    
+        return redirect()->back()->with('success', 'Withdrawal rejected and refunded.');
     }
+
 }
