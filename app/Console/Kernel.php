@@ -24,7 +24,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('seed:admin-orders')->cron('*/2 * * * *');
         $schedule->command('cron:aggregate-matching')->everyFiveMinutes();
         $schedule->command('pairs:update')->everyTenMinutes();
-        
+
         //$schedule->command('wallets:recalculate --userIds=3,500')->twiceDaily(0, 12);
         
         // Backfill for yesterday only
@@ -64,5 +64,6 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\HistoryClaimOrders::class,
         \App\Console\Commands\RecalculateWallets::class,
         \App\Console\Commands\TelegramOneShot::class,
+        \App\Console\Commands\ProcessMegadropBonus::class,
     ];
 }

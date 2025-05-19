@@ -240,7 +240,6 @@ class AssetsController extends Controller
             return redirect()->back()->withErrors('Your account is not eligible to transfer any bonus. Please contact support for more information.');
         }
     
-        // Check if account is already deactivated
         if ($user->status == 0) {
             Log::channel('admin')->warning("Transfer attempt by deactivated user", ['user_id' => $userId]);
             return redirect()->back()->withErrors('Your account has been deactivated and cannot perform this action.');
@@ -248,55 +247,64 @@ class AssetsController extends Controller
     
         Log::channel('admin')->info("User and Wallet found", ['user_id' => $userId]);
     
-        $amount = (float) $wallet->trading_wallet;
+        // Calculate campaign bonus
+        $campaignBonus = Transfer::where('user_id', $userId)
+            ->where('from_wallet', 'cash_wallet')
+            ->where('to_wallet', 'trading_wallet')
+            ->where('status', 'Completed')
+            ->where('remark', 'campaign')
+            ->sum('amount');
     
-        // Check if there are funds to transfer
-        if ($amount <= 0) {
-            Log::channel('admin')->info("No trading wallet balance to transfer", [
+        // Real balance = trading_wallet - campaign bonus
+        $realBalance = $wallet->trading_wallet - $campaignBonus;
+    
+        if ($realBalance <= 0) {
+            Log::channel('admin')->warning("Only campaign bonus available, transfer blocked", [
                 'user_id' => $userId,
-                'available' => $amount
+                'trading_wallet' => $wallet->trading_wallet,
+                'campaign_bonus' => $campaignBonus
             ]);
-            return redirect()->back()->withErrors('No balance available for transfer.');
+            return redirect()->back()->withErrors('You cannot transfer campaign bonus. No real balance available.');
         }
-        Log::channel('admin')->info("Sufficient funds confirmed", [
-            'user_id' => $userId,
-            'trading_wallet_balance' => $wallet->trading_wallet
-        ]);
     
-        // Calculate 20% fee
+        // Use only real balance
+        $amount = (float) $realBalance;
         $feeRate = 0.20;
         $fee = $amount * $feeRate;
         $netAmount = $amount - $fee;
+    
         Log::channel('admin')->info("Fee calculated", [
             'user_id' => $userId,
-            'amount' => $amount,
+            'real_balance' => $amount,
             'fee' => $fee,
             'net_amount' => $netAmount
         ]);
     
         // Update wallet balances
-        $wallet->trading_wallet = 0; // trading wallet fully cleared
+        $wallet->trading_wallet = 0; // Reset whole trading wallet (real + campaign)
         $wallet->cash_wallet += $netAmount;
         $wallet->save();
+    
         Log::channel('admin')->info("Wallet balances updated", [
             'user_id' => $userId,
-            'new_trading_wallet_balance' => $wallet->trading_wallet,
-            'new_cash_wallet_balance' => $wallet->cash_wallet
+            'new_trading_wallet' => $wallet->trading_wallet,
+            'new_cash_wallet' => $wallet->cash_wallet
         ]);
     
-        // Deactivate the user account
+        // Deactivate user
         $user->status = 0;
         $user->save();
+    
         Log::channel('admin')->info("User account deactivated after transfer", ['user_id' => $userId]);
     
-        // Generate unique transaction ID
+        // Generate unique txid
         do {
-            $randomNumber = str_pad(random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
-            $txid = 't_' . $randomNumber;
+            $txid = 't_' . str_pad(random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
         } while (Transfer::where('txid', $txid)->exists());
+    
         Log::channel('admin')->info("Transaction ID generated", ['txid' => $txid]);
     
-        // Record the transfer
+        // Record transfer
         Transfer::create([
             'user_id'     => $userId,
             'txid'        => $txid,
@@ -304,12 +312,14 @@ class AssetsController extends Controller
             'to_wallet'   => 'cash_wallet',
             'amount'      => $netAmount,
             'status'      => 'Completed',
-            'remark'      => number_format($fee, 2),
+            'remark'      => number_format($fee, 2), // Optional: store fee as remark
         ]);
+    
         Log::channel('admin')->info("Transfer record created", ['txid' => $txid]);
     
         return redirect()->back()->with('success', 'Trading wallet transfer completed successfully. Your account has been deactivated. Fee deducted: ' . number_format($fee, 2) . ' USDT');
     }
+
     
     public function transfer(Request $request)
     {

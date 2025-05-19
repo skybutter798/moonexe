@@ -243,7 +243,7 @@
             <div class="row mb-4 mb-md-0 align-items-center">
                 <div class="col-md-6">
                     <strong class="text-dark">Hi, {{ $user->name }}</strong>
-                    <button id="restartTourBtn" type="button" class="btn btn-sm btn-link p-0 ms-2" title="Show tutorial again" style="font-size: 14px;"> <i class="bi bi-exclamation-circle"></i> </button>
+                    <button id="restartTourBtn" type="button" class="btn btn-sm btn-link p-0 ms-2" title="Show tutorial again" style="font-size: 14px; background-color:#4d80b5; width: 30px; height: 30px"> <i class="bi bi-exclamation-circle text-white" style="font-size: 1.2rem;"></i> </button>
                     
                     @if(isset($currentRange))
                         <p class="mt-1">
@@ -308,6 +308,7 @@
         <!-- Sub-Wallets -->
         <div class="row">
             <h2 class="text-primary"><strong>Wallet Balance</strong></h2>
+            
             <!-- USDT Wallet Card -->
             <div class="col-12 col-md-6 mb-3">
                 <div class="card h-100 text-center p-2 assets" style="background-image: url('/img/usdt.png'); background-repeat: no-repeat; background-position: left center;">
@@ -320,6 +321,9 @@
                         <button id="activateTradingAccount" class="btn wallet-btn btn-sm mt-2" data-bs-toggle="modal" data-bs-target="#packageModal">
                             {{ $hasPackageTransfer ? 'Top-up' : 'Activate' }}
                         </button>
+                    </div>
+                    <div id="megadropCountdown" class="mt-2 text-danger small fw-bold">
+                        CAMPAIGN <span id="countdownTimer">Loading...</span>
                     </div>
                 </div>
             </div>
@@ -352,6 +356,13 @@
                         </a>
                         <p class="openorder"><small class="text-danger">*Open Order: ${{ number_format($pendingBuy, 4) }}</small></p>
                     </div>
+                    <div class="mt-1 text-black small" id="bonusInfoText">
+                        Total CAMPAIGN Leverage Bonus: <strong class="text-success">${{ number_format($megadropDeposit, 2) }}</strong><br>
+                        <small class="text-black" id="bonusCreditNote">
+                            Bonus will be credited based on this amount after CAMPAIGN ends.
+                        </small>
+                    </div>
+
                 </div>
             </div>
             
@@ -408,6 +419,13 @@
                         </div>
                         <p class="openorder"><small class="text-danger">*Open Order: ${{ number_format($pendingBuy, 4) }}</small></p>
                     </div>
+                    <div class="mt-1 text-black small" id="bonusInfoText">
+                        Total CAMPAIGN Leverage Bonus: <strong class="text-success">${{ number_format($megadropDeposit, 2) }}</strong><br>
+                        <small class="text-black" id="bonusCreditNote">
+                            Bonus will be credited based on this amount after CAMPAIGN ends.
+                        </small>
+                    </div>
+
                 </div>
             </div>
             @endif
@@ -688,14 +706,19 @@
                     <form id="tradingTransferForm" action="{{ route('user.tradingTransfer') }}" method="POST">
                         @csrf
                         <div class="modal-body">
-                            <p><strong>Trading Balance:</strong> {{ number_format($wallets->trading_wallet, 2) }} USDT</p>
+                            <p><strong>Trading Balance:</strong> {{ number_format($wallets->trading_wallet, 2) }} USDT ({{ number_format($campaignTradingBonus, 2) }} Campaign bonus) </p>
                             <p><strong>Fee Rate:</strong> 20%</p>
                             <p class="text-danger">
                                 *** Upon termination, your full trading balance, including any open orders, will be credited to your USDT wallet. A 20% fee will be deducted from your trading balance as part of the process. 
                             </p>
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-primary" id="confirmTerminateBtn">Terminate</button>
+                            @if($realTradingBalance <= 0)
+                                <button type="button" class="btn btn-secondary" disabled>Insufficient Real Balance</button>
+                            @else
+                                <button type="button" class="btn btn-primary" id="confirmTerminateBtn">Terminate</button>
+                            @endif
+
                         </div>
                     </form>
                 </div>
@@ -721,7 +744,6 @@
             </div>
         </div>
 
-
         <!-- Direct Range Modal -->
         <div class="modal fade" id="packageModal" tabindex="-1" aria-labelledby="packageModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-lg">
@@ -731,11 +753,23 @@
                             <h5 class="modal-title" id="packageModalLabel">
                                 {{ $hasPackageTransfer ? 'Top-up' : 'Activate Trade' }}
                             </h5>
-                            @if(!$user->package)
-                                <small class="text-muted">Please choose a package for starting activation of your trading margin.</small>
-                            @else
-                                <small class="text-muted">Please key in the top-up amount to your trading margin.</small>
-                            @endif
+                            <div class="mt-1">
+                                <p class="text-muted d-block">
+                                    @if(!$user->package)
+                                        Please choose a package to activate your trading margin.
+                                    @else
+                                        Please key in the top-up amount to your trading margin.
+                                    @endif
+                                </p>
+                                <hr>
+                                <p id="modalCountdownNote" class="text-danger fw-bold d-block">
+                                    ⏳ CAMPAIGN <span id="modalCountdownTimer">Loading...</span><br>
+                                    <span class="text-danger fw-normal" id="bonusNote">
+                                        <strong> Register and top up between May 20 and May 27, 2025 (New York Time, EDT) to qualify for the bonus trading margin!</strong>
+                                    </span>
+                                </p>
+
+                            </div>
                         </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
@@ -772,8 +806,8 @@
                                     <div class="mb-2">
                                         <input type="number" name="topup_amount" class="form-control" placeholder="Enter top-up amount" min="10" step="10" required>
                                     </div>
-                                    <strong class="text-danger">*Top-up must be in multiples of 10. No decimal values allowed.</strong>
-                                    <button type="submit" class="btn btn-primary w-100">Top-up</button>
+                                    <span class="text-danger">*Top-up must be in multiples of 10. No decimal values allowed.</span>
+                                    <button type="submit" class="btn btn-primary w-100 mt-2">Top-up</button>
                                 </form>
                             </div>
                         @endif
@@ -866,9 +900,6 @@
             </div>
         </div>
     @endif
-
-
-
           
     <script>
         // -------------------------------
@@ -1169,14 +1200,18 @@
         withdrawalAmountInput.addEventListener('input', updateFeeInfo);
         
         document.getElementById('confirmTerminateBtn').addEventListener('click', function() {
-            const tradingBalance = {{ $wallets->trading_wallet ?? 0 }};
+            const tradingBalance = {{ $realTradingBalance ?? 0 }};
             const fee = tradingBalance * 0.20;
             const netAmount = tradingBalance - fee;
         
             const confirmationText = `
-                Please note: A 20% fee will be deducted from your total trading balance (${fee.toFixed(2)} USDT). The remaining amount of ${netAmount.toFixed(2)} USDT will be transferred to your USDT wallet. 
-                
-                This action will TERMINATE your trading account. Any open orders balances will be automatically credited to your USDT wallet upon closing time. After termination, you will no longer be able to perform any trades. However, you will still be able to view your account balance and transaction history.
+                Please note: A 20% fee will be deducted from your real trading balance of ${{ number_format($realTradingBalance, 2) }} (excluding campaign bonus). 
+                - Fee: ${fee.toFixed(2)} USDT
+                - Net transferred to USDT Wallet: ${netAmount.toFixed(2)} USDT
+        
+                Campaign bonus of {{ number_format($campaignTradingBonus, 2) }} USDT is not eligible for withdrawal and will be forfeited.
+        
+                This action will TERMINATE your trading account. Any open orders will be closed and funds returned to your USDT Wallet.
                 
                 Do you wish to proceed?
             `;
@@ -1186,6 +1221,7 @@
             const confirmModal = new bootstrap.Modal(document.getElementById('tradingTransferConfirmModal'));
             confirmModal.show();
         });
+
     
         
         document.getElementById('finalizeTerminateBtn').addEventListener('click', function() {
@@ -1383,6 +1419,63 @@
         });
 
     </script>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const startMY = new Date('2025-05-19T12:00:00+08:00').getTime(); // Start at 12:00 PM MYT
+        const endMY   = new Date('2025-05-19T12:15:00+08:00').getTime(); // End at 12:15 PM MYT
+    
+        function pad(num) {
+            return num.toString().padStart(2, '0');
+        }
+    
+        function updateCountdown() {
+            const now = new Date().getTime();
+            let label = '';
+            let target = null;
+            let text = '';
+    
+            if (now < startMY) {
+                label = "begin in:";
+                target = startMY;
+            } else if (now >= startMY && now < endMY) {
+                label = "ending in:";
+                target = endMY;
+            } else {
+                label = "has ended.";
+                text = "";
+                // Remove or change bonus credit note after campaign ends
+                const creditNote = document.getElementById('bonusCreditNote');
+                const bonuscreditNote = document.getElementById('bonusNote');
+                
+                if (creditNote) {
+                    creditNote.remove();
+                    bonuscreditNote.remove();
+                }
+            }
+    
+            if (target) {
+                const distance = target - now;
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+    
+                text = `${days} DAY ${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+            }
+    
+            const walletLabel = document.getElementById("countdownTimer");
+            const modalLabel = document.getElementById("modalCountdownTimer");
+    
+            if (walletLabel) walletLabel.innerHTML = label + ' ' + text;
+            if (modalLabel) modalLabel.innerHTML = label + ' ' + text;
+        }
+    
+        updateCountdown();
+        setInterval(updateCountdown, 1000);
+    });
+    </script>
+
     
     <script src="{{ asset('js/users/intro-steps.js') }}"></script>
 

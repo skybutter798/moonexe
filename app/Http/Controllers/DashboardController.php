@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Promotion;
 use App\Models\Annoucement;
 use App\Models\Transfer;
+use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
@@ -68,6 +69,42 @@ class DashboardController extends Controller
         $announcement = Annoucement::where('status', 1)
                        ->orderBy('updated_at', 'desc')
                        ->first();
+                       
+        // Set the MEGADROP campaign start and end time
+        $startMY = Carbon::createFromFormat('Y-m-d H:i:s', '2025-05-19 12:00:00', 'Asia/Kuala_Lumpur');
+        $endMY   = Carbon::createFromFormat('Y-m-d H:i:s', '2025-05-19 12:15:00', 'Asia/Kuala_Lumpur');
+        
+        // Get the user
+        $user = \App\Models\User::find($userId);
+        
+        // Base sum of completed package transfers during MEGADROP
+        $megadropDeposit = \App\Models\Transfer::where('user_id', $userId)
+            ->where('status', 'Completed')
+            ->where('remark', 'package')
+            ->whereBetween('created_at', [$startMY, $endMY])
+            ->sum('amount');
+        
+        // Apply logic based on user registration date
+        if ($user && $user->created_at < $startMY) {
+            // Registered before MEGADROP → x1.5 bonus
+            $megadropDeposit *= 1.5;
+        } elseif ($user && $user->created_at >= $startMY) {
+            // Registered during MEGADROP → +100 bonus
+            $megadropDeposit += 100;
+        }
+        
+        // Bonus funds (campaign bonus)
+        $campaignTradingBonus = \App\Models\Transfer::where('user_id', $userId)
+            ->where('from_wallet', 'cash_wallet')
+            ->where('to_wallet', 'trading_wallet')
+            ->where('status', 'Completed')
+            ->where('remark', 'campaign')
+            ->sum('amount');
+        
+        // Real trading balance = total - campaign bonus
+        $realTradingBalance = max(0, $wallets->trading_wallet - $campaignTradingBonus);
+
+
         
         $data = [
             'title'              => 'Dashboard',
@@ -82,6 +119,9 @@ class DashboardController extends Controller
             'assetsRecords'      => $assetsRecords,
             'profitRecords'      => $profitRecords,
             'forexRecords'       => $forexRecords,
+            "megadropDeposit"      => $megadropDeposit,
+            'realTradingBalance'     => $realTradingBalance,
+            'campaignTradingBonus'   => $campaignTradingBonus,
         ];
         
         $data['tradermadeApiKey'] = config('services.tradermade.key');
