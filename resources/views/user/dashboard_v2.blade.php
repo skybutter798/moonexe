@@ -159,6 +159,14 @@
             #announcementModal + .modal-backdrop {
               z-index: 19999 !important;
             }
+            
+            #campaignProgressBar {
+                font-weight: bold;
+                font-size: 14px;
+                line-height: 28px;
+                color: white;
+            }
+
         </style>
     </x-slot:headerFiles>
 
@@ -208,8 +216,6 @@
             </div>
           </div>
         @endif
-
-
         
         <!-- announcement -->
         <div class="col-12">
@@ -308,7 +314,22 @@
         <!-- Sub-Wallets -->
         <div class="row">
             <h2 class="text-primary"><strong>Wallet Balance</strong></h2>
-            
+            <div class="mt-4">
+                <h4 class="text-primary text-center">
+                  🎯 Campaign Progress
+                </h4>
+                <div class="text-center fw-bold mb-2">
+                  <h3 id="campaignProgressText">$300,000 / $300,000 Remaining</h3>
+                </div>
+
+                <div class="progress" style="height: 28px; border-radius: 12px;">
+                    <div id="campaignProgressBar" class="progress-bar bg-primary progress-bar-striped progress-bar-animated"
+                         role="progressbar" aria-valuemin="0" aria-valuemax="100" style="width: 100%; transition: width 1s ease;">
+                    </div>
+                </div>
+            </div>
+
+
             <!-- USDT Wallet Card -->
             <div class="col-12 col-md-6 mb-3">
                 <div class="card h-100 text-center p-2 assets" style="background-image: url('/img/usdt.png'); background-repeat: no-repeat; background-position: left center;">
@@ -322,7 +343,7 @@
                             {{ $hasPackageTransfer ? 'Top-up' : 'Activate' }}
                         </button>
                     </div>
-                    <div id="megadropCountdown" class="mt-2 text-danger small fw-bold">
+                    <div id="megadropCountdown" class="mt-2 text-danger small fw-bold ">
                         CAMPAIGN <span id="countdownTimer">Loading...</span>
                     </div>
                 </div>
@@ -356,8 +377,8 @@
                         </a>
                         <p class="openorder"><small class="text-danger">*Open Order: ${{ number_format($pendingBuy, 4) }}</small></p>
                     </div>
-                    <div class="mt-1 text-black small" id="bonusInfoText">
-                        Total CAMPAIGN Leverage Bonus: <strong class="text-success">${{ number_format($megadropDeposit, 2) }}</strong><br>
+                    <div class="mt-1 text-black small " id="bonusInfoText">
+                        Congratulation! Total CAMPAIGN Leverage Bonus: <strong class="text-success">${{ number_format($megadropDeposit, 2) }}</strong><br>
                         <small class="text-black" id="bonusCreditNote">
                             Bonus will be credited based on this amount after CAMPAIGN ends.
                         </small>
@@ -419,8 +440,8 @@
                         </div>
                         <p class="openorder"><small class="text-danger">*Open Order: ${{ number_format($pendingBuy, 4) }}</small></p>
                     </div>
-                    <div class="mt-1 text-black small" id="bonusInfoText">
-                        Total CAMPAIGN Leverage Bonus: <strong class="text-success">${{ number_format($megadropDeposit, 2) }}</strong><br>
+                    <div class="mt-1 text-black small " id="bonusInfoText">
+                        Congratulation! Total CAMPAIGN Leverage Bonus: <strong class="text-success">${{ number_format($megadropDeposit, 2) }}</strong><br>
                         <small class="text-black" id="bonusCreditNote">
                             Bonus will be credited based on this amount after CAMPAIGN ends.
                         </small>
@@ -706,7 +727,7 @@
                     <form id="tradingTransferForm" action="{{ route('user.tradingTransfer') }}" method="POST">
                         @csrf
                         <div class="modal-body">
-                            <p><strong>Trading Balance:</strong> {{ number_format($wallets->trading_wallet, 2) }} USDT ({{ number_format($campaignTradingBonus, 2) }} Campaign bonus) </p>
+                            <p><strong>Trading Balance:</strong> {{ number_format($wallets->trading_wallet - $campaignTradingBonus, 2) }} USDT  ({{ number_format($campaignTradingBonus, 2) }} Campaign bonus) </p>
                             <p><strong>Fee Rate:</strong> 20%</p>
                             <p class="text-danger">
                                 *** Upon termination, your full trading balance, including any open orders, will be credited to your USDT wallet. A 20% fee will be deducted from your trading balance as part of the process. 
@@ -762,7 +783,7 @@
                                     @endif
                                 </p>
                                 <hr>
-                                <p id="modalCountdownNote" class="text-danger fw-bold d-block">
+                                <p id="modalCountdownNote" class="text-danger fw-bold d-block ">
                                     ⏳ CAMPAIGN <span id="modalCountdownTimer">Loading...</span><br>
                                     <span class="text-danger fw-normal" id="bonusNote">
                                         <strong> Register and top up between May 20 and May 27, 2025 (New York Time, EDT) to qualify for the bonus trading margin!</strong>
@@ -1417,62 +1438,113 @@
                 }
             });
         });
-
+    </script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+        
+            const startNY = new Date('2025-05-20T04:01:00Z').getTime(); // UTC equivalent
+            const endNY   = new Date('2025-06-06T03:59:00Z').getTime(); // UTC equivalent
+        
+            function pad(num) {
+                return num.toString().padStart(2, '0');
+            }
+        
+            function updateCountdown() {
+                const now = new Date().getTime();
+                let label = '';
+                let target = null;
+                let text = '';
+        
+                if (now < startNY) {
+                    label = "begin in:";
+                    target = startNY;
+                } else if (now >= startNY && now < endNY) {
+                    label = "ending in:";
+                    target = endNY;
+                } else {
+                    label = "has ended.";
+                    text = "";
+                    const creditNote = document.getElementById('bonusCreditNote');
+                    const bonuscreditNote = document.getElementById('bonusNote');
+        
+                    if (creditNote) creditNote.remove();
+                    if (bonuscreditNote) bonuscreditNote.remove();
+                }
+        
+                if (target) {
+                    const distance = target - now;
+                    const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+        
+                    text = `${days} DAY ${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+                }
+        
+                const walletLabel = document.getElementById("countdownTimer");
+                const modalLabel = document.getElementById("modalCountdownTimer");
+        
+                if (walletLabel) walletLabel.innerHTML = label + ' ' + text;
+                if (modalLabel) modalLabel.innerHTML = label + ' ' + text;
+            }
+        
+            updateCountdown();
+            setInterval(updateCountdown, 1000);
+        });
     </script>
     
     <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const startMY = new Date('2025-05-19T12:00:00+08:00').getTime(); // Start at 12:00 PM MYT
-        const endMY   = new Date('2025-05-19T12:15:00+08:00').getTime(); // End at 12:15 PM MYT
+        const DAY1_START = new Date('2025-05-20T04:00:00Z').getTime(); // May 20, 00:00 NYT
+        const DAY1_END   = new Date('2025-05-21T03:59:59Z').getTime(); // May 20, 23:59 NYT
+        const CAMPAIGN_END = new Date('2025-06-06T03:59:59Z').getTime(); // June 5, 23:59 NYT
     
-        function pad(num) {
-            return num.toString().padStart(2, '0');
-        }
+        const TOTAL_AMOUNT     = 3000000;
+        const DAY1_DEDUCTION   = 1000000;
+        const REMAINING_AMOUNT = TOTAL_AMOUNT - DAY1_DEDUCTION;
     
-        function updateCountdown() {
-            const now = new Date().getTime();
-            let label = '';
-            let target = null;
-            let text = '';
+        const progressTextEl = document.getElementById('campaignProgressText');
+        const progressBarEl  = document.getElementById('campaignProgressBar');
     
-            if (now < startMY) {
-                label = "begin in:";
-                target = startMY;
-            } else if (now >= startMY && now < endMY) {
-                label = "ending in:";
-                target = endMY;
+        function getCurrentValue() {
+            const now = Date.now();
+    
+            if (now >= CAMPAIGN_END) return 0;
+            if (now <= DAY1_START) return TOTAL_AMOUNT;
+    
+            if (now <= DAY1_END) {
+                // Phase 1: deduct $1,000,000 during Day 1
+                const elapsed = now - DAY1_START;
+                const totalDay1Duration = DAY1_END - DAY1_START;
+                const deduction = (elapsed / totalDay1Duration) * DAY1_DEDUCTION;
+                return Math.max(0, Math.floor(TOTAL_AMOUNT - deduction));
             } else {
-                label = "has ended.";
-                text = "";
-                // Remove or change bonus credit note after campaign ends
-                const creditNote = document.getElementById('bonusCreditNote');
-                const bonuscreditNote = document.getElementById('bonusNote');
-                
-                if (creditNote) {
-                    creditNote.remove();
-                    bonuscreditNote.remove();
-                }
+                // Phase 2: deduct remaining $2,000,000 after Day 1
+                const elapsed = now - DAY1_END;
+                const totalRemainingDuration = CAMPAIGN_END - DAY1_END;
+                const deduction = (elapsed / totalRemainingDuration) * REMAINING_AMOUNT;
+                return Math.max(0, Math.floor(TOTAL_AMOUNT - DAY1_DEDUCTION - deduction));
             }
-    
-            if (target) {
-                const distance = target - now;
-                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-    
-                text = `${days} DAY ${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
-            }
-    
-            const walletLabel = document.getElementById("countdownTimer");
-            const modalLabel = document.getElementById("modalCountdownTimer");
-    
-            if (walletLabel) walletLabel.innerHTML = label + ' ' + text;
-            if (modalLabel) modalLabel.innerHTML = label + ' ' + text;
         }
     
-        updateCountdown();
-        setInterval(updateCountdown, 1000);
+        function updateProgressBar() {
+            const currentValue = getCurrentValue();
+            const percentage = ((currentValue / TOTAL_AMOUNT) * 100).toFixed(2);
+    
+            progressTextEl.innerHTML = `<span style="color: red; font-size: 1.0em;">$${currentValue.toLocaleString()} / $${TOTAL_AMOUNT.toLocaleString()}</span> Remaining`;
+            progressBarEl.style.width = `${percentage}%`;
+            progressBarEl.setAttribute('aria-valuenow', percentage);
+            //console.log(`[Campaign Progress] Remaining: $${currentValue.toLocaleString()} (${percentage}%)`);
+        }
+    
+        function loopUpdate() {
+            updateProgressBar();
+            const interval = Math.floor(Math.random() * (8000 - 2000 + 1)) + 2000;
+            setTimeout(loopUpdate, interval);
+        }
+    
+        loopUpdate();
     });
     </script>
 

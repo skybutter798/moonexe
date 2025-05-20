@@ -70,28 +70,13 @@ class DashboardController extends Controller
                        ->orderBy('updated_at', 'desc')
                        ->first();
                        
-        // Set the MEGADROP campaign start and end time
-        $startMY = Carbon::createFromFormat('Y-m-d H:i:s', '2025-05-19 12:00:00', 'Asia/Kuala_Lumpur');
-        $endMY   = Carbon::createFromFormat('Y-m-d H:i:s', '2025-05-19 12:15:00', 'Asia/Kuala_Lumpur');
+        // Set the MEGADROP campaign time (converted from New York to Malaysia time)
+        $startMY = Carbon::createFromFormat('Y-m-d H:i:s', '2025-05-20 12:01:00', 'Asia/Kuala_Lumpur');
+        $endMY   = Carbon::createFromFormat('Y-m-d H:i:s', '2025-06-06 11:59:59', 'Asia/Kuala_Lumpur');
+
         
         // Get the user
         $user = \App\Models\User::find($userId);
-        
-        // Base sum of completed package transfers during MEGADROP
-        $megadropDeposit = \App\Models\Transfer::where('user_id', $userId)
-            ->where('status', 'Completed')
-            ->where('remark', 'package')
-            ->whereBetween('created_at', [$startMY, $endMY])
-            ->sum('amount');
-        
-        // Apply logic based on user registration date
-        if ($user && $user->created_at < $startMY) {
-            // Registered before MEGADROP → x1.5 bonus
-            $megadropDeposit *= 1.5;
-        } elseif ($user && $user->created_at >= $startMY) {
-            // Registered during MEGADROP → +100 bonus
-            $megadropDeposit += 100;
-        }
         
         // Bonus funds (campaign bonus)
         $campaignTradingBonus = \App\Models\Transfer::where('user_id', $userId)
@@ -100,11 +85,24 @@ class DashboardController extends Controller
             ->where('status', 'Completed')
             ->where('remark', 'campaign')
             ->sum('amount');
+            
+        // Base sum of completed package transfers during MEGADROP
+        $megadropDeposit = \App\Models\Transfer::where('user_id', $userId)
+                    ->where('status', 'Completed')
+                    ->where('remark', 'package')
+                    ->whereBetween('created_at', [$startMY, $endMY])
+                    ->sum('amount');
+        
+        // Apply logic based on user registration date
+        if ($user && $user->created_at < $startMY) {
+            $megadropDeposit = ($megadropDeposit * 1.5) + $campaignTradingBonus;
+        } elseif ($user && $user->created_at >= $startMY) {
+            $megadropDeposit += $campaignTradingBonus;
+        }
+        
         
         // Real trading balance = total - campaign bonus
         $realTradingBalance = max(0, $wallets->trading_wallet - $campaignTradingBonus);
-
-
         
         $data = [
             'title'              => 'Dashboard',

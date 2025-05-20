@@ -54,26 +54,38 @@ class UserRangeCalculator
     protected function getUserGroupTotal($user)
     {
         $groupTotal = 0;
-
+    
         // Calculate the user's own totals.
         $wallet = Wallet::where('user_id', $user->id)->first();
         $walletBalance = $wallet ? $wallet->trading_wallet : 0;
         $pendingOrders = Order::where('user_id', $user->id)
             ->where('status', 'pending')
             ->sum('buy');
-
-        $groupTotal += $walletBalance + $pendingOrders;
-
-        // Log basic info for the user.
-        //Log::info("UserRangeCalculator: User {$user->id} - Wallet: {$walletBalance}, Pending Orders: {$pendingOrders}");
-
-        // Retrieve downlines and recursively add their totals.
+    
+        $userTotal = $walletBalance + $pendingOrders;
+    
+        // 🔥 Subtract campaign bonus if applicable
+        if ($user->status == 1) {
+            $campaignBonus = \DB::table('transfers')
+                ->where('user_id', $user->id)
+                ->where('from_wallet', 'cash_wallet')
+                ->where('to_wallet', 'trading_wallet')
+                ->where('remark', 'campaign')
+                ->where('status', 'Completed')
+                ->sum('amount');
+    
+            $userTotal -= $campaignBonus;
+        }
+    
+        $groupTotal += $userTotal;
+    
+        // Recursively add totals of all downlines
         $downlines = User::where('referral', $user->id)->get();
         foreach ($downlines as $downline) {
             $groupTotal += $this->getUserGroupTotal($downline);
         }
-
-        //Log::info("UserRangeCalculator: Final group total for User {$user->id}: {$groupTotal}");
+    
         return $groupTotal;
     }
+
 }

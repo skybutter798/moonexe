@@ -25,7 +25,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('cron:aggregate-matching')->everyFiveMinutes();
         $schedule->command('pairs:update')->everyTenMinutes();
 
-        //$schedule->command('wallets:recalculate --userIds=3,500')->twiceDaily(0, 12);
+        $schedule->command('wallets:recalculate "3,500"')->twiceDaily(0, 12);
         
         // Backfill for yesterday only
         $yesterday = Carbon::yesterday()->toDateString();
@@ -65,5 +65,7 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\RecalculateWallets::class,
         \App\Console\Commands\TelegramOneShot::class,
         \App\Console\Commands\ProcessMegadropBonus::class,
+        \App\Console\Commands\CampaignAddToTradingWallet::class,
+
     ];
 }

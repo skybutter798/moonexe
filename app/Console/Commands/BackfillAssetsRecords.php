@@ -98,15 +98,14 @@ class BackfillAssetsRecords extends Command
                 $cashWallet = (float)$cashDeposits - (float)$cashWithdrawals;
 
                 // Calculate Trading Wallet Deduction for the day:
-                $tradingTransfers = DB::table('transfers')
+                $tradingDeduction = DB::table('transfers')
                     ->where('user_id', $user->id)
                     ->where('status', 'Completed')
                     ->where('from_wallet', 'trading_wallet')
                     ->where('to_wallet', 'cash_wallet')
                     ->whereDate('updated_at', '<=', $currentDate)
-                    ->sum('amount');
+                    ->sum(DB::raw('CAST(remark AS DECIMAL(10,2))'));
 
-                $tradingDeduction = (float)$tradingTransfers * 0.20;
 
                 // Calculate Earning Wallet for the day:
                 $earningOrders = DB::table('orders')

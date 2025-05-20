@@ -319,7 +319,6 @@ class AssetsController extends Controller
     
         return redirect()->back()->with('success', 'Trading wallet transfer completed successfully. Your account has been deactivated. Fee deducted: ' . number_format($fee, 2) . ' USDT');
     }
-
     
     public function transfer(Request $request)
     {

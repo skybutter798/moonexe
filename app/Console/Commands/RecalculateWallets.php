@@ -7,117 +7,114 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-use Carbon\Carbon;
-
 class RecalculateWallets extends Command
 {
     protected $signature = 'wallets:recalculate 
-                            {--userIds= : Comma-separated list of user IDs or a range (e.g. "2,195")}';
+                            {userRange : Comma-separated user ID range or list, e.g. "3,100" or "1,5,7"}';
 
     protected $description = 'Recalculate and update wallets (cash, trading, earning, affiliates, bonus) with correct formulas.';
 
     public function handle()
     {
-        $userIdsOption = $this->option('userIds');
-        $userIds = [];
-
-        if ($userIdsOption) {
-            $ids = array_map('trim', explode(',', $userIdsOption));
-            $userIds = count($ids) === 2 ? range((int)$ids[0], (int)$ids[1]) : $ids;
-        } else {
-            $input = $this->ask('Enter user IDs (comma-separated)');
-            $ids = array_map('trim', explode(',', $input));
-            $userIds = count($ids) === 2 ? range((int)$ids[0], (int)$ids[1]) : $ids;
-        }
+        // Parse argument
+        $userRangeInput = $this->argument('userRange');
+        $ids = array_map('trim', explode(',', $userRangeInput));
+        $userIds = count($ids) === 2 && is_numeric($ids[0]) && is_numeric($ids[1])
+            ? range((int)$ids[0], (int)$ids[1])
+            : $ids;
 
         $users = User::whereIn('id', $userIds)
-             ->where('status', '!=', 2)
-             ->get();
-
+            ->where('status', '!=', 2)
+            ->get();
 
         foreach ($users as $user) {
             $this->info("Recalculating wallets for user ID: {$user->id}");
 
             /** -------- CASH WALLET -------- */
             $cash = DB::table('deposits')->where('user_id', $user->id)->where('status', 'Completed')->sum('amount')
-                  - DB::table('withdrawals')->where('user_id', $user->id)->where('status', 'Completed')->sum('amount')
-                  + DB::table('transfers')->where('user_id', $user->id)
-                        ->where('status', 'Completed')
-                        ->whereIn('from_wallet', ['affiliates_wallet', 'earning_wallet'])
-                        ->where('to_wallet', 'cash_wallet')
-                        ->sum('amount')
-                  + DB::table('transfers')->where('user_id', $user->id)
-                        ->where('status', 'Completed')
-                        ->where('from_wallet', 'trading_wallet')
-                        ->where('to_wallet', 'cash_wallet')
-                        ->sum('amount')
-                  - DB::table('transfers')->where('user_id', $user->id)
-                        ->where('status', 'Completed')
-                        ->where('from_wallet', 'cash_wallet')
-                        ->where('to_wallet', 'trading_wallet')
-                        ->sum('amount')
-                  - DB::table('transfers')->where('user_id', $user->id)
-                        ->where('status', 'Completed')
-                        ->where('from_wallet', 'cash_wallet')
-                        ->where('to_wallet', 'cash_wallet')
-                        ->where('remark', 'downline')
-                        ->where('amount', '<', 0)
-                        ->sum('amount')
-                  + DB::table('transfers')->where('user_id', $user->id)
-                        ->where('status', 'Completed')
-                        ->where('from_wallet', 'cash_wallet')
-                        ->where('to_wallet', 'cash_wallet')
-                        ->where('remark', 'downline')
-                        ->where('amount', '>', 0)
-                        ->sum('amount');
+                - DB::table('withdrawals')->where('user_id', $user->id)->where('status', 'Completed')->sum('amount')
+                + DB::table('transfers')->where('user_id', $user->id)
+                    ->where('status', 'Completed')
+                    ->whereIn('from_wallet', ['affiliates_wallet', 'earning_wallet'])
+                    ->where('to_wallet', 'cash_wallet')
+                    ->sum('amount')
+                + DB::table('transfers')->where('user_id', $user->id)
+                    ->where('status', 'Completed')
+                    ->where('from_wallet', 'trading_wallet')
+                    ->where('to_wallet', 'cash_wallet')
+                    ->sum('amount')
+                - DB::table('transfers')->where('user_id', $user->id)
+                    ->where('status', 'Completed')
+                    ->where('from_wallet', 'cash_wallet')
+                    ->where('to_wallet', 'trading_wallet')
+                    ->where('remark','package')
+                    ->sum('amount')
+                - DB::table('transfers')->where('user_id', $user->id)
+                    ->where('status', 'Completed')
+                    ->where('from_wallet', 'cash_wallet')
+                    ->where('to_wallet', 'cash_wallet')
+                    ->where('remark', 'downline')
+                    ->where('amount', '<', 0)
+                    ->sum('amount')
+                + DB::table('transfers')->where('user_id', $user->id)
+                    ->where('status', 'Completed')
+                    ->where('from_wallet', 'cash_wallet')
+                    ->where('to_wallet', 'cash_wallet')
+                    ->where('remark', 'downline')
+                    ->where('amount', '>', 0)
+                    ->sum('amount');
 
             /** -------- TRADING WALLET -------- */
             $trading = DB::table('transfers')->where('user_id', $user->id)
-                            ->where('status', 'Completed')
-                            ->where('from_wallet', 'cash_wallet')
-                            ->where('to_wallet', 'trading_wallet')
-                            ->sum('amount')
-                      - DB::table('transfers')->where('user_id', $user->id)
-                            ->where('status', 'Completed')
-                            ->where('from_wallet', 'trading_wallet')
-                            ->where('to_wallet', 'cash_wallet')
-                            ->sum('amount')
-                      - DB::table('orders')->where('user_id', $user->id)
-                            ->where('status', 'pending')
-                            ->sum('buy');
-
-                      
+                ->where('status', 'Completed')
+                ->where('from_wallet', 'cash_wallet')
+                ->where('to_wallet', 'trading_wallet')
+                ->sum('amount')
+                
+                - DB::table('transfers')->where('user_id', $user->id)
+                ->where('status', 'Completed')
+                ->where('from_wallet', 'trading_wallet')
+                ->where('to_wallet', 'cash_wallet')
+                ->sum('amount')
+                
+                - DB::table('orders')->where('user_id', $user->id)
+                ->where('status', 'pending')
+                ->sum('buy');
+            
+            // ✅ Force trading_wallet to 0 if user is inactive (status = 0)
+            if ($user->status == 0) {
+                $trading = 0;
+            }
 
             /** -------- EARNING WALLET -------- */
             $earning = DB::table('payouts')->where('user_id', $user->id)
-                            ->where('status', 1)
-                            ->where('type', 'payout')
-                            ->where('wallet', 'earning')
-                            ->sum('actual')
-                      - DB::table('transfers')->where('user_id', $user->id)
-                            ->where('status', 'Completed')
-                            ->where('from_wallet', 'earning_wallet')
-                            ->where('to_wallet', 'cash_wallet')
-                            ->sum('amount');
+                ->where('status', 1)
+                ->where('type', 'payout')
+                ->where('wallet', 'earning')
+                ->sum('actual')
+                - DB::table('transfers')->where('user_id', $user->id)
+                ->where('status', 'Completed')
+                ->where('from_wallet', 'earning_wallet')
+                ->where('to_wallet', 'cash_wallet')
+                ->sum('amount');
 
             /** -------- AFFILIATES WALLET -------- */
             $affiliates = DB::table('payouts')->where('user_id', $user->id)
-                                ->where('status', 1)
-                                ->whereIn('type', ['payout', 'direct'])
-                                ->where('wallet', 'affiliates')
-                                ->sum('actual')
-                          - DB::table('transfers')->where('user_id', $user->id)
-                                ->where('status', 'Completed')
-                                ->where('from_wallet', 'affiliates_wallet')
-                                ->where('to_wallet', 'cash_wallet')
-                                ->sum('amount');
+                ->where('status', 1)
+                ->whereIn('type', ['payout', 'direct'])
+                ->where('wallet', 'affiliates')
+                ->sum('actual')
+                - DB::table('transfers')->where('user_id', $user->id)
+                ->where('status', 'Completed')
+                ->where('from_wallet', 'affiliates_wallet')
+                ->where('to_wallet', 'cash_wallet')
+                ->sum('amount');
 
             /** -------- BONUS WALLET -------- */
             $bonus = 0;
             if (!empty($user->bonus)) {
                 $promo = DB::table('promotions')
                     ->where('code', $user->bonus)
-                    //->where('status', 1)
                     ->first();
 
                 if ($promo) {
@@ -128,14 +125,15 @@ class RecalculateWallets extends Command
                 }
             }
 
-            /** -------- UPDATE -------- */
-            /*$this->line("Preview for user ID {$user->id}:");
-            $this->line("Cash Wallet: $cash");
-            $this->line("Trading Wallet: $trading");
-            $this->line("Earning Wallet: $earning");
-            $this->line("Affiliates Wallet: $affiliates");
-            $this->line("Bonus Wallet: $bonus");*/
-            
+            // Previous wallet values
+            $existingWallet = DB::table('wallets')->where('user_id', $user->id)->first();
+            $oldCash       = $existingWallet->cash_wallet ?? 0;
+            $oldTrading    = $existingWallet->trading_wallet ?? 0;
+            $oldEarning    = $existingWallet->earning_wallet ?? 0;
+            $oldAffiliates = $existingWallet->affiliates_wallet ?? 0;
+            $oldBonus      = $existingWallet->bonus_wallet ?? 0;
+
+            // Save updated wallet values
             DB::table('wallets')->where('user_id', $user->id)->update([
                 'cash_wallet' => $cash,
                 'trading_wallet' => $trading,
@@ -144,16 +142,27 @@ class RecalculateWallets extends Command
                 'bonus_wallet' => $bonus,
                 'updated_at' => now(),
             ]);
-            
-            $message = "✅ Updated user ID {$user->id}: cash=$cash, trading=$trading, earning=$earning, affiliates=$affiliates, bonus=$bonus";
+
+            // Build log message with highlights
+            $message = "🔄 User ID {$user->id} wallet updated:
+            - Cash: " . $this->highlight($oldCash) . " ➝ " . $this->highlight($cash) . "
+            - Trading: " . $this->highlight($oldTrading) . " ➝ " . $this->highlight($trading) . "
+            - Earning: " . $this->highlight($oldEarning) . " ➝ " . $this->highlight($earning) . "
+            - Affiliates: " . $this->highlight($oldAffiliates) . " ➝ " . $this->highlight($affiliates) . "
+            - Bonus: " . $this->highlight($oldBonus) . " ➝ " . $this->highlight($bonus);
+
             $this->info($message);
             Log::channel('cronjob')->info($message);
-
         }
 
         $this->info('Wallet recalculation completed.');
         Log::channel('cronjob')->info('Wallet recalculation completed.');
 
         return 0;
+    }
+
+    private function highlight($value)
+    {
+        return $value < 0 ? "❗{$value}" : $value;
     }
 }

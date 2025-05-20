@@ -30,7 +30,7 @@ class CoinDepositService
     
         // 🕒 START FEE DEDUCTION FROM MAY 20, 2025
         $now = Carbon::now('Asia/Kuala_Lumpur'); // or just Carbon::now() if default is MYT
-        $feeStartDate = Carbon::create(2025, 5, 20, 0, 0, 0, 'Asia/Kuala_Lumpur');
+        $feeStartDate = Carbon::create(2026, 5, 20, 0, 0, 0, 'Asia/Kuala_Lumpur');
     
         if ($now->greaterThanOrEqualTo($feeStartDate)) {
             $fee = min($amount, 7); // don't allow fee to exceed deposit

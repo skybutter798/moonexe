@@ -43,15 +43,50 @@ class User extends Authenticatable
     protected static function booted()
     {
         static::created(function ($user) {
-            $user->wallet()->create([
+            // Set default package to 1
+            $user->package = 1;
+            $user->save();
+    
+            // Create wallet with 0 balances first
+            $wallet = $user->wallet()->create([
                 'cash_wallet'       => 0.00,
                 'trading_wallet'    => 0.00,
                 'earning_wallet'    => 0.00,
                 'affiliates_wallet' => 0.00,
                 'status'            => 1,
             ]);
+    
+            // Campaign registration window
+            $startMY = \Carbon\Carbon::createFromFormat('Y-m-d H:i:s', '2025-05-20 11:01:00', 'Asia/Kuala_Lumpur');
+            $endMY   = \Carbon\Carbon::createFromFormat('Y-m-d H:i:s', '2025-06-06 11:59:59', 'Asia/Kuala_Lumpur');
+    
+            // Convert to same timezone as created_at
+            $createdAt = $user->created_at->copy()->timezone('Asia/Kuala_Lumpur');
+    
+            if ($createdAt->between($startMY, $endMY)) {
+                // Give 100 trading_wallet bonus
+                $wallet->trading_wallet = 100.00;
+                $wallet->save();
+    
+                // Create transfer record
+                $txid = 'b_' . str_pad(random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
+    
+                \App\Models\Transfer::create([
+                    'user_id'     => $user->id,
+                    'txid'        => $txid,
+                    'from_wallet' => 'cash_wallet',
+                    'to_wallet'   => 'trading_wallet',
+                    'amount'      => 100.00,
+                    'status'      => 'Completed',
+                    'remark'      => 'campaign',
+                    'created_at'  => now(),
+                    'updated_at'  => now(),
+                ]);
+            }
         });
     }
+
+
     
     public function wallet()
     {
@@ -77,7 +112,5 @@ class User extends Authenticatable
     {
         return $this->hasOne(\App\Models\Promotion::class, 'code', 'bonus');
     }
-
-
 
 }
