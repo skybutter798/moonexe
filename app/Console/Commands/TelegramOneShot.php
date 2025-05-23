@@ -11,13 +11,15 @@ class TelegramOneShot extends Command
 
     public function handle()
     {
-        $message = "<b>Withdrawal Request (Manual)</b>\n"
-                 . "User ID: 211\n"
-                 . "Name: Blueeyes\n"
-                 . "Email: sj4eva@me.com\n"
-                 . "Amount: 1031 USDT\n"
-                 . "To Address: TM3Qw53yKgKALQeDvpwnTXyjbHNSSuMYJC\n"
-                 . "TXID: w_97074048";
+        $message = "<b>Deposit Completed 💰</b>\n"
+                 . "User ID: 366\n"
+                 . "Name: ailian\n"
+                 . "Email: ailianchow@hotmail.com\n"
+                 . "Credited: 100 USDT\n"
+                 . "Address: TTYeGevcZxsNGQsPB2qyBCG1knrutgR1ez\n"
+                 . "Referral: bhsoh\n"
+                 . "Top Referral: Ronald\n"
+                 . "TXID: d_38135763";
 
         $chatId = '-1002561840571';
 

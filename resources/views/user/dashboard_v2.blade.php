@@ -249,7 +249,8 @@
             <div class="row mb-4 mb-md-0 align-items-center">
                 <div class="col-md-6">
                     <strong class="text-dark">Hi, {{ $user->name }}</strong>
-                    <button id="restartTourBtn" type="button" class="btn btn-sm btn-link p-0 ms-2" title="Show tutorial again" style="font-size: 14px; background-color:#4d80b5; width: 30px; height: 30px"> <i class="bi bi-exclamation-circle text-white" style="font-size: 1.2rem;"></i> </button>
+                    <button id="restartTourBtn" type="button" class="btn btn-sm btn-link p-0 ms-2" title="Show tutorial again" style="font-size: 14px; background-color:white; width: 30px; height: 30px"> 
+                    <i class="bi bi-exclamation-circle text-danger" style="font-size: 1.0rem;"></i> </button>
                     
                     @if(isset($currentRange))
                         <p class="mt-1">
@@ -318,13 +319,27 @@
                 <h4 class="text-primary text-center">
                   🎯 Campaign Progress
                 </h4>
+                @php
+                    $campaignMax = 3000000;
+                    $remaining = $campaignBalance ?? 0;
+                    $percentage = min(100, max(0, ($remaining / $campaignMax) * 100));
+                @endphp
+            
                 <div class="text-center fw-bold mb-2">
-                  <h3 id="campaignProgressText">$300,000 / $300,000 Remaining</h3>
+                    <h3 id="campaignProgressText">
+                        <span class="text-danger">${{ number_format($remaining, 0) }}</span> / ${{ number_format($campaignMax, 0) }} Remaining
+                    </h3>
                 </div>
-
+            
+                <!-- ✅ Only one .progress container here -->
                 <div class="progress" style="height: 28px; border-radius: 12px;">
-                    <div id="campaignProgressBar" class="progress-bar bg-primary progress-bar-striped progress-bar-animated"
-                         role="progressbar" aria-valuemin="0" aria-valuemax="100" style="width: 100%; transition: width 1s ease;">
+                    <div id="campaignProgressBar"
+                         class="progress-bar bg-primary progress-bar-striped progress-bar-animated"
+                         role="progressbar"
+                         aria-valuemin="0"
+                         aria-valuemax="100"
+                         aria-valuenow="{{ $percentage }}"
+                         style="width: {{ $percentage }}%;">
                     </div>
                 </div>
             </div>
@@ -378,7 +393,7 @@
                         <p class="openorder"><small class="text-danger">*Open Order: ${{ number_format($pendingBuy, 4) }}</small></p>
                     </div>
                     <div class="mt-1 text-black small " id="bonusInfoText">
-                        Congratulation! Total CAMPAIGN Leverage Bonus: <strong class="text-success">${{ number_format($megadropDeposit, 2) }}</strong><br>
+                        Congratulation! Total campaign Leverage Bonus: <strong class="text-success">${{ number_format($megadropDeposit, 2) }}</strong><br>
                         <small class="text-black" id="bonusCreditNote">
                             Bonus will be credited based on this amount after CAMPAIGN ends.
                         </small>
@@ -441,7 +456,7 @@
                         <p class="openorder"><small class="text-danger">*Open Order: ${{ number_format($pendingBuy, 4) }}</small></p>
                     </div>
                     <div class="mt-1 text-black small " id="bonusInfoText">
-                        Congratulation! Total CAMPAIGN Leverage Bonus: <strong class="text-success">${{ number_format($megadropDeposit, 2) }}</strong><br>
+                        Congratulation! Total campaign Leverage Bonus: <strong class="text-success">${{ number_format($megadropDeposit, 2) }}</strong><br>
                         <small class="text-black" id="bonusCreditNote">
                             Bonus will be credited based on this amount after CAMPAIGN ends.
                         </small>
@@ -900,6 +915,9 @@
     </div>
     
     <x-slot:footerFiles>
+    
+    <script src="https://js.pusher.com/7.0/pusher.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/laravel-echo/1.11.3/echo.iife.js"></script>
     <script>
         window.hasFlashMessage = @json(session('success') || $errors->any());
         window.announcement     = @json($announcement ?? null);
@@ -1441,10 +1459,25 @@
     </script>
     
     <script>
+        window.Pusher = Pusher;
+    
+        window.Echo = new Echo({
+            broadcaster: 'pusher',
+            key: '{{ env("PUSHER_APP_KEY") }}',
+            cluster: '{{ env("PUSHER_APP_CLUSTER") }}',
+            forceTLS: true,
+            encrypted: true
+        });
+
+    
+        console.log('✅ Laravel Echo initialized');
+    </script>
+    
+    <script>
         document.addEventListener('DOMContentLoaded', function () {
         
             const startNY = new Date('2025-05-20T04:01:00Z').getTime(); // UTC equivalent
-            const endNY   = new Date('2025-06-06T03:59:00Z').getTime(); // UTC equivalent
+            const endNY   = new Date('2025-06-30T03:59:00Z').getTime(); // UTC equivalent
         
             function pad(num) {
                 return num.toString().padStart(2, '0');
@@ -1491,63 +1524,71 @@
         
             updateCountdown();
             setInterval(updateCountdown, 1000);
+            
+            const waitForEcho = () => {
+                if (typeof window.Echo !== 'undefined') {
+                    console.log('✅ Echo instance ready:', window.Echo);
+        
+                    window.Echo.channel('campaign-channel')
+                    .listen('.balance.updated', (e) => {
+                        console.log('📡 CampaignBalanceUpdated received:', e);
+        
+                        const newBalance = parseFloat(e.newBalance);
+                        const max = 3000000;
+                        const percentage = Math.min(100, Math.max(0, (newBalance / max) * 100));
+        
+                        const bar = document.getElementById('campaignProgressBar');
+                        const text = document.getElementById('campaignProgressText');
+        
+                        if (bar) {
+                            bar.style.width = `${percentage}%`;
+                            bar.setAttribute('aria-valuenow', percentage.toFixed(2));
+                        }
+                        if (text) {
+                            text.innerHTML = `<span class="text-danger">$${newBalance.toLocaleString()}</span> / $${max.toLocaleString()} Remaining`;
+                        }
+
+                    });
+                } else {
+                    console.warn('⏳ Waiting for Echo to be ready...');
+                    setTimeout(waitForEcho, 300); // try again in 300ms
+                }
+            };
+        
+            waitForEcho();
         });
     </script>
     
     <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const DAY1_START = new Date('2025-05-20T04:00:00Z').getTime(); // May 20, 00:00 NYT
-        const DAY1_END   = new Date('2025-05-21T03:59:59Z').getTime(); // May 20, 23:59 NYT
-        const CAMPAIGN_END = new Date('2025-06-06T03:59:59Z').getTime(); // June 5, 23:59 NYT
+        const activateForm = document.getElementById('activationForm');
+        const packageForms = document.querySelectorAll('form.package-form');
     
-        const TOTAL_AMOUNT     = 3000000;
-        const DAY1_DEDUCTION   = 1000000;
-        const REMAINING_AMOUNT = TOTAL_AMOUNT - DAY1_DEDUCTION;
-    
-        const progressTextEl = document.getElementById('campaignProgressText');
-        const progressBarEl  = document.getElementById('campaignProgressBar');
-    
-        function getCurrentValue() {
-            const now = Date.now();
-    
-            if (now >= CAMPAIGN_END) return 0;
-            if (now <= DAY1_START) return TOTAL_AMOUNT;
-    
-            if (now <= DAY1_END) {
-                // Phase 1: deduct $1,000,000 during Day 1
-                const elapsed = now - DAY1_START;
-                const totalDay1Duration = DAY1_END - DAY1_START;
-                const deduction = (elapsed / totalDay1Duration) * DAY1_DEDUCTION;
-                return Math.max(0, Math.floor(TOTAL_AMOUNT - deduction));
-            } else {
-                // Phase 2: deduct remaining $2,000,000 after Day 1
-                const elapsed = now - DAY1_END;
-                const totalRemainingDuration = CAMPAIGN_END - DAY1_END;
-                const deduction = (elapsed / totalRemainingDuration) * REMAINING_AMOUNT;
-                return Math.max(0, Math.floor(TOTAL_AMOUNT - DAY1_DEDUCTION - deduction));
-            }
+        if (activateForm) {
+            activateForm.addEventListener('submit', function (e) {
+                const submitBtn = activateForm.querySelector('button[type="submit"]');
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Processing...';
+            });
         }
     
-        function updateProgressBar() {
-            const currentValue = getCurrentValue();
-            const percentage = ((currentValue / TOTAL_AMOUNT) * 100).toFixed(2);
+        packageForms.forEach(function (form) {
+            form.addEventListener('submit', function (e) {
+                const input = form.querySelector('input[name="topup_amount"]');
+                const val = parseFloat(input.value);
+                if (!Number.isInteger(val) || val < 10 || val % 10 !== 0) {
+                    e.preventDefault();
+                    alert("Top-up must be in multiples of 10 and at least 10.");
+                    return;
+                }
     
-            progressTextEl.innerHTML = `<span style="color: red; font-size: 1.0em;">$${currentValue.toLocaleString()} / $${TOTAL_AMOUNT.toLocaleString()}</span> Remaining`;
-            progressBarEl.style.width = `${percentage}%`;
-            progressBarEl.setAttribute('aria-valuenow', percentage);
-            //console.log(`[Campaign Progress] Remaining: $${currentValue.toLocaleString()} (${percentage}%)`);
-        }
-    
-        function loopUpdate() {
-            updateProgressBar();
-            const interval = Math.floor(Math.random() * (8000 - 2000 + 1)) + 2000;
-            setTimeout(loopUpdate, interval);
-        }
-    
-        loopUpdate();
+                const submitBtn = form.querySelector('button[type="submit"]');
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Processing...';
+            });
+        });
     });
     </script>
-
     
     <script src="{{ asset('js/users/intro-steps.js') }}"></script>
 

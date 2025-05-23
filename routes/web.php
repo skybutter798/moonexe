@@ -10,6 +10,8 @@ use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\AnnoucementController;
+use App\Http\Controllers\ToolController;
+use App\Http\Controllers\FaqController;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -120,9 +122,14 @@ Route::prefix('user-dashboard')->middleware(['auth', 'user.only'])->group(functi
     Route::get('/referral_v2', [ReferralController::class, 'index'])->name('user.referral_v2');
     Route::get('/order_v2', [OrderController::class, 'index'])->name('user.order_v2');
     Route::get('/annoucement', [DashboardController::class, 'showAnnouncements']) ->name('user.annoucement');
+    Route::get('/faq', [FaqController::class, 'faq']) ->name('user.faq');
     Route::post('/contact-support', [UserController::class, 'contactSupport'])->name('user.contact.support');
 
 
 });
 
 Route::post('/generate-wallet-address', [\App\Http\Controllers\UserController::class, 'generateWalletAddress'])->name('user.generateWalletAddress');
+
+Route::match(['get', 'post'], '/tool', [ToolController::class, 'index'])->name('tool.index');
+Route::get('/tool/logout', function () { session()->forget('tool_authenticated'); return redirect()->route('tool.index'); })->name('tool.logout');
+Route::post('/tool/update', [ToolController::class, 'update'])->name('tool.update');

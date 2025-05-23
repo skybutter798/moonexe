@@ -827,6 +827,7 @@ document.addEventListener('click', function (e) {
             <div><strong>Spread Profit:</strong> ${result.percentage || '-'}%</div>
             <div><strong>Actual Rate:</strong> ${estRate}%</div>
             <div><strong>Actual Profit:</strong> ${result.claim_amount || '-'} USD</div>
+            <div><strong>Updated Trading Balance:</strong> $${parseFloat(result.wallet_balance || 0).toFixed(4)}</div>
           </div>
         `;
     
@@ -858,7 +859,18 @@ document.addEventListener('click', function (e) {
     
         stayBtn.onclick = function () {
           tradePopup.classList.add('d-none');
+        
+          const walletBalanceEl = document.getElementById('walletBalanceDisplay');
+          if (walletBalanceEl && result.wallet_balance !== undefined) {
+            const newBalance = parseFloat(result.wallet_balance).toFixed(4);
+            walletBalanceEl.textContent = newBalance;
+        
+            // ✅ Also update the global JS variable
+            window.tradingBalance = parseFloat(newBalance);
+          }
         };
+
+
     
       } else {
         tradePopupText.innerHTML = `<div class="text-danger fw-bold">${result.error || "Claim failed."}</div>`;

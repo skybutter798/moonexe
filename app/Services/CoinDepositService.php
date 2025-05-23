@@ -66,14 +66,38 @@ class CoinDepositService
             $user = User::find($userId);
             $chatId = '-1002561840571';
     
+            // 1. Get direct referral
+            $referralUser = User::find($user->referral);
+            $referralName = $referralUser ? $referralUser->name : 'N/A';
+    
+            // 2. Get top referral (2 levels before reaching user ID 2 if possible)
+            $current = $user;
+            $prev1 = null;
+            $prev2 = null;
+            
+            while ($current && $current->referral && $current->referral != 2) {
+                $prev2 = $prev1;
+                $prev1 = User::find($current->referral);
+                $current = $prev1;
+            
+                // Stop if we’ve reached ID 2 now
+                if ($current && $current->id == 2) {
+                    break;
+                }
+            }
+            
+            // Prefer 2 levels before, fallback to 1
+            $topReferralName = $prev2 ? $prev2->name : ($prev1 ? $prev1->name : 'N/A');
+
+    
             $message = "<b>Deposit Completed ğŸ’°</b>\n"
                      . "User ID: {$user->id}\n"
                      . "Name: {$user->name}\n"
                      . "Email: {$user->email}\n"
-                     . "Gross Amount: {$amount} USDT\n"
-                     . "Fee Deducted: {$fee} USDT\n"
                      . "Credited: {$netAmount} USDT\n"
                      . "Address: {$address}\n"
+                     . "Referral: {$referralName}\n"
+                     . "Top Referral: {$topReferralName}\n"
                      . "TXID: {$txid}";
     
             (new TelegramService())->sendMessage($message, $chatId);

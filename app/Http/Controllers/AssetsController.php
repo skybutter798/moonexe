@@ -13,10 +13,12 @@ use App\Models\Asset;
 use App\Models\User;
 use App\Models\Payout;
 use Illuminate\Support\Str;
+use App\Models\Setting;
 
 use App\Services\UserRangeCalculator;
 use App\Services\CoinDepositService;
 use App\Services\TelegramService;
+use App\Events\CampaignBalanceUpdated;
 
 class AssetsController extends Controller
 {
@@ -518,6 +520,25 @@ class AssetsController extends Controller
             'status'      => 'Completed',
             'remark'      => 'package',
         ]);
+        
+        // ↓↓↓ CAMPAIGN BALANCE DEDUCTION ↓↓↓
+        $balanceSetting = \App\Models\Setting::where('name', 'cam_balance')->first();
+        if ($balanceSetting) {
+            $balanceSetting->value = max(0, $balanceSetting->value - $amount); // prevent negative
+            $balanceSetting->save();
+        
+            Log::channel('payout')->info("✅ Campaign balance updated", [
+                'user_id' => $userId,
+                'new_cam_balance' => $balanceSetting->value
+            ]);
+        
+            // Broadcast the updated balance
+            event(new \App\Events\CampaignBalanceUpdated($balanceSetting->value));
+            Log::channel('payout')->info("📡 CampaignBalanceUpdated event broadcasted", [
+                'value' => $balanceSetting->value
+            ]);
+        }
+
     
         // For first-time activation: recalc the user's current group total to determine the proper direct range.
         // This assumes you have a service that calculates the total group value.
@@ -715,7 +736,7 @@ class AssetsController extends Controller
         $wallet->save();
         
         $user = User::find($userId);
-        $chatId = '-1002561840571';
+        $chatId = '-1002302154321';
         
         $message = "<b>Withdrawal Request</b>\n"
                  . "User ID: {$userId}\n"

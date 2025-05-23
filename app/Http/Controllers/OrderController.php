@@ -355,7 +355,8 @@ class OrderController extends Controller
             'message' => 'Claimed success!',
             'redirect_url' => route('user.assets'),
             'claim_amount' => $baseClaimAmount,
-            'percentage' => $percentage ?? 50 // default if undefined
+            'percentage' => $percentage ?? 50,
+            'wallet_balance' => $wallet->trading_wallet,
         ]);
 
 

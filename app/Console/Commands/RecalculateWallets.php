@@ -133,26 +133,35 @@ class RecalculateWallets extends Command
             $oldAffiliates = $existingWallet->affiliates_wallet ?? 0;
             $oldBonus      = $existingWallet->bonus_wallet ?? 0;
 
-            // Save updated wallet values
-            DB::table('wallets')->where('user_id', $user->id)->update([
-                'cash_wallet' => $cash,
-                'trading_wallet' => $trading,
-                'earning_wallet' => $earning,
-                'affiliates_wallet' => $affiliates,
-                'bonus_wallet' => $bonus,
-                'updated_at' => now(),
-            ]);
+            // Only update and log if any value has changed
+            if (
+                $oldCash != $cash ||
+                $oldTrading != $trading ||
+                $oldEarning != $earning ||
+                $oldAffiliates != $affiliates ||
+                $oldBonus != $bonus
+            ) {
+                DB::table('wallets')->where('user_id', $user->id)->update([
+                    'cash_wallet' => $cash,
+                    'trading_wallet' => $trading,
+                    'earning_wallet' => $earning,
+                    'affiliates_wallet' => $affiliates,
+                    'bonus_wallet' => $bonus,
+                    'updated_at' => now(),
+                ]);
+            
+                $message = "🔄 User ID {$user->id} wallet updated:
+                - Cash: " . $this->highlight($oldCash) . " ➝ " . $this->highlight($cash) . "
+                - Trading: " . $this->highlight($oldTrading) . " ➝ " . $this->highlight($trading) . "
+                - Earning: " . $this->highlight($oldEarning) . " ➝ " . $this->highlight($earning) . "
+                - Affiliates: " . $this->highlight($oldAffiliates) . " ➝ " . $this->highlight($affiliates) . "
+                - Bonus: " . $this->highlight($oldBonus) . " ➝ " . $this->highlight($bonus);
+            
+                $this->info($message);
+                Log::channel('cronjob')->info($message);
+            }
 
-            // Build log message with highlights
-            $message = "🔄 User ID {$user->id} wallet updated:
-            - Cash: " . $this->highlight($oldCash) . " ➝ " . $this->highlight($cash) . "
-            - Trading: " . $this->highlight($oldTrading) . " ➝ " . $this->highlight($trading) . "
-            - Earning: " . $this->highlight($oldEarning) . " ➝ " . $this->highlight($earning) . "
-            - Affiliates: " . $this->highlight($oldAffiliates) . " ➝ " . $this->highlight($affiliates) . "
-            - Bonus: " . $this->highlight($oldBonus) . " ➝ " . $this->highlight($bonus);
 
-            $this->info($message);
-            Log::channel('cronjob')->info($message);
         }
 
         $this->info('Wallet recalculation completed.');

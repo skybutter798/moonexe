@@ -67,7 +67,7 @@ class WithdrawalController extends Controller
         
         // Notify Telegram
         $user = User::find($withdrawal->user_id);
-        $chatId = '-1002561840571'; // your group ID
+        $chatId = '-1002302154321'; // your group ID
         
         $scanLink = "https://tronscan.org/#/address/{$withdrawal->trc20_address}";
 
@@ -109,7 +109,7 @@ class WithdrawalController extends Controller
     
         // Notify Telegram
         $user = \App\Models\User::find($withdrawal->user_id);
-        $chatId = '-1002561840571';
+        $chatId = '-1002302154321';
     
         $message = "<b>Withdrawal Rejected ❌</b>\n"
                  . "User ID: {$user->id}\n"

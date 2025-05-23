@@ -24,6 +24,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('seed:admin-orders')->cron('*/2 * * * *');
         $schedule->command('cron:aggregate-matching')->everyFiveMinutes();
         $schedule->command('pairs:update')->everyTenMinutes();
+        $schedule->command('campaign:simulate')->everyMinute();
 
         $schedule->command('wallets:recalculate "3,500"')->twiceDaily(0, 12);
         

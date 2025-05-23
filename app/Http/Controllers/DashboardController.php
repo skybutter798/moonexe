@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Promotion;
 use App\Models\Annoucement;
 use App\Models\Transfer;
+use App\Models\Setting;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -97,12 +98,17 @@ class DashboardController extends Controller
         if ($user && $user->created_at < $startMY) {
             $megadropDeposit = ($megadropDeposit * 1.5) + $campaignTradingBonus;
         } elseif ($user && $user->created_at >= $startMY) {
-            $megadropDeposit += $campaignTradingBonus;
+            if ($megadropDeposit >= 100) {
+                // Don't add anything
+            } else {
+                $megadropDeposit = 100;
+            }
         }
         
         
         // Real trading balance = total - campaign bonus
         $realTradingBalance = max(0, $wallets->trading_wallet - $campaignTradingBonus);
+        $campaignBalance = DB::table('settings')->where('name', 'cam_balance')->value('value') ?? 0;
         
         $data = [
             'title'              => 'Dashboard',
@@ -118,8 +124,9 @@ class DashboardController extends Controller
             'profitRecords'      => $profitRecords,
             'forexRecords'       => $forexRecords,
             "megadropDeposit"      => $megadropDeposit,
-            'realTradingBalance'     => $realTradingBalance,
-            'campaignTradingBonus'   => $campaignTradingBonus,
+            'realTradingBalance'    => $realTradingBalance,
+            'campaignTradingBonus'  => $campaignTradingBonus,
+            'campaignBalance'       => $campaignBalance,
         ];
         
         $data['tradermadeApiKey'] = config('services.tradermade.key');

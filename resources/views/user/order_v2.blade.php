@@ -291,7 +291,13 @@
                 <div class="row">
                   <div class="col-12 text-center">
                     @if(is_null($package))
-                      <a href="{{ route('user.dashboard_v2') }}" class="btn btn-primary w-100">Deposit</a>
+                        {{--<a href="{{ route('user.dashboard_v2') }}" class="btn btn-primary w-100">Deposit</a>--}}
+                        <button class="btn btn-danger w-100"
+                                data-bs-toggle="modal"
+                                data-bs-target="#inactiveAccountModal">
+                          Deposit
+                        </button>
+
                     @else
                       <button style="border-radius: 10px; width: 50%; background-color: #2e438b; padding: 5px;"
                               class="btn text-white"
@@ -385,7 +391,6 @@
     @endforelse
 </div>
 
-
     <!-- Modal Popout for Trade Details -->
     <div class="modal fade" id="tradeModal" tabindex="-1" aria-labelledby="tradeModalLabel" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered modal-lg custom-modal">
@@ -449,6 +454,34 @@
       </div>
     </div>
     <!-- End Modal Popout -->
+    
+    <!-- Inactive Account Modal -->
+    <div class="modal fade" id="inactiveAccountModal" tabindex="-1" aria-labelledby="inactiveAccountModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content bg-white">
+          <div class="modal-header bg-danger text-white">
+            <h5 class="modal-title text-white" id="inactiveAccountModalLabel">Account Inactive</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p>
+              We’ve noticed that your account has remained inactive for an extended period.<br><br>
+              As a result, the system has temporarily flagged it as a dormant account. To fully restore your trading privileges, please contact our customer service team using your registered account email:
+            </p>
+            <h5 class="mt-2 mb-3 text-danger"><strong>{{ Auth::user()->email }}</strong></h5>
+            <p>
+              You may reach us through email at 
+              <a href="mailto:support@moonexe.com" class="text-primary fw-bold">support@moonexe.com</a> 
+              for reactivation.
+            </p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-dark w-100" data-bs-dismiss="modal">Got it</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     
   </div>
 
