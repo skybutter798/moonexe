@@ -696,62 +696,79 @@ class AssetsController extends Controller
     public function withdrawal(Request $request)
     {
         $request->validate([
-            'amount'          => 'required|numeric|min:0.01',
-            'trc20_address'   => 'required|string',
+            'amount'        => 'required|numeric|min:10',
+            'trc20_address' => 'required|string',
         ]);
-
+    
         $userId = auth()->id();
-
-        // Get the wallet record for the authenticated user.
+    
         $wallet = Wallet::where('user_id', $userId)->first();
-
         if (!$wallet) {
             return redirect()->back()->withErrors('Wallet not found.');
         }
-
-        // Check that the cash wallet has enough funds.
+    
         if ($wallet->cash_wallet < $request->amount) {
             return redirect()->back()->withErrors('Insufficient balance in Cash Wallet.');
         }
-
+    
         $feePercentage = 0.03;
-        $fee = round($request->amount * $feePercentage, 2);
+        $percentageFee = round($request->amount * $feePercentage, 2);
+        $fee = max($percentageFee, 7.00);
         $netAmount = $request->amount - $fee;
-        
+    
         do {
             $randomNumber = str_pad(random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
             $txid = 'w_' . $randomNumber;
         } while (Withdrawal::where('txid', $txid)->exists());
-        
+    
         Withdrawal::create([
             'user_id'       => $userId,
             'txid'          => $txid,
-            'amount'        => $netAmount, // user receives this
-            'fee'           => $fee,        // fee saved
+            'amount'        => $netAmount,
+            'fee'           => $fee,
             'trc20_address' => $request->trc20_address,
             'status'        => 'Pending',
         ]);
-        
-        $wallet->cash_wallet -= $request->amount; // deduct full amount (net + fee)
+    
+        $wallet->cash_wallet -= $request->amount;
         $wallet->save();
-        
+    
         $user = User::find($userId);
         $chatId = '-1002302154321';
-        
-        $message = "<b>Withdrawal Request</b>\n"
-                 . "User ID: {$userId}\n"
+    
+        // Get direct referral
+        $referralUser = User::find($user->referral);
+        $referralName = $referralUser ? $referralUser->name : 'N/A';
+    
+        // Get top referral (2 levels before ID 2 if possible)
+        $current = $user;
+        $prev1 = null;
+        $prev2 = null;
+        while ($current && $current->referral && $current->referral != 2) {
+            $prev2 = $prev1;
+            $prev1 = User::find($current->referral);
+            $current = $prev1;
+            if ($current && $current->id == 2) {
+                break;
+            }
+        }
+    
+        $topReferralName = $prev2 ? $prev2->name : ($prev1 ? $prev1->name : 'N/A');
+    
+        $message = "<b>Withdrawal Request 🧾</b>\n"
+                 . "User ID: {$user->id}\n"
                  . "Name: {$user->name}\n"
                  . "Email: {$user->email}\n"
                  . "Request: {$request->amount} USDT\n"
                  . "Fee: {$fee} USDT\n"
                  . "Net Amount: {$netAmount} USDT\n"
                  . "To Address: {$request->trc20_address}\n"
+                 . "Referral: {$referralName}\n"
+                 . "Top Referral: {$topReferralName}\n"
                  . "TXID: {$txid}";
-        
-        $telegram = new TelegramService();
-        $telegram->sendMessage($message, $chatId);
-
-
+    
+        (new TelegramService())->sendMessage($message, $chatId);
+    
         return redirect()->back()->with('success', 'Withdrawal request submitted successfully.');
     }
     

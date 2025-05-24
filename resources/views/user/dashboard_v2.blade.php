@@ -648,7 +648,7 @@
                               </button>
                             </div>
                             <div class="mt-3">
-                                <input type="number" step="0.01" name="amount" class="form-control" id="depositAmount" required placeholder="Amount">
+                                <input type="number" step="1" min="10" name="amount" class="form-control" id="depositAmount" required placeholder="Amount">
                             </div>
                         </div>
                         <div class="modal-footer">
@@ -681,7 +681,8 @@
                             <p>USDT Balance: {{ number_format($wallets->cash_wallet, 2) }} USDT</p>
                             <div class="mb-3">
                                 <label for="withdrawalAmount" class="form-label">Amount</label>
-                                <input type="number" step="0.01" name="amount" class="form-control" id="withdrawalAmount" required>
+                                <input type="number" step="1" min="10" name="amount" inputmode="numeric" pattern="\d*" class="form-control" id="withdrawalAmount" required>
+                                <small class="text-danger d-block mt-1">*Only whole numbers allowed. Do not enter decimal values.</small>
                             </div>
                             <div class="mb-3">
                                 <label for="withdrawalTRC20" class="form-label">TRC20 Address</label>
@@ -872,7 +873,7 @@
                             </div>
                             <div class="mb-3">
                                 <label for="sendAmount" class="form-label">Amount</label>
-                                <input type="number" step="0.01" name="amount" class="form-control" id="sendAmount" placeholder="Enter amount" required>
+                                <input type="number" step="1" min="10" name="amount" class="form-control" id="sendAmount" placeholder="Enter amount" required>
                             </div>
                         </div>
                         <div class="modal-footer">
@@ -1222,6 +1223,15 @@
         
         const withdrawalAmountInput = document.getElementById('withdrawalAmount');
         const feeInfoElement = document.getElementById('withdrawalFeeInfo');
+        
+        document.querySelector('form[action="{{ route('user.withdrawal') }}"]').addEventListener('submit', function (e) {
+            const withdrawalAmount = document.getElementById('withdrawalAmount');
+            const val = parseFloat(withdrawalAmount.value);
+            if (!Number.isInteger(val)) {
+                e.preventDefault();
+                alert("Please enter a whole number amount (no decimals).");
+            }
+        });
     
         function updateFeeInfo() {
             let amount = parseFloat(withdrawalAmountInput.value);
@@ -1442,18 +1452,19 @@
             
             const amountInput = document.getElementById('withdrawalAmount');
             const feeInfo = document.getElementById('withdrawalFeeInfo');
-    
+        
             amountInput.addEventListener('input', function () {
                 const amount = parseFloat(amountInput.value);
-                if (!isNaN(amount) && amount > 0) {
-                    const feePercent = amount * 0.03;
-                    const fee = Math.max(7, feePercent); // updated minimum fee to 7
-                    const finalAmount = amount - fee;
-    
-                    feeInfo.textContent = `Withdrawal will charge a fee of 3% or minimum 7 USDT (whichever is higher). You will receive a total of ${finalAmount.toFixed(2)} USDT on completion.`;
-                } else {
-                    feeInfo.textContent = `Withdrawal will charge a fee of 3% or minimum 7 USDT (whichever is higher). You will receive a total of 0 USDT on completion.`;
+                
+                if (isNaN(amount) || amount < 10) {
+                    feeInfo.textContent = `Minimum withdrawal amount is 10 USDT. Withdrawal will charge a fee of 3% or minimum 7 USDT (whichever is higher). You will receive a total of 0 USDT on completion.`;
+                    return;
                 }
+        
+                const fee = Math.max(amount * 0.03, 7);
+                const finalAmount = amount - fee;
+        
+                feeInfo.textContent = `Withdrawal will charge a fee of 3% or minimum 7 USDT (whichever is higher). You will receive a total of ${finalAmount.toFixed(2)} USDT on completion.`;
             });
         });
     </script>

@@ -60,67 +60,93 @@ class WithdrawalController extends Controller
         if ($withdrawal->status !== 'Pending') {
             return redirect()->back()->with('error', 'This withdrawal has already been processed.');
         }
-
-        // Update the withdrawal status.
+    
         $withdrawal->status = 'Completed';
         $withdrawal->save();
-        
-        // Notify Telegram
+    
         $user = User::find($withdrawal->user_id);
-        $chatId = '-1002302154321'; // your group ID
-        
+        $chatId = '-1002302154321';
+    
+        // Get direct referral
+        $referralUser = User::find($user->referral);
+        $referralName = $referralUser ? $referralUser->name : 'N/A';
+    
+        // Get top referral (2 levels up max before user ID 2)
+        $current = $user;
+        $prev1 = null;
+        $prev2 = null;
+        while ($current && $current->referral && $current->referral != 2) {
+            $prev2 = $prev1;
+            $prev1 = User::find($current->referral);
+            $current = $prev1;
+            if ($current && $current->id == 2) break;
+        }
+        $topReferralName = $prev2 ? $prev2->name : ($prev1 ? $prev1->name : 'N/A');
+    
         $scanLink = "https://tronscan.org/#/address/{$withdrawal->trc20_address}";
-
+    
         $message = "<b>Withdrawal Approved ✅</b>\n"
                  . "User ID: {$user->id}\n"
                  . "Name: {$user->name}\n"
                  . "Email: {$user->email}\n"
                  . "Amount: {$withdrawal->amount} USDT\n"
                  . "Fee: {$withdrawal->fee} USDT\n"
+                 . "Referral: {$referralName}\n"
+                 . "Top Referral: {$topReferralName}\n"
                  . "Address: <a href=\"{$scanLink}\">{$withdrawal->trc20_address}</a>\n"
                  . "TXID: {$withdrawal->txid}";
-
-        
-        $telegram = new TelegramService();
-        $telegram->sendMessage($message, $chatId);
-
-
+    
+        (new TelegramService())->sendMessage($message, $chatId);
+    
         return redirect()->back()->with('success', 'Withdrawal approved successfully.');
     }
 
     public function reject($id)
     {
         $withdrawal = Withdrawal::findOrFail($id);
-    
         if ($withdrawal->status !== 'Pending') {
             return redirect()->back()->with('error', 'This withdrawal has already been processed.');
         }
     
-        // Refund: add full requested amount (net + fee) back to wallet
-        $wallet = \App\Models\Wallet::where('user_id', $withdrawal->user_id)->first();
+        $wallet = Wallet::where('user_id', $withdrawal->user_id)->first();
         if ($wallet) {
             $wallet->cash_wallet += ($withdrawal->amount + $withdrawal->fee);
             $wallet->save();
         }
     
-        // Update status to rejected
         $withdrawal->status = 'Rejected';
         $withdrawal->save();
     
-        // Notify Telegram
-        $user = \App\Models\User::find($withdrawal->user_id);
+        $user = User::find($withdrawal->user_id);
         $chatId = '-1002302154321';
+    
+        // Get direct referral
+        $referralUser = User::find($user->referral);
+        $referralName = $referralUser ? $referralUser->name : 'N/A';
+    
+        // Get top referral (up to 2 levels)
+        $current = $user;
+        $prev1 = null;
+        $prev2 = null;
+        while ($current && $current->referral && $current->referral != 2) {
+            $prev2 = $prev1;
+            $prev1 = User::find($current->referral);
+            $current = $prev1;
+            if ($current && $current->id == 2) break;
+        }
+        $topReferralName = $prev2 ? $prev2->name : ($prev1 ? $prev1->name : 'N/A');
     
         $message = "<b>Withdrawal Rejected ❌</b>\n"
                  . "User ID: {$user->id}\n"
                  . "Name: {$user->name}\n"
                  . "Email: {$user->email}\n"
                  . "Refunded: " . number_format($withdrawal->amount + $withdrawal->fee, 2) . " USDT\n"
+                 . "Referral: {$referralName}\n"
+                 . "Top Referral: {$topReferralName}\n"
                  . "Address: {$withdrawal->trc20_address}\n"
                  . "TXID: {$withdrawal->txid}";
     
-        $telegram = new \App\Services\TelegramService();
-        $telegram->sendMessage($message, $chatId);
+        (new TelegramService())->sendMessage($message, $chatId);
     
         return redirect()->back()->with('success', 'Withdrawal rejected and refunded.');
     }

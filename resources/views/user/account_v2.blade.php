@@ -39,6 +39,22 @@
     </style>
   </x-slot:headerFiles>
 
+    @if ($errors->any())
+        <div class="alert alert-danger">
+            <ul class="mb-0">
+              @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+              @endforeach
+            </ul>
+        </div>
+    @endif
+        
+    @if (session('success'))
+        <div class="alert alert-success">
+            {{ session('success') }}
+        </div>
+    @endif
+
   <div class="container py-4">
     <!-- Account Header -->
     <div class="card mb-4">
@@ -76,7 +92,7 @@
       <div class="d-block d-md-nonep-3 bg-light text-center">
         <form action="{{ route('logout') }}" method="POST">
           @csrf
-          <button type="submit" class="btn btn-danger btn-block w-100">Logout</button>
+          <button type="submit" class="btn btn-dark btn-block w-100">Logout</button>
         </form>
       </div>
     </div>
@@ -181,6 +197,45 @@
   </div>
 
   <x-slot:footerFiles>
+    <div id="toast-container" style="
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 9999;
+      display: none;
+      background-color: #333;
+      color: #fff;
+      padding: 1rem 1.5rem;
+      border-radius: 6px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      font-size: 14px;
+      max-width: 90%;
+      text-align: center;
+    "></div>
+
+        
+    <script>
+          function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast-container');
+            toast.style.backgroundColor = type === 'error' ? '#dc3545' : '#198754'; // red or green
+            toast.textContent = message;
+            toast.style.display = 'block';
+        
+            setTimeout(() => {
+              toast.style.display = 'none';
+            }, 3000);
+          }
+        
+          @if(session('success'))
+            showToast(@json(session('success')), 'success');
+          @endif
+        
+          @if($errors->any())
+            showToast(@json($errors->first()), 'error');
+          @endif
+        </script>
+
     <!-- JavaScript to update the avatar preview -->
     <script>
       const avatarInput = document.getElementById('avatarInput');
