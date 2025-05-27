@@ -465,22 +465,23 @@
           </div>
           <div class="modal-body">
             <p>
-              We’ve noticed that your account has remained inactive for an extended period.<br><br>
-              As a result, the system has temporarily flagged it as a dormant account. To fully restore your trading privileges, please contact our customer service team using your registered account email:
+              Your account has been marked as inactive due to a long period of inactivity.<br><br>
+              To restore full trading access, please click the button below. A verification email will be sent to your registered email address:
             </p>
             <h5 class="mt-2 mb-3 text-danger"><strong>{{ Auth::user()->email }}</strong></h5>
             <p>
-              You may reach us through email at 
-              <a href="mailto:support@moonexe.com" class="text-primary fw-bold">support@moonexe.com</a> 
-              for reactivation.
+              Follow the instructions in the email to reactivate your account.
             </p>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-dark w-100" data-bs-dismiss="modal">Got it</button>
+            <button type="button" class="btn btn-dark w-100" id="sendVerificationEmailBtn">
+              Send Verification Email
+            </button>
           </div>
         </div>
       </div>
     </div>
+
 
     
   </div>
@@ -592,5 +593,25 @@
         });
 
     </script>
+    <script>
+    document.getElementById('sendVerificationEmailBtn').addEventListener('click', function () {
+        fetch("{{ route('user.sendVerificationEmail') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({})
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message || 'Verification email sent.');
+        })
+        .catch(error => {
+            console.error('Error sending verification email:', error);
+        });
+    });
+    </script>
+
   </x-slot:footerFiles>
 </x-base-layout>

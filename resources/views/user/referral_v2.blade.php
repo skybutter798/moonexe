@@ -157,10 +157,10 @@
       
       .btn-question {
         background: none !important;
-        color: black !important;
+        color: red !important;
         border: none;
         padding: 0px;
-        font-size: 18px;
+        font-size: 25px;
       }
 
 
@@ -241,7 +241,7 @@
             <div class="apply-reset d-flex align-items-center gap-2 mb-2">
               <button type="submit" class="btn btn-primary btn-sm">Apply</button>
               <a href="{{ route('user.referral') }}" class="btn btn-danger btn-sm">Refresh</a>
-              <button type="button" class="btn btn-question btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#referralInfoModal"> <i class="bi bi-question-circle"></i> </button>
+              <button type="button" class="btn btn-question btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#referralInfoModal"> <i class="bi bi-question-square-fill"></i> </button>
             </div>
             <!-- Row 3: Quick Filters -->
             <div class="quick-filters d-flex align-items-center gap-2">
@@ -262,7 +262,7 @@
             <div class="apply-reset d-flex align-items-center gap-2">
               <button type="submit" class="btn btn-primary btn-sm">Apply</button>
               <a href="{{ route('user.referral') }}" class="btn btn-danger btn-sm">Refresh</a>
-              <button type="button" class="btn btn-question btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#referralInfoModal"> <i class="bi bi-question-circle"></i> </button>
+              <button type="button" class="btn btn-question btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#referralInfoModal"> <i class="bi bi-question-square-fill"></i> </button>
             </div>
             <!-- Quick Filters -->
             <div class="quick-filters d-flex align-items-center gap-2">
@@ -322,7 +322,7 @@
                       style="top: 50%; left: 50%; transform: translate(-80%, -50%);"
                       data-bs-toggle="modal"
                       data-bs-target="#referralInfoModal">
-                <i class="bi bi-question-circle"></i>
+                <i class="bi bi-question-square-fill"></i>
               </button>
             </div>
 
@@ -534,133 +534,155 @@
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body tier-details">
+    
             <section>
-              <h6>Task 1: Deposit 100–990 USDT (Entry Tier)</h6>
+              <h5>DEPOSIT TIER TASKS</h5>
+    
+              <h6 class="mt-3">Task 1: Deposit 100–990 USDT (Entry Tier)</h6>
               <ul>
-                <li>You receive: 40% of monthly exchange spread profits (estimated 5%–8% per month)</li>
+                <li>You receive: 40% of daily exchange spread profits</li>
                 <li>Platform receives: 60% of profits</li>
                 <li>Unlocks:
                   <ul>
-                    <p>-3% of total cumulative volume (Development Reward)</p>
-                    <p>-5% of team's daily spread profits (Matching Reward)</p>
+                    <span class="text-danger">- 3% of total cumulative volume (Development Reward)<br>
+                    - 5% of team's daily spread profits (Matching Reward)</span>
                   </ul>
                 </li>
               </ul>
-            </section>
-            <section>
-              <h6>Task 2: Deposit 1,000–9,990 USDT (Mid Tier)</h6>
+    
+              <h6 class="mt-3">Task 2: Deposit 1,000–9,990 USDT (Mid Tier)</h6>
               <ul>
-                <li>You receive: 45% of monthly exchange spread profits</li>
-                <li>Platform receives: 55% of profits</li>
+                <li>You receive: 45% of daily exchange spread profits</li>
+                <li>Platform receives: 55% of profits</span>
                 <li>Unlocks:
                   <ul>
-                    <p>5% of total cumulative volume (Development Reward)</p>
-                    <p>10% of team's daily spread profits (Matching Reward)</p>
+                    <span class="text-danger">- 5% of total cumulative volume (Development Reward)<br>
+                    - 10% of team's daily spread profits (Matching Reward)</span>
                   </ul>
                 </li>
               </ul>
-            </section>
-            <section>
-              <h6>Task 3: Deposit 10,000–99,990 USDT (High Tier)</h6>
+    
+              <h6 class="mt-3">Task 3: Deposit 10,000–99,990 USDT (Advanced Tier)</h6>
               <ul>
-                <li>You receive: 50% of monthly exchange spread profits</li>
+                <li>You receive: 50% of daily exchange spread profits</li>
                 <li>Platform receives: 50% of profits</li>
                 <li>Unlocks:
                   <ul>
-                    <p>8% of total cumulative volume (Development Reward)</p>
-                    <p>20% of team's daily spread profits (Matching Reward)</p>
+                    <span class="text-danger">- 8% of total cumulative volume (Development Reward)<br>
+                    - 20% of team's daily spread profits (Matching Reward)</span>
                   </ul>
                 </li>
               </ul>
-            </section>
-            <section>
-              <h6>Task 4: Deposit 100,000+ USDT (VIP Tier)</h6>
-              <ul>
-                <li>You receive: 60% of monthly exchange spread profits</li>
-                <li>Platform receives: 40% of profits</li>
-                <li>Unlocks:
-                  <ul>
-                    <p>10% of total cumulative volume (Development Reward)</p>
-                    <p>30% of team's daily spread profits (Matching Reward)</p>
-                  </ul>
-                </li>
-              </ul>
-            </section>
-            <section>
-              <h6>Task 5: Team Cumulative Deposit 1,000,000+ USDT</h6>
+    
+              <h6 class="mt-3">Task 4: Team Cumulative Deposit 100,000+ USDT</h6>
               <ul>
                 <li>Earn:
                   <ul>
-                    <p>12% of total cumulative volume (Development Reward)</p>
-                    <p>40% of team's daily spread profits (Matching Reward)</p>
+                    <span class="text-danger">- 10% of total cumulative volume (Development Reward)<br>
+                    - 30% of team's daily spread profits (Matching Reward)</span>
                   </ul>
                 </li>
               </ul>
             </section>
-            <section>
-              <h6>Task 6: Team Cumulative Deposit 5,000,000+ USDT</h6>
+    
+            <section class="mt-4">
+              <h5>TEAM DEPOSIT TIER TASKS</h5>
+    
+              <h6 class="mt-3">Task 5: Team Cumulative Deposit 100,000+ USDT</h6>
               <ul>
                 <li>Earn:
                   <ul>
-                    <p>15% of total cumulative volume (Development Reward)</p>
-                    <p>50% of team's daily spread profits (Matching Reward)</p>
+                    <li>10% of total cumulative volume (Development Reward)</li>
+                    <li>30% of team's daily spread profits (Matching Reward)</li>
                   </ul>
                 </li>
               </ul>
-            </section>
-            <section>
-              <h6>Task 7: Team Cumulative Deposit 10,000,000+ USDT</h6>
+    
+              <h6 class="mt-3">Task 6: Team Cumulative Deposit 1,000,000+ USDT</h6>
               <ul>
                 <li>Earn:
                   <ul>
-                    <p>18% of total cumulative volume (Development Reward)</p>
-                    <p>60% of team's daily spread profits (Matching Reward)</p>
+                    <li>12% of total cumulative volume (Development Reward)</li>
+                    <li>40% of team's daily spread profits (Matching Reward)</li>
+                  </ul>
+                </li>
+              </ul>
+    
+              <h6 class="mt-3">Task 7: Team Cumulative Deposit 5,000,000+ USDT</h6>
+              <ul>
+                <li>Earn:
+                  <ul>
+                    <li>15% of total cumulative volume (Development Reward)</li>
+                    <li>50% of team's daily spread profits (Matching Reward)</li>
+                  </ul>
+                </li>
+              </ul>
+    
+              <h6 class="mt-3">Task 8: Team Cumulative Deposit 10,000,000+ USDT</h6>
+              <ul>
+                <li>Earn:
+                  <ul>
+                    <li>18% of total cumulative volume (Development Reward)</li>
+                    <li>60% of team's daily spread profits (Matching Reward)</li>
                   </ul>
                 </li>
               </ul>
             </section>
+    
             <hr>
+    
             <section>
               <h5 class="mt-4">TEAM REWARD SCENARIO</h5>
             
               <h6 class="mt-3">TEAM DEVELOPMENT UPGRADE REWARDS</h6>
               <p><em>(Permanent cumulative calculation - differential tiered percentage model)</em></p>
               <ul>
-                <li><strong>Scenario 1:</strong> Achieve 1,000,000 USDT Lifetime Team Volume<br>
-                  Earn: 12% of total cumulative volume<br>
-                  Example: 1,000,000 team = 120,000 bonus
+                <li><strong>Scenario 1:</strong> Achieve 100,000 USDT Lifetime Team Volume<br>
+                  <span class="text-danger">Earn: 10% of total cumulative volume<br>
+                  Example: 1,000,000 team = 100,000 bonus</span>
                 </li>
-                <li><strong>Scenario 2:</strong> Achieve 5,000,000 USDT Lifetime Team Volume<br>
-                  Earn: 15% of total cumulative volume<br>
-                  Example: 5,000,000 team = 750,000 bonus
+                <li><strong>Scenario 2:</strong> Achieve 1,000,000 USDT Lifetime Team Volume<br>
+                  <span class="text-danger">Earn: 12% of total cumulative volume<br>
+                  Example: 1,000,000 team = 120,000 bonus</span>
                 </li>
-                <li><strong>Scenario 3:</strong> Achieve 10,000,000 USDT Lifetime Team Volume<br>
-                  Earn: 18% of total cumulative volume<br>
-                  Example: 10,000,000 team = 1,800,000 bonus
+                <li><strong>Scenario 3:</strong> Achieve 5,000,000 USDT Lifetime Team Volume<br>
+                  <span class="text-danger">Earn: 15% of total cumulative volume<br>
+                  Example: 5,000,000 team = 750,000 bonus</span>
+                </li>
+                <li><strong>Scenario 4:</strong> Achieve 10,000,000 USDT Lifetime Team Volume<br>
+                  <span class="text-danger">Earn: 18% of total cumulative volume<br>
+                  Example: 10,000,000 team = 1,800,000 bonus</span>
                 </li>
               </ul>
             
               <h6 class="mt-4">TEAM MATCHING REWARDS</h6>
               <p><em>(Daily calculation - tiered matching percentage model)</em></p>
               <ul>
-                <li><strong>Scenario 4:</strong> Reach 1,000,000 USDT Team Volume<br>
-                  Daily earn: 40% of team's total spread profits<br>
-                  Example: 5,000 daily profit = 2,000 reward
+                <li><strong>Scenario 5:</strong> Reach 100,000 USDT Team Volume<br>
+                  <span class="text-danger">Daily earn: 30% of team's total spread profits<br>
+                  Example: 5,000 daily profit = 1,500 reward</span>
                 </li>
-                <li><strong>Scenario 5:</strong> Reach 5,000,000 USDT Team Volume<br>
-                  Daily earn: 50% of team's total spread profits<br>
-                  Example: 20,000 daily profit = 10,000 reward
+                <li><strong>Scenario 6:</strong> Reach 1,000,000 USDT Team Volume<br>
+                  <span class="text-danger">Daily earn: 40% of team's total spread profits<br>
+                  Example: 5,000 daily profit = 2,000 reward</span>
                 </li>
-                <li><strong>Scenario 6:</strong> Reach 10,000,000 USDT Team Volume<br>
-                  Daily earn: 60% of team's total spread profits<br>
-                  Example: 50,000 daily profit = 30,000 reward
+                <li><strong>Scenario 7:</strong> Reach 5,000,000 USDT Team Volume<br>
+                  <span class="text-danger">Daily earn: 50% of team's total spread profits<br>
+                  Example: 20,000 daily profit = 10,000 reward</span>
+                </li>
+                <li><strong>Scenario 8:</strong> Reach 10,000,000 USDT Team Volume<br>
+                  <span class="text-danger">Daily earn: 60% of team's total spread profits<br>
+                  Example: 50,000 daily profit = 30,000 reward</span>
                 </li>
               </ul>
             </section>
+
+    
           </div>
         </div>
       </div>
     </div>
+
   </div>
 
   <x-slot:footerFiles>

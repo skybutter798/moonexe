@@ -28,7 +28,11 @@ class User extends Authenticatable
         'wallet_address',
         'wallet_qr',
         'wallet_expired',
+        'two_fa_enabled',
+        'security_pass',
+        'google2fa_secret',
     ];
+
     
     protected $hidden = [
         'password',
@@ -85,8 +89,6 @@ class User extends Authenticatable
             }
         });
     }
-
-
     
     public function wallet()
     {
@@ -112,5 +114,35 @@ class User extends Authenticatable
     {
         return $this->hasOne(\App\Models\Promotion::class, 'code', 'bonus');
     }
+    
+    public static function getAllDownlineIds($userId)
+    {
+        $downlines = User::where('referral', $userId)->pluck('id')->toArray();
+    
+        foreach ($downlines as $downlineId) {
+            $downlines = array_merge($downlines, self::getAllDownlineIds($downlineId));
+        }
+    
+        return $downlines;
+    }
+    
+    public static function getUplineIds($userId)
+    {
+        $uplines = [];
+        $current = User::find($userId);
+    
+        while ($current && $current->referral) {
+            $uplines[] = $current->referral;
+            $current = User::find($current->referral);
+        }
+    
+        return $uplines;
+    }
+    
+    public static function isInSameTree($fromId, $toId)
+    {
+        return in_array($toId, self::getAllDownlineIds($fromId)) || in_array($toId, self::getUplineIds($fromId));
+    }
+
 
 }

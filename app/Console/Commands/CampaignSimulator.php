@@ -35,7 +35,7 @@ class CampaignSimulator extends Command
         $nextRunSec = intval($settings->get('cam_next_run')->value);
 
         if ($now->lt($lastRunAt->copy()->addSeconds($nextRunSec))) {
-            Log::channel('cronjob')->info("⏳ Not yet time. Next run in {$nextRunSec}s after {$lastRunAt}.");
+            //Log::channel('cronjob')->info("⏳ Not yet time. Next run in {$nextRunSec}s after {$lastRunAt}.");
             return;
         }
 
@@ -67,6 +67,6 @@ class CampaignSimulator extends Command
         // 🔔 Broadcast new balance
         event(new CampaignBalanceUpdated($newBalance));
 
-        Log::channel('cronjob')->info("✅ Deducted $deduct. New cam_balance: $newBalance. Next run in $nextDelay sec.");
+        //Log::channel('cronjob')->info("✅ Deducted $deduct. New cam_balance: $newBalance. Next run in $nextDelay sec.");
     }
 }

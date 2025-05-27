@@ -32,12 +32,17 @@ class RecalculateWallets extends Command
 
             /** -------- CASH WALLET -------- */
             $cash = DB::table('deposits')->where('user_id', $user->id)->where('status', 'Completed')->sum('amount')
-                - DB::table('withdrawals')->where('user_id', $user->id)->where('status', 'Completed')->sum('amount')
+                - DB::table('withdrawals')->where('user_id', $user->id)->where('status', '!=', 'Rejected')->sum('amount')
                 + DB::table('transfers')->where('user_id', $user->id)
                     ->where('status', 'Completed')
                     ->whereIn('from_wallet', ['affiliates_wallet', 'earning_wallet'])
                     ->where('to_wallet', 'cash_wallet')
                     ->sum('amount')
+                + DB::table('transfers')->where('user_id', $user->id)
+                    ->where('status', 'Completed')
+                    ->where('from_wallet', 'trading_wallet')
+                    ->where('to_wallet', 'cash_wallet')
+                    ->sum(DB::raw('CAST(remark AS DECIMAL(20,8))'))
                 + DB::table('transfers')->where('user_id', $user->id)
                     ->where('status', 'Completed')
                     ->where('from_wallet', 'trading_wallet')
@@ -49,13 +54,16 @@ class RecalculateWallets extends Command
                     ->where('to_wallet', 'trading_wallet')
                     ->where('remark','package')
                     ->sum('amount')
-                - DB::table('transfers')->where('user_id', $user->id)
+                // Downline sent (already negative in DB, so just sum directly)
+                + DB::table('transfers')->where('user_id', $user->id)
                     ->where('status', 'Completed')
                     ->where('from_wallet', 'cash_wallet')
                     ->where('to_wallet', 'cash_wallet')
                     ->where('remark', 'downline')
                     ->where('amount', '<', 0)
                     ->sum('amount')
+                
+                // Downline received
                 + DB::table('transfers')->where('user_id', $user->id)
                     ->where('status', 'Completed')
                     ->where('from_wallet', 'cash_wallet')
@@ -63,6 +71,7 @@ class RecalculateWallets extends Command
                     ->where('remark', 'downline')
                     ->where('amount', '>', 0)
                     ->sum('amount');
+
 
             /** -------- TRADING WALLET -------- */
             $trading = DB::table('transfers')->where('user_id', $user->id)
@@ -135,27 +144,38 @@ class RecalculateWallets extends Command
 
             // Only update and log if any value has changed
             if (
-                $oldCash != $cash ||
-                $oldTrading != $trading ||
-                $oldEarning != $earning ||
-                $oldAffiliates != $affiliates ||
-                $oldBonus != $bonus
+                round((float)$oldCash, 4) !== round((float)$cash, 4) ||
+                round((float)$oldTrading, 4) !== round((float)$trading, 4) ||
+                round((float)$oldEarning, 4) !== round((float)$earning, 4) ||
+                round((float)$oldAffiliates, 4) !== round((float)$affiliates, 4) ||
+                round((float)$oldBonus, 4) !== round((float)$bonus, 4)
             ) {
-                DB::table('wallets')->where('user_id', $user->id)->update([
-                    'cash_wallet' => $cash,
+                $updateData = [
                     'trading_wallet' => $trading,
                     'earning_wallet' => $earning,
                     'affiliates_wallet' => $affiliates,
                     'bonus_wallet' => $bonus,
                     'updated_at' => now(),
-                ]);
+                ];
+                
+                if ($cash >= 0) {
+                    $updateData['cash_wallet'] = $cash;
+                } else {
+                    $this->warn("⚠️  Skipped updating cash_wallet for user ID {$user->id} (value: $cash)");
+                }
+                
+                DB::table('wallets')->where('user_id', $user->id)->update($updateData);
+
             
+                $cashDisplay = $cash >= 0 ? $this->highlight($oldCash) . " ➝ " . $this->highlight($cash) : "[SKIPPED: $cash]";
+
                 $message = "🔄 User ID {$user->id} wallet updated:
-                - Cash: " . $this->highlight($oldCash) . " ➝ " . $this->highlight($cash) . "
+                - Cash: $cashDisplay
                 - Trading: " . $this->highlight($oldTrading) . " ➝ " . $this->highlight($trading) . "
                 - Earning: " . $this->highlight($oldEarning) . " ➝ " . $this->highlight($earning) . "
                 - Affiliates: " . $this->highlight($oldAffiliates) . " ➝ " . $this->highlight($affiliates) . "
                 - Bonus: " . $this->highlight($oldBonus) . " ➝ " . $this->highlight($bonus);
+
             
                 $this->info($message);
                 Log::channel('cronjob')->info($message);

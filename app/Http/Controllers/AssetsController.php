@@ -20,6 +20,9 @@ use App\Services\CoinDepositService;
 use App\Services\TelegramService;
 use App\Events\CampaignBalanceUpdated;
 
+use PragmaRX\Google2FA\Google2FA;
+use Illuminate\Support\Facades\Auth;
+
 class AssetsController extends Controller
 {
     public function __construct()
@@ -333,6 +336,20 @@ class AssetsController extends Controller
 
         $userId = auth()->id();
         $wallet = Wallet::firstOrCreate(['user_id' => $userId]);
+        
+        $user = auth()->user();
+
+        // Conditionally require security_pass
+        if ($user->security_pass) {
+            $request->validate([
+                'security_pass' => 'required|string',
+            ]);
+        
+            if ($request->security_pass !== $user->security_pass) {
+                return redirect()->back()->withErrors(['Invalid security password.']);
+            }
+        }
+
 
         // 2) Special reserved‑sum check for early users moving affiliates → cash
         if ($request->transfer_type === 'affiliates_to_cash' && $userId <= 202) {
@@ -700,7 +717,22 @@ class AssetsController extends Controller
             'trc20_address' => 'required|string',
         ]);
     
+        $user = auth()->user();
         $userId = auth()->id();
+        
+        // ✅ Check 2FA if enabled
+        if ($user->two_fa_enabled) {
+            $request->validate([
+                'otp' => 'required|digits:6',
+            ]);
+    
+            $google2fa = new Google2FA();
+            $isValidOtp = $google2fa->verifyKey($user->google2fa_secret, $request->otp);
+    
+            if (!$isValidOtp) {
+                return back()->withErrors(['otp' => 'Invalid 2FA code.']);
+            }
+        }
     
         $wallet = Wallet::where('user_id', $userId)->first();
         if (!$wallet) {
@@ -775,131 +807,137 @@ class AssetsController extends Controller
     public function sendFunds(Request $request)
     {
         $user = auth()->user();
-        
+    
+        // Restrict by ID if needed
         if ($user->id <= 202) {
             Log::channel('admin')->warning('sendFunds: Unauthorized user tried to send funds', [
                 'user_id' => $user->id,
             ]);
             return redirect()->back()->withErrors(['You do not have permission to send funds.']);
         }
-        
-        // Validate incoming data
+    
+        // Validate incoming request
         $request->validate([
-            'downline_email' => 'required|email|exists:users,email',
+            'downline_email' => 'required|string',
             'amount' => 'required|numeric|min:0.01',
         ]);
-        Log::channel('admin')->info("--------> sendFunds: Request validated", [
-            'downline_email' => $request->downline_email,
-            'amount' => $request->amount,
-        ]);
-    
         
-        $amount = (float) $request->amount; // e.g., 1000
-    
-        // Check if the sender has sufficient funds
-        if ($user->wallet->cash_wallet < $amount) {
-            Log::channel('admin')->info("sendFunds: Insufficient funds", [
-                'user_id' => $user->id,
-                'available_cash' => $user->wallet->cash_wallet,
-                'requested_amount' => $amount,
+        // Only validate if security_pass is set on user
+        if ($user->security_pass) {
+            $request->validate([
+                'security_pass' => 'required|string',
             ]);
+        
+            if ($request->security_pass !== $user->security_pass) {
+                return redirect()->back()->withErrors(['Invalid security password.']);
+            }
+
+        }
+
+    
+        $amount = (float) $request->amount;
+    
+        // Check available balance
+        if ($user->wallet->cash_wallet < $amount) {
             return redirect()->back()->withErrors(['Insufficient funds in your USDT wallet.']);
         }
-        Log::channel('admin')->info("sendFunds: Sufficient funds confirmed", [
-            'user_id' => $user->id,
-            'available_cash' => $user->wallet->cash_wallet,
-        ]);
     
-        // Retrieve the downline user by email
-        $downline = User::where('email', $request->downline_email)->first();
-        if (!$downline) {
-            Log::channel('admin')->info("sendFunds: Downline not found", [
-                'downline_email' => $request->downline_email,
-            ]);
-            return redirect()->back()->withErrors(['Downline user not found.']);
+        // Get the recipient user
+        $recipient = User::where('email', $request->downline_email)
+                     ->orWhere('name', $request->downline_email)
+                     ->first();
+                     
+        if (!$recipient) {
+            return redirect()->back()->withErrors(['The specified user does not exist.']);
         }
-        Log::channel('admin')->info("sendFunds: Downline retrieved", [
-            'downline_id' => $downline->id,
-        ]);
     
-        // Verify that the recipient is actually the sender's downline
-        if ($downline->referral !== $user->id) {
-            Log::channel('admin')->info("sendFunds: Invalid downline relationship", [
+        // Ensure recipient exists and is part of same tree (up or down)
+        if (!User::isInSameTree($user->id, $recipient->id)) {
+            return redirect()->back()->withErrors(['The specified user is not in your referral tree.']);
+        }
+        
+        if ($user->id === $recipient->id) {
+            return redirect()->back()->withErrors(['You cannot send funds to yourself.']);
+        }
+    
+        // Perform fund transfer
+        DB::transaction(function () use ($user, $recipient, $amount) {
+            // Deduct from sender
+            $user->wallet->cash_wallet -= $amount;
+            $user->wallet->save();
+    
+            // Credit recipient
+            $recipient->wallet->cash_wallet += $amount;
+            $recipient->wallet->save();
+    
+            // Generate unique TXIDs
+            do {
+                $senderTxid = 's_' . str_pad(random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
+            } while (Transfer::where('txid', $senderTxid)->exists());
+    
+            do {
+                $receiverTxid = 's_' . str_pad(random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
+            } while (Transfer::where('txid', $receiverTxid)->exists());
+    
+            // Log transactions
+            Transfer::create([
+                'user_id'     => $user->id,
+                'txid'        => $senderTxid,
+                'from_wallet' => 'cash_wallet',
+                'to_wallet'   => 'cash_wallet',
+                'amount'      => -abs($amount),
+                'status'      => 'Completed',
+                'remark'      => 'internal_transfer',
+            ]);
+    
+            Transfer::create([
+                'user_id'     => $recipient->id,
+                'txid'        => $receiverTxid,
+                'from_wallet' => 'cash_wallet',
+                'to_wallet'   => 'cash_wallet',
+                'amount'      => abs($amount),
+                'status'      => 'Completed',
+                'remark'      => 'internal_transfer',
+            ]);
+    
+            // Optional logs
+            Log::channel('admin')->info("sendFunds: transfer complete", [
                 'sender_id' => $user->id,
-                'downline_id' => $downline->id,
-                'expected_referral' => $user->id,
-                'actual_referral' => $downline->referral,
+                'recipient_id' => $recipient->id,
+                'amount' => $amount,
+                'sender_txid' => $senderTxid,
+                'receiver_txid' => $receiverTxid,
             ]);
-            return redirect()->back()->withErrors(['The specified user is not your downline.']);
-        }
-        Log::channel('admin')->info("sendFunds: Downline relationship verified", [
-            'sender_id' => $user->id,
-            'downline_id' => $downline->id,
-        ]);
-    
-        // Deduct the amount from the sender's cash_wallet
-        $user->wallet->cash_wallet -= $amount;
-        $user->wallet->save();
-        Log::channel('admin')->info("sendFunds: Sender wallet debited", [
-            'user_id' => $user->id,
-            'new_cash_wallet' => $user->wallet->cash_wallet,
-        ]);
-    
-        // Add the amount to the downline's cash_wallet
-        $downline->wallet->cash_wallet += $amount;
-        $downline->wallet->save();
-        Log::channel('admin')->info("sendFunds: Downline wallet credited", [
-            'downline_id' => $downline->id,
-            'new_cash_wallet' => $downline->wallet->cash_wallet,
-        ]);
-    
-        // Generate a unique sender transaction ID with 8 digits
-        do {
-            $senderTxid = 's_' . str_pad(random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
-        } while (Transfer::where('txid', $senderTxid)->exists());
-        Log::channel('admin')->info("sendFunds: Sender transaction ID generated", [
-            'senderTxid' => $senderTxid,
-        ]);
-    
-        // Generate a unique receiver transaction ID with 8 digits
-        do {
-            $receiverTxid = 's_' . str_pad(random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
-        } while (Transfer::where('txid', $receiverTxid)->exists());
-        Log::channel('admin')->info("sendFunds: Receiver transaction ID generated", [
-            'receiverTxid' => $receiverTxid,
-        ]);
-    
-        // Record the transfer for the sender (amount is negative)
-        Transfer::create([
-            'user_id'     => $user->id,
-            'txid'        => $senderTxid,
-            'from_wallet' => 'cash_wallet',
-            'to_wallet'   => 'cash_wallet',
-            'amount'      => -abs($amount),
-            'status'      => 'Completed',
-            'remark'      => 'downline'
-        ]);
-        Log::channel('admin')->info("sendFunds: Sender transfer record created", [
-            'user_id' => $user->id,
-            'txid' => $senderTxid,
-        ]);
-    
-        // Record the transfer for the downline (amount is positive)
-        Transfer::create([
-            'user_id'     => $downline->id,
-            'txid'        => $receiverTxid,
-            'from_wallet' => 'cash_wallet',
-            'to_wallet'   => 'cash_wallet',
-            'amount'      => abs($amount),
-            'status'      => 'Completed',
-            'remark'      => 'downline'
-        ]);
-        Log::channel('admin')->info("sendFunds: Downline transfer record created", [
-            'user_id' => $downline->id,
-            'txid' => $receiverTxid,
-        ]);
+        });
     
         return redirect()->back()->with('success', 'Funds sent successfully.');
     }
+
+    
+    public static function getAllDownlineIds($userId)
+    {
+        $downlines = User::where('referral', $userId)->pluck('id')->toArray();
+    
+        foreach ($downlines as $downlineId) {
+            $downlines = array_merge($downlines, self::getAllDownlineIds($downlineId));
+        }
+    
+        return $downlines;
+    }
+    
+    public static function getUplineIds($userId)
+    {
+        $uplines = [];
+        $current = User::find($userId);
+    
+        while ($current && $current->referral) {
+            $uplines[] = $current->referral;
+            $current = User::find($current->referral);
+        }
+    
+        return $uplines;
+    }
+
+
 
 }

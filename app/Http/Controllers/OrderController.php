@@ -100,9 +100,11 @@ class OrderController extends Controller
     
         // Retrieve the current user's orders for "My Exchange Orders" section.
         $userOrders = Order::where('user_id', $user->id)
-                           ->orderBy('created_at', 'desc')
-                           ->with('pair')
-                           ->paginate(10);
+                   ->with('pair')
+                   ->orderByRaw("FIELD(status, 'pending') DESC")
+                   ->orderBy('created_at', 'desc')
+                   ->paginate(10);
+
     
         // Check if the user already made an order today.
         $hasOrderToday = Order::where('user_id', $user->id)

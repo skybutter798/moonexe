@@ -12,6 +12,8 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\AnnoucementController;
 use App\Http\Controllers\ToolController;
 use App\Http\Controllers\FaqController;
+use App\Http\Controllers\VerificationController;
+use App\Http\Controllers\AuthController;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -133,3 +135,10 @@ Route::post('/generate-wallet-address', [\App\Http\Controllers\UserController::c
 Route::match(['get', 'post'], '/tool', [ToolController::class, 'index'])->name('tool.index');
 Route::get('/tool/logout', function () { session()->forget('tool_authenticated'); return redirect()->route('tool.index'); })->name('tool.logout');
 Route::post('/tool/update', [ToolController::class, 'update'])->name('tool.update');
+
+Route::post('/send-verification-email', [VerificationController::class, 'sendEmail'])->name('user.sendVerificationEmail');
+Route::get('/verify-account/{token}', [VerificationController::class, 'verify'])->name('user.verifyAccount');
+
+Route::post('/2fa/verify', [AuthController::class, 'verify2FA'])->name('user.verify2fa');
+Route::post('/2fa/disable', [AuthController::class, 'disable2FA'])->name('user.disable2fa');
+Route::put('/user/security-pass', [AccountController::class, 'changeSecurityPassword'])->name('user.changeSecurityPassword');

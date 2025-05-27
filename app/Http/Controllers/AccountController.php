@@ -6,20 +6,34 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\NewsletterSubscriber;
 use Illuminate\Support\Facades\Storage;
-
+use PragmaRX\Google2FAQRCode\Google2FA;
 
 class AccountController extends Controller
 {
-    /**
-     * Display the user's account page.
-     */
     public function index()
     {
-        // Retrieve the authenticated user.
         $user = Auth::user();
-
-        // Pass the user object to the account view.
-        return view('user.account_v2', compact('user'));
+    
+        $QR_Image = null;
+        $secret = null;
+    
+        if (!$user->google2fa_secret) {
+            $google2fa = new Google2FA();
+            $secret = $google2fa->generateSecretKey();
+            $user->google2fa_secret = $secret;
+            $user->save();
+        } else {
+            $secret = $user->google2fa_secret;
+        }
+    
+        // Generate QR image from secret
+        $QR_Image = \Google2FA::getQRCodeInline(
+            config('app.name'),
+            $user->email,
+            $secret
+        );
+    
+        return view('user.account_v2', compact('user', 'QR_Image', 'secret'));
     }
     
     public function updateProfile(Request $request)
@@ -90,4 +104,18 @@ class AccountController extends Controller
     
         return back()->with('success', 'Password changed successfully.');
     }
+    
+    public function changeSecurityPassword(Request $request)
+    {
+        $request->validate([
+            'security_password' => 'required|min:6|confirmed',
+        ]);
+    
+        $user = Auth::user();
+        $user->security_pass = $request->security_password;
+        $user->save();
+    
+        return back()->with('success', 'Security password updated successfully.');
+    }
+
 }

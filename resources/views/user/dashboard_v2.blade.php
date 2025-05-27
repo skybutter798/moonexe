@@ -483,6 +483,7 @@
                     </div>
                 </div>
             </div>
+            
             <!-- Affiliates Wallet -->
             <div class="col-12 col-md-6 mb-3">
                 <div id="affiliatesWalletCard" class="card h-100 text-center p-2 assets" style="background-image: url('/img/incentive.png'); background-repeat: no-repeat; background-position: left center;">
@@ -617,9 +618,10 @@
                     <form action="{{ route('user.deposit') }}" method="POST">
                         @csrf
                         <div class="modal-body">
-                            <p>Username: {{ $user->name }}</p>
-                            <p>USDT Balance: {{ number_format($wallets->cash_wallet, 2) }} USDT</p>
-                            
+                            <p class="fw-semibold fs-6">
+                                Hi {{ $user->name }}, your current USDT balance is <span class="text-danger">{{ number_format($wallets->cash_wallet, 2) }} USDT</span>.
+                            </p>
+
                             <div class="mb-3 text-center">
                                 <img id="walletQR" src="{{ $user->wallet_qr ?? asset('img/QR_trc20.png') }}" alt="TRC20 QR Code" class="img-fluid" style="max-width: 200px;">
                                 <p class="mt-2">Scan to deposit</p>
@@ -654,12 +656,12 @@
                         <div class="modal-footer">
                             <button type="submit" class="btn btn-primary">Submit Deposit</button>
                         </div>
-                        <div class="alert alert-warning">
+                        <div class="alert alert-warning p-2">
                             
                             <strong>⚠️ Important Notice:</strong><br>
                             • Please deposit <strong>only USDT (TRC20)</strong> to the address above.<br>
                             • Each user receives a <strong>unique wallet address</strong>.<br>
-                            • <span class="text-danger fw-bold">DO NOT send USDT via other networks (e.g. ERC20, BEP20) — FUNDS WILL BE LOST AND CANNOT BE RECOVERED</span>.<br>
+                            • <span class="text-danger fw-bold">DO NOT send USDT via other networks (e.g. ERC20, BEP20) or FUNDS WILL BE LOST AND CANNOT BE RECOVERED</span>.<br>
                         </div>
 
                         </form>
@@ -675,28 +677,47 @@
                         <h5 class="modal-title" id="withdrawalModalLabel">Withdrawal</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <form action="{{ route('user.withdrawal') }}" method="POST">
+                    <form action="{{ route('user.withdrawal') }}" method="POST" class="p-3">
                         @csrf
                         <div class="modal-body">
-                            <p>USDT Balance: {{ number_format($wallets->cash_wallet, 2) }} USDT</p>
-                            <div class="mb-3">
-                                <label for="withdrawalAmount" class="form-label">Amount</label>
-                                <input type="number" step="1" min="10" name="amount" inputmode="numeric" pattern="\d*" class="form-control" id="withdrawalAmount" required>
-                                <small class="text-danger d-block mt-1">*Only whole numbers allowed. Do not enter decimal values.</small>
+                            <div class="mb-4">
+                                <h5 class="fw-semibold">USDT Balance:</h5>
+                                <p class="fs-5 text-success mb-0">{{ number_format($wallets->cash_wallet, 2) }} USDT</p>
                             </div>
+                    
                             <div class="mb-3">
-                                <label for="withdrawalTRC20" class="form-label">TRC20 Address</label>
-                                <input type="text" name="trc20_address" class="form-control" id="withdrawalTRC20" placeholder="Enter your TRC20 address" required>
+                                <label for="withdrawalAmount" class="form-label fw-medium">Amount</label>
+                                <input type="number" step="1" min="10" name="amount" inputmode="numeric" pattern="\d*" class="form-control shadow-sm" id="withdrawalAmount" placeholder="Enter amount to withdraw" required>
+                                <small class="form-text text-danger mt-1">*Only whole numbers allowed. No decimals.</small>
                             </div>
-                            <!-- This paragraph will be updated to show the fee and final received amount -->
-                            <p class="text-danger" id="withdrawalFeeInfo">
-                                Withdrawal will charge a fee of 3% or minimum 7 USDT (whichever is higher). You will receive a total of 0 USDT on completion.
-                            </p>
+                            
+                            <hr>
+                    
+                            <div class="mb-3">
+                                <label for="withdrawalTRC20" class="form-label fw-medium">TRC20 Wallet Address</label>
+                                <input type="text" name="trc20_address" class="form-control shadow-sm" id="withdrawalTRC20" placeholder="Enter your TRC20 address" required>
+                            </div>
+                    
+                            @php $twoFAEnabled = auth()->user()->two_fa_enabled; @endphp
+                    
+                            @if ($twoFAEnabled)
+                                <div class="mb-3">
+                                    <label for="otp" class="form-label fw-medium">2FA Code</label>
+                                    <input type="text" name="otp" id="otp" class="form-control shadow-sm" placeholder="Enter your 6-digit code" required>
+                                </div>
+                            @endif
+                    
+                            <div class="alert alert-warning mt-4" id="withdrawalFeeInfo">
+                                <strong>Note:</strong> A fee of <b>3%</b> or <b>minimum 7 USDT</b> (whichever is higher) will be deducted.
+                                You will receive: <span class="fw-bold text-danger">0 USDT</span>
+                            </div>
                         </div>
-                        <div class="modal-footer">
-                            <button type="submit" class="btn btn-primary">Submit Withdrawal</button>
+                    
+                        <div class="modal-footer border-top pt-3">
+                            <button type="submit" class="btn btn-lg btn-primary w-100 shadow-sm">Request Withdrawal</button>
                         </div>
                     </form>
+
                 </div>
             </div>
         </div>
@@ -709,7 +730,7 @@
                         <div>
                             <h5 class="modal-title" id="walletTransferModalLabel">Transfer</h5>
                             <small class="text-muted">
-                                Please enter the transfer amount below. Funds will be debited from your trading profit or affiliates wallet and credited to your USDT wallet upon successful processing.
+                                Collecting trading profit, or incetive profit
                             </small>
                         </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -717,15 +738,28 @@
                     <form action="{{ route('user.transfer') }}" method="POST">
                         @csrf
                         <div class="modal-body">
-                            <p id="sourceWalletBalance"></p>
+                            <p class="fs-6 text-success mb-3" id="sourceWalletBalance"></p>
                             <input type="hidden" id="transferTypeHidden" name="transfer_type" value="">
                             <div class="mb-3">
                                 <label for="transferAmountDynamic" class="form-label">Amount</label>
-                                <input type="number" step="0.01" name="amount" class="form-control" id="transferAmountDynamic" required>
+                                <input type="number" step="0.01" name="amount" class="form-control shadow-sm" id="transferAmountDynamic" required>
+                            </div>
+                            
+                            @php $userSecurityPass = auth()->user()->security_pass; @endphp
+
+                            @if ($userSecurityPass)
+                                <div class="mb-3">
+                                    <label for="securityPass" class="form-label fw-medium">Security Password</label>
+                                    <input type="password" name="security_pass" class="form-control shadow-sm" id="securityPass" placeholder="Enter your security password" required>
+                                </div>
+                            @endif
+
+                            <div class="alert alert-warning mt-4" id="withdrawalFeeInfo">
+                                Please enter the transfer amount below. Funds will be debited from your trading profit or affiliates wallet and credited to your USDT wallet upon successful processing.
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button type="submit" class="btn btn-primary">Submit Transfer</button>
+                            <button type="submit" class="btn btn-primary">Collect</button>
                         </div>
                     </form>
                 </div>
@@ -781,34 +815,33 @@
             </div>
         </div>
 
-        <!-- Direct Range Modal -->
+        <!-- Top-up Modal -->
         <div class="modal fade" id="packageModal" tabindex="-1" aria-labelledby="packageModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content bg-white">
                     <div class="modal-header">
-                        <div>
-                            <h5 class="modal-title" id="packageModalLabel">
-                                {{ $hasPackageTransfer ? 'Top-up' : 'Activate Trade' }}
-                            </h5>
-                            <div class="mt-1">
-                                <p class="text-muted d-block">
-                                    @if(!$user->package)
-                                        Please choose a package to activate your trading margin.
-                                    @else
-                                        Please key in the top-up amount to your trading margin.
-                                    @endif
-                                </p>
-                                <hr>
-                                <p id="modalCountdownNote" class="text-danger fw-bold d-block ">
-                                    ⏳ CAMPAIGN <span id="modalCountdownTimer">Loading...</span><br>
-                                    <span class="text-danger fw-normal" id="bonusNote">
-                                        <strong> Register and top up between May 20 and May 27, 2025 (New York Time, EDT) to qualify for the bonus trading margin!</strong>
-                                    </span>
-                                </p>
-
-                            </div>
-                        </div>
+                        <h5 class="modal-title" id="packageModalLabel">
+                            {{ $hasPackageTransfer ? 'Top-up' : 'Activate Trade' }}
+                        </h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="px-4 pt-2">
+                        <p class="text-muted d-block">
+                            @if(!$user->package)
+                                Please choose a package to activate your trading margin.
+                            @else
+                                Please key in the top-up amount to your trading margin.
+                            @endif
+                        </p>
+                    
+                        <div class="alert alert-warning mt-3" id="withdrawalFeeInfo">
+                            <p id="modalCountdownNote" class="text-danger fw-bold d-block">
+                                ⏳ CAMPAIGN <span id="modalCountdownTimer">Loading...</span>
+                                <span class="text-danger fw-normal" id="bonusNote">
+                                    <strong>Register and top up between May 20 and May 27, 2025 (New York Time, EDT) to qualify for the bonus trading margin!</strong>
+                                </span>
+                            </p>
+                        </div>
                     </div>
                     <div class="modal-body">
                         @if(!$user->package)
@@ -816,7 +849,7 @@
                                 @csrf
                                 <div class="mb-3">
                                     <label for="activation_amount" class="form-label">Enter Activation Amount</label>
-                                    <input type="number" name="activation_amount" id="activation_amount" class="form-control" placeholder="Enter amount" min="10" step="10" required>
+                                    <input type="number" name="activation_amount" id="activation_amount" class="form-control shadow-sm" placeholder="Enter amount" min="10" step="10" required>
                                 </div>
                                 <div class="row">
                                     @foreach($directRanges->whereIn('id', [1,2,3]) as $range)
@@ -841,9 +874,13 @@
                                     @csrf
                                     <input type="hidden" name="directrange_id" value="{{ $currentRange->id }}">
                                     <div class="mb-2">
-                                        <input type="number" name="topup_amount" class="form-control" placeholder="Enter top-up amount" min="10" step="10" required>
+                                        <input type="number" name="topup_amount" class="form-control shadow-sm" placeholder="Enter top-up amount" min="10" step="10" required>
                                     </div>
-                                    <span class="text-danger">*Top-up must be in multiples of 10. No decimal values allowed.</span>
+                                    
+                                    <div class="alert alert-warning mt-4" id="withdrawalFeeInfo">
+                                        <span class="text-danger">*Top-up must be in multiples of 10. No decimal values allowed.</span>
+                                    </div>
+                                    
                                     <button type="submit" class="btn btn-primary w-100 mt-2">Top-up</button>
                                 </form>
                             </div>
@@ -859,25 +896,42 @@
                 <div class="modal-content bg-white">
                     <div class="modal-header">
                         <div>
-                            <h5 class="modal-title" id="sendModalLabel">Send USDT to referral by email address</h5>
+                            <h5 class="modal-title" id="sendModalLabel">Send USDT to referral</h5>
                         </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <form action="{{ route('user.sendFunds') }}" method="POST">
                         @csrf
                         <div class="modal-body">
-                            <p>USDT Balance: {{ number_format($wallets->cash_wallet, 2) }} USDT</p>
+                            <div class="mb-4">
+                                <h5 class="fw-semibold">USDT Balance:</h5>
+                                <p class="fs-5 text-success mb-0">{{ number_format($wallets->cash_wallet, 2) }} USDT</p>
+                            </div>
+                            
                             <div class="mb-3">
-                                <label for="downlineEmail" class="form-label">Referral Email</label>
-                                <input type="email" name="downline_email" class="form-control" id="downlineEmail" placeholder="Enter referral email" required>
+                                <label for="downlineEmail" class="form-label fw-medium">Referral Email/Username</label>
+                                <input type="text" name="downline_email" class="form-control shadow-sm" id="downlineEmail" placeholder="Enter referral email or username" required>
+
                             </div>
                             <div class="mb-3">
-                                <label for="sendAmount" class="form-label">Amount</label>
-                                <input type="number" step="1" min="10" name="amount" class="form-control" id="sendAmount" placeholder="Enter amount" required>
+                                <label for="sendAmount" class="form-label fw-medium">Amount</label>
+                                <input type="number" step="1" min="10" name="amount" class="form-control shadow-sm" id="sendAmount" placeholder="Enter amount" required>
                             </div>
+                            
+                            @php $userSecurityPass = auth()->user()->security_pass; @endphp
+
+                            @if ($userSecurityPass)
+                                <div class="mb-3">
+                                    <label for="securityPass" class="form-label fw-medium">Security Password</label>
+                                    <input type="password" name="security_pass" class="form-control shadow-sm" id="securityPass" placeholder="Enter your security password" required>
+                                </div>
+                            @endif
                         </div>
+
                         <div class="modal-footer">
-                            <small class="text-danger">*Please ensure the referral email is correct. The requested amount will be deducted from your USDT balance and processed.</small>
+                            <div class="alert alert-warning mt-4" id="withdrawalFeeInfo">
+                            <p class="text-danger">*Please ensure the referral email or username is correct. The requested amount will be deducted from your USDT balance and processed.</p>
+                            </div>
                         
                             <button type="submit" class="btn btn-primary">Send</button>
                         </div>
