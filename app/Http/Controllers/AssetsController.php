@@ -234,6 +234,22 @@ class AssetsController extends Controller
         $userId = auth()->id();
         $user = User::find($userId);
         $wallet = Wallet::where('user_id', $userId)->first();
+        
+        if ($user->two_fa_enabled && $user->google2fa_secret) {
+            $request->validate([
+                'otp' => 'required|digits:6'
+            ]);
+        
+            $google2fa = app('pragmarx.google2fa');
+            $valid = $google2fa->verifyKey($user->google2fa_secret, $request->otp);
+        
+            if (!$valid) {
+                return redirect()->back()->withErrors(['Invalid 2FA code.']);
+            }
+        } else {
+            return redirect()->back()->withErrors(['You must enable 2FA before performing this action.']);
+        }
+
     
         if (!$user || !$wallet) {
             Log::channel('admin')->info("User or Wallet not found", ['user_id' => $userId]);

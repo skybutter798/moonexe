@@ -766,7 +766,7 @@
             </div>
         </div>
 
-        <!-- Trading Wallet Transfer Modal (Full balance transfer with 20% fee) -->
+        <!-- Trading Wallet Transfer Modal -->
         <div class="modal fade" id="tradingTransferModal" tabindex="-1" aria-labelledby="tradingTransferModalLabel" aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content bg-white">
@@ -774,13 +774,17 @@
                         <h5 class="modal-title" id="tradingTransferModalLabel">Terminate Trade Margin</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
+        
                     <form id="tradingTransferForm" action="{{ route('user.tradingTransfer') }}" method="POST">
                         @csrf
+                        <!-- 🔐 Hidden 2FA value will be added here -->
+                        <input type="hidden" name="otp" id="hiddenOtp">
+        
                         <div class="modal-body">
-                            <p><strong>Trading Balance:</strong> {{ number_format($wallets->trading_wallet - $campaignTradingBonus, 2) }} USDT  ({{ number_format($campaignTradingBonus, 2) }} Campaign bonus) </p>
+                            <p><strong>Trading Balance:</strong> {{ number_format($wallets->trading_wallet - $campaignTradingBonus, 2) }} USDT ({{ number_format($campaignTradingBonus, 2) }} Campaign bonus)</p>
                             <p><strong>Fee Rate:</strong> 20%</p>
                             <p class="text-danger">
-                                *** Upon termination, your full trading balance, including any open orders, will be credited to your USDT wallet. A 20% fee will be deducted from your trading balance as part of the process. 
+                                *** Upon termination, your full trading balance, including any open orders, will be credited to your USDT wallet. A 20% fee will be deducted.
                             </p>
                         </div>
                         <div class="modal-footer">
@@ -789,12 +793,12 @@
                             @else
                                 <button type="button" class="btn btn-primary" id="confirmTerminateBtn">Terminate</button>
                             @endif
-
                         </div>
                     </form>
                 </div>
             </div>
         </div>
+
         
         <!-- Confirmation Modal -->
         <div class="modal fade" id="tradingTransferConfirmModal" tabindex="-1" aria-labelledby="tradingTransferConfirmModalLabel" aria-hidden="true">
@@ -806,14 +810,29 @@
                     </div>
                     <div class="modal-body">
                         <p id="transferConfirmationDetails"></p>
+        
+                        @php $user = auth()->user(); @endphp
+                        <div id="2faWrapper" class="mt-3">
+                            @if ($user->two_fa_enabled && $user->google2fa_secret)
+                                <label for="otp" class="form-label">2FA Code</label>
+                                <input type="text" id="otp" class="form-control" placeholder="Enter 6-digit 2FA code" required>
+                            @else
+                                <div class="alert alert-danger small">
+                                    2FA is required to proceed. Please <a href="{{ route('user.account') }}" class="text-decoration-underline">enable it in your profile</a>.
+                                </div>
+                            @endif
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary" id="finalizeTerminateBtn">Yes, Confirm</button>
+                        @if ($user->two_fa_enabled && $user->google2fa_secret)
+                            <button type="submit" class="btn btn-primary" id="finalizeTerminateBtn">Yes, Confirm</button>
+                        @endif
                     </div>
                 </div>
             </div>
         </div>
+
 
         <!-- Top-up Modal -->
         <div class="modal fade" id="packageModal" tabindex="-1" aria-labelledby="packageModalLabel" aria-hidden="true">
@@ -1302,38 +1321,54 @@
         // Update fee info when the user types in a value.
         withdrawalAmountInput.addEventListener('input', updateFeeInfo);
         
-        document.getElementById('confirmTerminateBtn').addEventListener('click', function() {
+        // Show confirmation modal with dynamic values
+        document.getElementById('confirmTerminateBtn').addEventListener('click', function () {
             const tradingBalance = {{ $realTradingBalance ?? 0 }};
             const fee = tradingBalance * 0.20;
             const netAmount = tradingBalance - fee;
         
-            const confirmationText = `
-                Please note: A 20% fee will be deducted from your real trading balance of ${{ number_format($realTradingBalance, 2) }} (excluding campaign bonus). 
-                - Fee: ${fee.toFixed(2)} USDT
-                - Net transferred to USDT Wallet: ${netAmount.toFixed(2)} USDT
+            const confirmationHTML = `
+                <p>Please note: <strong>A 20% fee</strong> will be deducted from your real trading balance of 
+                <span class="text-danger">${tradingBalance.toFixed(2)} USDT</span>.</p>
         
-                Campaign bonus of {{ number_format($campaignTradingBonus, 2) }} USDT is not eligible for withdrawal and will be forfeited.
+                <ul>
+                    <li><strong>Fee:</strong> ${fee.toFixed(2)} USDT</li>
+                    <li><strong>Net transferred to USDT Wallet:</strong> ${netAmount.toFixed(2)} USDT</li>
+                </ul>
         
-                This action will TERMINATE your trading account. Any open orders will be closed and funds returned to your USDT Wallet.
-                
-                Do you wish to proceed?
+                <p class="alert alert-warning mt-4">Campaign bonus of <strong>{{ number_format($campaignTradingBonus, 2) }} USDT</strong> 
+                is not eligible for withdrawal and will be forfeited.</p>
+        
+                <p class="text-danger fw-bold">
+                    This action will <u>TERMINATE</u> your trading account. Any open orders will be closed and funds returned to your USDT Wallet.
+                </p>
+        
+                <p class="alert alert-danger">Do you wish to proceed?</p>
             `;
+
         
-            document.getElementById('transferConfirmationDetails').innerText = confirmationText.trim();
-        
+            document.getElementById('transferConfirmationDetails').innerHTML = confirmationHTML;
+
             const confirmModal = new bootstrap.Modal(document.getElementById('tradingTransferConfirmModal'));
             confirmModal.show();
         });
-
-    
         
-        document.getElementById('finalizeTerminateBtn').addEventListener('click', function() {
-            // Hide the confirmation modal and submit the form
+        // Final submission with 2FA
+        document.getElementById('finalizeTerminateBtn').addEventListener('click', function () {
             const confirmModalEl = document.getElementById('tradingTransferConfirmModal');
             const confirmModal = bootstrap.Modal.getInstance(confirmModalEl);
             confirmModal.hide();
+        
+            const otpInput = document.getElementById('otp');
+            const hiddenOtp = document.getElementById('hiddenOtp');
+        
+            if (otpInput && hiddenOtp) {
+                hiddenOtp.value = otpInput.value.trim();
+            }
+        
             document.getElementById('tradingTransferForm').submit();
         });
+
         
         document.querySelector('form.package-form').addEventListener('submit', function(e) {
             var topupInput = document.querySelector('input[name="topup_amount"]');

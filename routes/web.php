@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
-use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DashboardController as UserDashboardController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\DirectRangeController;
 use App\Http\Controllers\AssetsController;
@@ -24,6 +24,7 @@ use App\Http\Controllers\Admin\CurrencyController;
 use App\Http\Controllers\Admin\PairController;
 use App\Http\Controllers\Admin\WalletController;
 use App\Http\Controllers\Admin\ReferralController as AdminReferralController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 
 require_once 'theme-routes.php';
 
@@ -32,8 +33,7 @@ Auth::routes();
 // Admin Routes
 Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     // Dashboard
-    Route::get('/dashboard', [DashboardController::class, 'index'])
-         ->name('admin.dashboard');
+    Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
 
     // User Management (Admin Work)
     Route::get('/users', [UserController::class, 'index'])->name('admin.users.index');
@@ -100,7 +100,7 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
 
 // For regular users (with custom middleware to ensure non-admin)
 Route::prefix('user-dashboard')->middleware(['auth', 'user.only'])->group(function () {
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('user.dashboard');
+    Route::get('/dashboard', [UserDashboardController::class, 'index'])->name('user.dashboard');
     Route::get('/assets', [AssetsController::class, 'index'])->name('user.assets');
     Route::post('/deposit', [AssetsController::class, 'deposit'])->name('user.deposit');
     Route::post('/withdrawal', [AssetsController::class, 'withdrawal'])->name('user.withdrawal');
@@ -115,15 +115,15 @@ Route::prefix('user-dashboard')->middleware(['auth', 'user.only'])->group(functi
     Route::post('/send', [AssetsController::class, 'sendFunds'])->name('user.sendFunds');
     Route::post('/account/change-password', [AccountController::class, 'changePassword'])->name('user.changePassword');
     Route::put('/account/update', [AccountController::class, 'updateProfile'])->name('user.updateProfile');
-    Route::post('/apply-promotion', [DashboardController::class, 'applyPromotion'])->name('user.applyPromotion');
+    Route::post('/apply-promotion', [UserDashboardController::class, 'applyPromotion'])->name('user.applyPromotion');
     
     //New layout
     Route::get('/account_v2', [AccountController::class, 'index'])->name('user.account_v2');
     Route::get('/assets_v2', [AssetsController::class, 'index'])->name('user.assets_v2');
-    Route::get('/dashboard_v2', [DashboardController::class, 'index'])->name('user.dashboard_v2');
+    Route::get('/dashboard_v2', [UserDashboardController::class, 'index'])->name('user.dashboard_v2');
     Route::get('/referral_v2', [ReferralController::class, 'index'])->name('user.referral_v2');
     Route::get('/order_v2', [OrderController::class, 'index'])->name('user.order_v2');
-    Route::get('/annoucement', [DashboardController::class, 'showAnnouncements']) ->name('user.annoucement');
+    Route::get('/annoucement', [UserDashboardController::class, 'showAnnouncements']) ->name('user.annoucement');
     Route::get('/faq', [FaqController::class, 'faq']) ->name('user.faq');
     Route::post('/contact-support', [UserController::class, 'contactSupport'])->name('user.contact.support');
 
