@@ -15,16 +15,28 @@ class SeedUsersTree extends Command
 
     // Sample names for usernames.
     protected $sampleNames = [
-        // Chinese
+        // Chinese (10 more)
         'liwei', 'meilin', 'xiaojun', 'zhangyu', 'huangmei',
-        // Japanese
+        'weijie', 'xiaolin', 'minghao', 'fanying', 'liling',
+        'cheng', 'yue', 'tao', 'rui', 'jin',
+        
+        // Japanese (10 more)
         'takashi', 'yukiko', 'haruto', 'sakura', 'renji',
-        // Korean
+        'kaito', 'hina', 'ryota', 'mina', 'yui',
+        'kenta', 'kana', 'satoshi', 'mei', 'riku',
+        
+        // Korean (10 more)
         'minji', 'jongwoo', 'seojin', 'haeun', 'hyunwoo',
-        // Western
+        'jiyoon', 'seungmin', 'jihye', 'minseok', 'yoona',
+        'taeyang', 'soojin', 'junho', 'bora', 'woojin',
+        
+        // Western (10 more)
         'emily', 'michael', 'sophia', 'daniel', 'oliver',
-        'chloe', 'jacob', 'ava', 'ethan', 'isabella'
+        'chloe', 'jacob', 'ava', 'ethan', 'isabella',
+        'olivia', 'liam', 'emma', 'noah', 'lucas',
+        'mia', 'logan', 'harper', 'jack', 'amelia'
     ];
+
 
 
     public function handle()
@@ -48,8 +60,8 @@ class SeedUsersTree extends Command
 
             // Determine how many children to create.
             // For the root, create 3-4; for others, 1-5.
-            $min = ($parent->id == $rootId) ? 1 : 2;
-            $max = ($parent->id == $rootId) ? 1 : 5;
+            $min = ($parent->id == $rootId) ? 4 : 2;
+            $max = ($parent->id == $rootId) ? 4 : 5;
             // Limit children if we're near our total target.
             $remaining = $totalToCreate - $createdCount;
             $numChildren = rand($min, $max);

@@ -608,13 +608,22 @@
         </div>
 
         <!-- Deposit Modal -->
-        <div class="modal fade" id="depositModal" tabindex="-1" aria-labelledby="depositModalLabel" aria-hidden="true">
+        <div class="modal fade" id="depositModal" tabindex="-1" aria-labelledby="depositModalLabel" aria-hidden="true" >
             <div class="modal-dialog">
                 <div class="modal-content bg-white">
                     <div class="modal-header">
                         <h5 class="modal-title" id="depositModalLabel">Deposit</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
+                    
+                    <!-- 🚧 Upgrade Notice (hidden by default) -->
+                    {{--<div id="depositUpgradeNotice" class="alert alert-danger fw-normal text-start" style="margin: 10px;">
+                        🚧 <strong>Deposit Notice</strong><br><br>
+                        We would like to inform you that our payment infrastructure partner, <strong>Coinremitter</strong>, is currently undergoing a scheduled system upgrade.<br><br>
+                        As a result, TRC20 deposits may experience delays in detection and balance updates during this period.<br><br>
+                        All valid transactions will be credited once the upgrade is completed and systems are fully synchronized.<br><br>
+                        We sincerely appreciate your patience and understanding. Thank you for your continued trust in our platform.
+                    </div>--}}
                     <form action="{{ route('user.deposit') }}" method="POST">
                         @csrf
                         <div class="modal-body">

@@ -29,8 +29,7 @@ class TelegramWebhookController extends Controller
     
             if (str_starts_with($text, 'check ')) {
                 $username = trim(str_replace('check ', '', $text));
-    
-                // Optionally validate user exists
+            
                 $user = User::where('name', $username)->first();
                 if (!$user) {
                     Http::post("https://api.telegram.org/bot{$botToken}/sendMessage", [
@@ -39,12 +38,11 @@ class TelegramWebhookController extends Controller
                     ]);
                     return response()->json(['status' => 'ok']);
                 }
-    
-                // Run artisan command
-                Artisan::call("check:real-wallet {$username}");
-    
-                
+            
+                // ✅ Proper way to pass arguments
+                Artisan::call("check:real-wallet", ['user_key' => $username]);
             }
+
         }
     
         return response()->json(['status' => 'ok']);

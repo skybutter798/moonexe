@@ -66,15 +66,25 @@ class UserRangeCalculator
     
         // 🔥 Subtract campaign bonus if applicable
         if ($user->status == 1) {
-            $campaignBonus = \DB::table('transfers')
+            $campaignBonusIn = \DB::table('transfers')
                 ->where('user_id', $user->id)
                 ->where('from_wallet', 'cash_wallet')
                 ->where('to_wallet', 'trading_wallet')
                 ->where('remark', 'campaign')
                 ->where('status', 'Completed')
                 ->sum('amount');
-    
-            $userTotal -= $campaignBonus;
+            
+            $campaignBonusOut = \DB::table('transfers')
+                ->where('user_id', $user->id)
+                ->where('from_wallet', 'trading_wallet')
+                ->where('to_wallet', 'system')
+                ->where('remark', 'campaign')
+                ->where('status', 'Completed')
+                ->sum('amount');
+            
+            $netCampaignBonus = $campaignBonusIn - $campaignBonusOut;
+            $userTotal -= $netCampaignBonus;
+
         }
     
         $groupTotal += $userTotal;

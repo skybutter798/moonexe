@@ -29,9 +29,9 @@ class HistoryClaimOrders extends Command
 
         for ($userId = $startUserId; $userId <= $endUserId; $userId++) {
             // Retrieve the user.
-            $user = User::find($userId);
+            $user = User::where('id', $userId)->where('status', 2)->first();
             if (!$user) {
-                $this->info("User {$userId} not found. Skipping.");
+                $this->info("User {$userId} not found or not active (status != 2). Skipping.");
                 continue;
             }
 

@@ -317,6 +317,22 @@ class OrderController extends Controller
         $userRange = $rangeCalculator->calculate($user);
         Log::info("User {$user->id} - Total: {$userRange['total']}, Direct Percentage: {$userRange['direct_percentage']}, Matching Percentage: {$userRange['matching_percentage']}");
         
+        // Check if user belongs to the "campaign-only" group
+        $isCampaignUser = \DB::table('users')
+            ->join('wallets', 'wallets.user_id', '=', 'users.id')
+            ->where('users.created_at', '>', '2025-05-20 00:00:00')
+            ->where('users.created_at', '<', '2025-05-28 00:00:00')
+            ->where('users.status', '=', 1)
+            ->whereNotIn('users.id', function ($query) {
+                $query->select('user_id')
+                    ->from('transfers')
+                    ->where('from_wallet', 'cash_wallet')
+                    ->where('to_wallet', 'trading_wallet')
+                    ->where('amount', 100);
+            })
+            ->where('users.id', $user->id)
+            ->exists();
+        
         // Step 3: Calculate claim amounts and create payout record.
         $claimService = new \App\Services\ClaimService();
         $claimAmounts = $claimService->calculate($order);
@@ -338,30 +354,56 @@ class OrderController extends Controller
         $wallet = \App\Models\Wallet::where('user_id', $user->id)->first();
         if ($wallet) {
             $wallet->earning_wallet += $baseClaimAmount;
-            $wallet->trading_wallet += $order->buy;
+    
+            if (!$isCampaignUser) {
+                $wallet->trading_wallet += $order->buy;
+            }
+    
             $wallet->save();
+    
+            if ($isCampaignUser) {
+                // Create 6-digit unique txid starting with b_
+                do {
+                    $txid = 'b_' . str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+                } while (\App\Models\Transfer::where('txid', $txid)->exists());
+    
+                \App\Models\Transfer::create([
+                    'user_id'      => $user->id,
+                    'txid'         => $txid,
+                    'from_wallet'  => 'trading_wallet',
+                    'to_wallet'    => 'system',
+                    'amount'       => 100,
+                    'status'       => 'Completed',
+                    'remark'       => 'campaign',
+                ]);
+            }
+    
             Log::info("User ID: {$user->id}, Wallet updated. New Earning Wallet: {$wallet->earning_wallet}, Trading Wallet: {$wallet->trading_wallet}");
         }
-        
+    
         // Step 5: Update the order status to completed.
         $order->status = 'completed';
         $order->save();
+    
         Log::info("Order ID: {$order->id} status updated to completed");
-        
+    
         // Step 6: Distribute income to upline ---
         $uplineDistributor = new \App\Services\UplineDistributor();
         $uplineDistributor->distribute($order, $baseClaimAmount, $user);
-        
+    
+        // Final Response
+        $message = $isCampaignUser
+            ? 'Hi, thank you for joining the campaign. As you did not top up any amount during the 7-day period, your welcome bonus of 100 has been reclaimed by the system. Please contact support if you have any questions.'
+            : 'Claimed success!';
+    
         return response()->json([
-            'success' => true, 
-            'message' => 'Claimed success!',
+            'success' => true,
+            'message' => $message,
             'redirect_url' => route('user.assets'),
             'claim_amount' => $baseClaimAmount,
-            'percentage' => $percentage ?? 50,
-            'wallet_balance' => $wallet->trading_wallet,
+            'percentage' => $percentage,
+            'wallet_balance' => $wallet->trading_wallet ?? 0,
         ]);
-
-
     }
 
 }
