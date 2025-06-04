@@ -18,9 +18,17 @@ use App\Services\UserRangeCalculator;
 use App\Services\UplineDistributor;
 use Carbon\Carbon;
 use App\Events\OrderUpdated;
+use App\Services\WalletRecalculator;
 
 class OrderController extends Controller
 {
+    protected $walletRecalculator;
+
+    public function __construct(WalletRecalculator $walletRecalculator)
+    {
+        $this->walletRecalculator = $walletRecalculator;
+    }
+    
     public function index(Request $request)
     {
         // Get the date from the query string or default to today's date.
@@ -94,6 +102,8 @@ class OrderController extends Controller
 
     
         // Also retrieve the current user’s trading wallet balance.
+        $this->walletRecalculator->recalculate($user->id);
+
         $wallet = Wallet::where('user_id', $user->id)->first();
         $tradingBalance = $wallet ? $wallet->trading_wallet : 0;
         $bonusBalance = $wallet ? $wallet->bonus_wallet : 0;
@@ -209,6 +219,8 @@ class OrderController extends Controller
         $amount    = $request->amount;
         $txid = 'o_' . str_pad(random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
     
+        $this->walletRecalculator->recalculate($user->id);
+
         $wallet = \App\Models\Wallet::where('user_id', $user->id)->first();
         if (!$wallet) {
             Log::channel('order')->error('Wallet not found.', ['user_id' => $user->id]);
@@ -398,6 +410,8 @@ class OrderController extends Controller
         // Step 6: Distribute income to upline ---
         $uplineDistributor = new \App\Services\UplineDistributor();
         $uplineDistributor->distribute($order, $baseClaimAmount, $user);
+        $this->walletRecalculator->recalculate($user->id);
+
     
         // Final Response
         $message = $isCampaignUser

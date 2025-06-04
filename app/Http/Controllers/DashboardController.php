@@ -11,12 +11,22 @@ use App\Models\Annoucement;
 use App\Models\Transfer;
 use App\Models\Setting;
 use Carbon\Carbon;
+use App\Services\WalletRecalculator;
+
 
 class DashboardController extends Controller
 {
+    protected $walletRecalculator;
+    
+    public function __construct(WalletRecalculator $walletRecalculator)
+    {
+        $this->walletRecalculator = $walletRecalculator;
+    }
+    
     public function index()
     {
         $userId = auth()->id();
+        $this->walletRecalculator->recalculate($userId);
         $wallets = Wallet::where('user_id', $userId)->first();
         
         if (!$wallets) {
@@ -27,6 +37,7 @@ class DashboardController extends Controller
                 'affiliates_wallet' => 0,
             ];
         }
+
         
         $assetsRecords = \App\Models\AssetsRecord::where('user_id', $userId)
             ->orderBy('record_date', 'asc')
@@ -67,9 +78,11 @@ class DashboardController extends Controller
             ->where('remark', 'package')
             ->exists();
         $forexRecords = \App\Models\MarketData::orderBy('symbol')->get();
-        $announcement = Annoucement::where('status', 1)
-                       ->orderBy('updated_at', 'desc')
-                       ->first();
+        $announcements = Annoucement::where('status', 1)
+            ->orderBy('updated_at', 'desc')
+            ->take(2)
+            ->get();
+
                        
         // Set the MEGADROP campaign time (converted from New York to Malaysia time)
         $startMY = Carbon::createFromFormat('Y-m-d H:i:s', '2025-05-20 12:01:00', 'Asia/Kuala_Lumpur');
@@ -130,7 +143,7 @@ class DashboardController extends Controller
         ];
         
         $data['tradermadeApiKey'] = config('services.tradermade.key');
-        $data['announcement'] = $announcement;
+        $data['announcements'] = $announcements;
         
         if ($user->isAdmin) {
             return view('admin.dashboard', $data);

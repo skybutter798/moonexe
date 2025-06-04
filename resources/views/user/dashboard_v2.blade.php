@@ -197,13 +197,12 @@
           </div>
         </div>
         
-        @if($announcement)
-          <!-- Announcement Modal -->
-          <div class="modal fade" id="announcementModal" tabindex="-1" aria-labelledby="announcementModalLabel" aria-hidden="true">
+        @foreach($announcements as $index => $announcement)
+          <div class="modal fade" id="announcementModal{{ $announcement->id }}" tabindex="-1" aria-labelledby="announcementModalLabel{{ $announcement->id }}" aria-hidden="true" style="z-index: 9999;">
             <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
               <div class="modal-content bg-white shadow-lg rounded-3 border-0">
                 <div class="modal-header bg-primary border-0 rounded-top">
-                  <h5 class="modal-title text-white" id="announcementModalLabel">{{ $announcement->name }}</h5>
+                  <h5 class="modal-title text-white" id="announcementModalLabel{{ $announcement->id }}">{{ $announcement->name }}</h5>
                   <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body px-4 py-3 text-black">
@@ -215,7 +214,8 @@
               </div>
             </div>
           </div>
-        @endif
+        @endforeach
+
         
         <!-- announcement -->
         <div class="col-12">
@@ -1524,15 +1524,27 @@
                 bsDepositModal.show();
               });
           
-            const ann = window.announcement;
-            const hasToast = window.hasFlashMessage;
+            const announcements = @json($announcements);
+            let index = 0;
             
-            if (ann && !hasToast) {
-              const key = `announcement_${ann.id}_shown`;
-              const modal = new bootstrap.Modal(document.getElementById('announcementModal'));
-              modal.show();
-              localStorage.setItem(key, '1');
+            function showNextAnnouncement() {
+                if (index >= announcements.length) return;
+            
+                const ann = announcements[index];
+                const modalEl = document.getElementById(`announcementModal${ann.id}`);
+                const modal = new bootstrap.Modal(modalEl);
+                modal.show();
+            
+                modalEl.addEventListener('hidden.bs.modal', () => {
+                    index++;
+                    showNextAnnouncement();
+                });
             }
+            
+            showNextAnnouncement();
+
+
+            
             
             const toastEl = document.getElementById('flashToast');
             if (toastEl) new bootstrap.Toast(toastEl, { delay: 6000 }).show();

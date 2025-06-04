@@ -86,6 +86,12 @@ class RecalculateWallets extends Command
                 ->where('to_wallet', 'cash_wallet')
                 ->sum('amount')
                 
+                - DB::table('transfers')->where('user_id', $user->id)
+                ->where('status', 'Completed')
+                ->where('from_wallet', 'trading_wallet')
+                ->where('to_wallet', 'system')
+                ->sum('amount')
+                
                 - DB::table('orders')->where('user_id', $user->id)
                 ->where('status', 'pending')
                 ->sum('buy');

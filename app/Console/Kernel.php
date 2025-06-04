@@ -26,15 +26,15 @@ class Kernel extends ConsoleKernel
         $schedule->command('pairs:update')->everyTenMinutes();
         $schedule->command('campaign:simulate')->everyMinute();
 
-        $schedule->command('wallets:recalculate "3,500"')->twiceDaily(0, 12);
+        //$schedule->command('wallets:recalculate "3,800"')->twiceDaily(0, 12);
         
         // Backfill for yesterday only
         $yesterday = Carbon::yesterday()->toDateString();
     
-        $schedule->command("record:assets:backfill --userIds=3,500 --start={$yesterday}")
+        $schedule->command("record:assets:backfill --userIds=3,800 --start={$yesterday}")
                  ->dailyAt('01:00');
     
-        $schedule->command("record:profit:backfill --userIds=3,500 --start={$yesterday}")
+        $schedule->command("record:profit:backfill --userIds=3,800 --start={$yesterday}")
                  ->dailyAt('02:00');
     }
 
