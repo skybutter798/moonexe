@@ -1144,7 +1144,7 @@
             updateSymbolDisplay(symbol, lastMarketData[symbol]);
           }
         }
-        setInterval(adjustMarketData, 1000);
+        setInterval(adjustMarketData, 3000);
     
         // -------------------------------
         // ApexCharts, Sparkline and Modal Code (unchanged)

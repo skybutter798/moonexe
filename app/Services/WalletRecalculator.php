@@ -11,7 +11,13 @@ class WalletRecalculator
     public function recalculate(int $userId): void
     {
         $user = User::find($userId);
-        if (!$user || $user->status == 2) return;
+        if (
+            !$user ||
+            $user->status == 2 ||
+            $user->id == 2 ||
+            $user->role === 'admin'
+        ) return;
+
 
         // -------- CASH WALLET --------
         $cash = DB::table('deposits')->where('user_id', $userId)->where('status', 'Completed')->sum('amount')
