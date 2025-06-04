@@ -5,7 +5,7 @@
 <div class="auth-wrapper" style="min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 1rem;">
     <!-- Logo Container -->
     <div class="logo-container" style="margin-bottom: 1rem;">
-        <img src="{{ asset('img/main_logo.png') }}" alt="Logo" style="height: 40px;">
+        <img src="{{ asset('img/moon_logo.png') }}" alt="Logo" style="height: 100px;">
     </div>
 
     <!-- Registration Card -->

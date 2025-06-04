@@ -142,9 +142,17 @@ class OrderController extends Controller
             ->sum('amount');
     
         $totalStepTwo = Transfer::where('user_id', $user->id)
-            ->where('from_wallet', 'trading_wallet')
-            ->where('to_wallet', 'cash_wallet')
             ->where('status', 'Completed')
+            ->where(function ($query) {
+                $query->where(function ($q) {
+                    $q->where('from_wallet', 'trading_wallet')
+                      ->where('to_wallet', 'cash_wallet');
+                })->orWhere(function ($q) {
+                    $q->where('from_wallet', 'trading_wallet')
+                      ->where('to_wallet', 'system')
+                      ->where('remark', 'campaign');
+                });
+            })
             ->sum('amount');
     
         $totalAvailable = $totalStepOne - $totalStepTwo;

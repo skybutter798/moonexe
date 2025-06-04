@@ -3,14 +3,15 @@
     Trading
   </x-slot:pageTitle>
 
-  <x-slot:headerFiles>
+    <x-slot:headerFiles>
     <!-- Chart.js is loaded from CDN -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Your trading script -->
     <script src="https://js.pusher.com/7.0/pusher.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/laravel-echo/1.11.3/echo.iife.js"></script>
-    <script src="{{ asset('js/users/trading.js') }}"></script>
+    <script src="{{ asset('js/users/trading.js') }}?v={{ filemtime(public_path('js/users/trading.js')) }}"></script>
+
     <script>
       window.orderStoreRoute = "{{ route('user.order.store') }}";
       window.orderClaimRoute = "{{ route('user.order.claim') }}";
@@ -116,7 +117,7 @@
           pointer-events: none;
           color: white;
         }
-
+    
         @keyframes blink {
           0% { background-color: #a0cdff; }
           100% { background-color: #ffffff; }
@@ -125,9 +126,9 @@
         .blink-highlight {
           animation: blink 0.5s alternate 6;
         }
-
+    
     </style>
-  </x-slot:headerFiles>
+    </x-slot:headerFiles>
   
     <div id="tradePopup" class="position-fixed top-50 start-50 translate-middle bg-white text-dark p-4 rounded shadow-lg d-none" style="z-index: 9999; min-width: 300px; text-align: center;">
         <div id="tradePopupContent">
@@ -140,11 +141,15 @@
             </div>
         </div>
     </div>
+    
+    <a href="#" id="backToTop" class="btn btn-dark rounded-circle shadow"
+       style="position: fixed; bottom: 80px; right: 20px; display: none; z-index: 9999; width: 45px; height: 45px; justify-content: center; align-items: center;">
+      <i class="bi bi-arrow-up" style="font-size: 1.2rem;"></i>
+    </a>
 
 
-
-  <div id="tradeNotification" style="position: fixed; bottom: 20px; background: #333; color: #fff; padding: 10px; border-radius: 5px; opacity: 0; transition: opacity 0.5s; z-index: 1;"></div>
-  <div id="orderNotification" style="position: fixed; bottom: 20px; background: #333; color: #fff; padding: 10px; border-radius: 5px; opacity: 0; transition: opacity 0.5s; z-index: 1;"></div>
+    <div id="tradeNotification" style="position: fixed; bottom: 20px; background: #333; color: #fff; padding: 10px; border-radius: 5px; opacity: 0; transition: opacity 0.5s; z-index: 1;"></div>
+    <div id="orderNotification" style="position: fixed; bottom: 20px; background: #333; color: #fff; padding: 10px; border-radius: 5px; opacity: 0; transition: opacity 0.5s; z-index: 1;"></div>
   
     <!-- Upcoming Cards -->
     @php
@@ -215,6 +220,13 @@
       Make trade and exchange with currencies pairs before the gate closes or volume is reached.
     </p>
     
+    <div class="d-flex align-items-center mb-3">
+      <input class="form-check-input me-2 mt-0" type="checkbox" id="showAllOrdersToggle" style="transform: scale(1.2);">
+      <label class="form-check-label fw-semibold text-dark mb-0" for="showAllOrdersToggle">
+        Show All Pairs (Gate Closed)
+      </label>
+    </div>
+    
     <hr>
 
     @if($pairs->isEmpty())
@@ -231,8 +243,9 @@
             $parts = array_map('trim', $parts);
             $currency = $parts[0] ?? $pair->pairName;
             $displayPair = "USDT / {$currency} / USDT";
+            $isExpired = \Carbon\Carbon::createFromTimestampMs($pair->closingTimestamp)->lt(\Carbon\Carbon::now());
         @endphp
-          <div class="col-12 col-sm-6 col-lg-3 mb-3">
+          <div class="col-12 col-sm-6 col-lg-3 mb-3 gateCard" data-expired="{{ $isExpired ? 'true' : 'false' }}">
             <!-- Pass all necessary data attributes for countdown and progress -->
             <div class="card gateRow"
                data-pair-id="{{ $pair->id }}"
@@ -320,7 +333,17 @@
     <!-- My Exchange Orders -->
     <h2 id="myExchangeOrders" class="mb-3 mt-5 text-primary"><strong>My Exchange Orders</strong></h2>
     
-    <div class="row">
+    <div class="d-flex align-items-center mb-3">
+      <input class="form-check-input me-2 mt-0" type="checkbox" id="toggleMyCompletedOrders" style="transform: scale(1.2);">
+      <label class="form-check-label fw-semibold text-dark mb-0" for="toggleMyCompletedOrders">
+        Show All Orders (Completed)
+      </label>
+    </div>
+
+
+
+
+<div class="row">
     @forelse($userOrders as $order)
       @php
         $pairCreatedAt = $order->pair->created_at;
@@ -331,60 +354,55 @@
       @endphp
     
         <div class="col-12 col-lg-6">
-          <div class="card mb-4" data-order-id="{{ $order->id }}" data-order-txid="{{ $order->txid }}" data-pair-start="{{ $pairStartTimestamp }}" data-pair-end="{{ $pairEndTimestamp }}" data-order-status="{{ $order->status }}" data-order-time="{{ $order->time }}">
-            <!-- Card Header 
-            <div class="card-header d-flex justify-content-between align-items-center" data-pair="{{ $displayPair }}">
-              <h5 class="mb-0 text-white">{{ $displayPair }}</h5>
-            </div>-->
-        
-            <!-- Card Body -->
-            <div class="card-body">
-                <p><strong>Order ID:  </strong>{{ $order->txid }}</p>
-                <p><strong>Date:  </strong><span class="">{{ $order->created_at->format('d M Y H:i') }}</span></p>
-                <p><strong>Pair:  </strong><span class="">{{ $displayPair }}</span></p>
-                <p><strong>Trade:  </strong>{{ number_format($order->buy, 4) }} USDT</p>
-                <hr>
-                <p class="est-roi" data-roi="{{ number_format($order->pair->rate, 2) }} / {{ number_format($order->est_rate, 2) }}">
-                  <strong>Estimate / Actual Profit (%):  </strong> 
-                  <span id="rateDisplay" class="mobile-break">
-                    {{ number_format($order->pair->rate, 2) }} / <span class="badge badge-dark">{{ number_format($order->est_rate, 2) }}</span>
-                  </span>
-                </p>
-                <p class="order-buy" data-buy="{{ $order->buy }}" data-est-rate="{{ $order->est_rate }}">
-                  <strong class="mobile-break">Return Profit:</strong>
-                  <!--<span style="font-size:0.9em">
-                    {{ number_format($order->receive, 4) }} {{ $baseCurrency }}
-                  </span> ➜ -->
-                  <span id="buyDisplay">
-                    <span class="computed-value badge badge-dark">
-                      {{ number_format($order->buy * (1 + $order->est_rate/100), 4) }}
+            <div class="card mb-4 myOrderCard" data-status="{{ strtolower($order->status) }}" data-order-id="{{ $order->id }}" data-order-txid="{{ $order->txid }}" data-pair-start="{{ $pairStartTimestamp }}" data-pair-end="{{ $pairEndTimestamp }}" data-order-status="{{ $order->status }}" data-order-time="{{ $order->time }}">
+                <!-- Card Body -->
+                <div class="card-body">
+                    <p><strong>Order ID:  </strong>{{ $order->txid }}</p>
+                    <p><strong>Date:  </strong><span class="">{{ $order->created_at->format('d M Y H:i') }}</span></p>
+                    <p><strong>Pair:  </strong><span class="">{{ $displayPair }}</span></p>
+                    <p><strong>Trade:  </strong>{{ number_format($order->buy, 4) }} USDT</p>
+                    <hr>
+                    <p class="est-roi" data-roi="{{ number_format($order->pair->rate, 2) }} / {{ number_format($order->est_rate, 2) }}">
+                      <strong>Estimate / Actual Profit (%):  </strong> 
+                      <span id="rateDisplay" class="mobile-break">
+                        {{ number_format($order->pair->rate, 2) }} / <span class="badge badge-dark">{{ number_format($order->est_rate, 2) }}</span>
+                      </span>
+                    </p>
+                    <p class="order-buy" data-buy="{{ $order->buy }}" data-est-rate="{{ $order->est_rate }}">
+                      <strong class="mobile-break">Return Profit:</strong>
+                      <!--<span style="font-size:0.9em">
+                        {{ number_format($order->receive, 4) }} {{ $baseCurrency }}
+                      </span> ➜ -->
+                      <span id="buyDisplay">
+                        <span class="computed-value badge badge-dark">
+                          {{ number_format($order->buy * (1 + $order->est_rate/100), 4) }}
+                        </span>
+                      </span>
+                    </p>
+                    <div class="mb-2">
+                      <strong class="text-dark">Pairing Progress: </strong>
+                      <div class="progress" style="position: relative; height: 30px; border-radius: 10px;">
+                        <div class="progress-bar status-progress" role="progressbar" style="width: 0%;" aria-valuemin="0" aria-valuemax="100"></div>
+                        <!-- New overlay element -->
+                        <div class="progress-text_order">00:00:00</div>
+                      </div>
+                    </div>
+    
+                </div>
+            
+                <!-- Card Footer -->
+                <div class="card-footer">
+                  <div class="pairing-cell">
+                    <strong class="text-dark">Pairing Rate: </strong>
+                    <span class="matching-rate btn" 
+                          data-symbol="{{ str_replace(' ', '', str_replace('/', '', $order->pair->currency->c_name . $order->pair->pairCurrency->c_name)) }}"
+                          data-base-rate="0.000000">
+                      0.000000
                     </span>
-                  </span>
-                </p>
-                <div class="mb-2">
-                  <strong class="text-dark">Pairing Progress: </strong>
-                  <div class="progress" style="position: relative; height: 30px; border-radius: 10px;">
-                    <div class="progress-bar status-progress" role="progressbar" style="width: 0%;" aria-valuemin="0" aria-valuemax="100"></div>
-                    <!-- New overlay element -->
-                    <div class="progress-text_order">00:00:00</div>
                   </div>
                 </div>
-
-            </div>
-        
-            <!-- Card Footer -->
-            <div class="card-footer">
-              <div class="pairing-cell">
-                <strong class="text-dark">Pairing Rate: </strong>
-                <span class="matching-rate btn" 
-                      data-symbol="{{ str_replace(' ', '', str_replace('/', '', $order->pair->currency->c_name . $order->pair->pairCurrency->c_name)) }}"
-                      data-base-rate="0.000000">
-                  0.000000
-                </span>
-              </div>
-            </div>
     
-          </div>
+            </div>
         </div>
     @empty
       <div class="text-center">No exchange orders found.</div>

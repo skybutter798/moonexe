@@ -21,7 +21,7 @@
     }
 
     .header-logo img {
-      max-height: 24px;
+      height: 45px;
     }
     
     .header-logo {
@@ -87,9 +87,8 @@
     }
     
     .glink span:nth-of-type(2) {
-  display: none;
-}
-
+      display: none;
+    }
     
     .glink img {
       width: 18px;
@@ -111,7 +110,7 @@
     <div></div>
     <div class="header-logo">
       <a href="{{ route('user.dashboard') }}">
-        <img src="{{ asset('img/main_logo.png') }}" alt="Main Logo">
+        <img src="{{ asset('img/moon_logo.png') }}" alt="Main Logo">
       </a>
     </div>
 

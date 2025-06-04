@@ -62,6 +62,10 @@
     .menu:hover .dropdown-menu {
       display: block;
     }
+    
+    .theme-logo {
+        width: auto;
+    }
   </style>
 </head>
 <body>
@@ -72,8 +76,8 @@
         <div class="nav-logo">
           <div class="nav-item theme-logo">
             <a href="{{ route('user.dashboard') }}">
-              <img src="{{ asset('img/MoonExe_logo_white.png') }}" class="navbar-logo logo-dark" alt="logo">
-              <img src="{{ asset('img/MoonExe_logo_black.png') }}" class="navbar-logo logo-light" alt="logo">
+              <img src="{{ asset('img/moon_logo.png') }}" class="navbar-logo logo-dark" alt="logo">
+              <img src="{{ asset('img/moon_logo.png') }}" class="navbar-logo logo-light" alt="logo">
             </a>
           </div>
           <div class="nav-item theme-text">

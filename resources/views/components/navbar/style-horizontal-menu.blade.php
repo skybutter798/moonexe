@@ -15,6 +15,10 @@
     .gt_container-l20m6l {
         margin-top: 5px;
     }
+    
+    .theme-logo {
+        width: auto;
+    }
 </style>
 <!--  BEGIN NAVBAR  -->
 <div class="header-container container-xxl desktop-menu">
@@ -30,13 +34,13 @@
         <ul class="navbar-item theme-brand flex-row  text-center">
             <li class="nav-item theme-logo">
                 <a href="{{ $dashboardUrl }}">
-                    <img src="{{ asset('img/MoonExe_logo_white.png') }}" class="navbar-logo logo-dark" alt="logo">
-                    <img src="{{ asset('img/MoonExe_logo_black.png') }}" class="navbar-logo logo-light" alt="logo">
+                    <img src="{{ asset('img/moon_logo.png') }}" class="navbar-logo logo-dark" alt="logo">
+                    <img src="{{ asset('img/moon_logo.png') }}" class="navbar-logo logo-light" alt="logo">
                 </a>
             </li>
-            <li class="nav-item theme-text">
+            {{--<li class="nav-item theme-text">
                 <a href="{{ $dashboardUrl }}" class="nav-link"> MoonExe </a>
-            </li>
+            </li>--}}
         </ul>
 
         <ul class="navbar-item flex-row ms-lg-auto ms-0 action-area">

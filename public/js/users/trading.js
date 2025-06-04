@@ -777,6 +777,35 @@ document.addEventListener('DOMContentLoaded', function() {
               progressText.innerText = progress.toFixed(2) + '%';
           }
       });
+      
+    const toggle = document.getElementById('showAllOrdersToggle');
+    function filterGateCards() {
+      const showAll = toggle.checked;
+      document.querySelectorAll('.gateCard').forEach(card => {
+        const isExpired = card.getAttribute('data-expired') === 'true';
+        card.style.display = (!showAll && isExpired) ? 'none' : '';
+      });
+    }
+
+    toggle.addEventListener('change', filterGateCards);
+
+    // Run on page load to hide expired ones by default
+    filterGateCards();
+    
+    const backToTop = document.getElementById('backToTop');
+
+    window.addEventListener('scroll', function () {
+      if (window.scrollY > 200) {
+        backToTop.style.display = 'flex';
+      } else {
+        backToTop.style.display = 'none';
+      }
+    });
+
+    backToTop.addEventListener('click', function (e) {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
 
 });
 
@@ -848,6 +877,16 @@ document.addEventListener('click', function (e) {
     
         // Mark as completed
         row.setAttribute('data-order-status', 'completed');
+        
+        // Also update data-status for filtering
+        row.setAttribute('data-status', 'completed');
+        
+        // Hide the card if toggle is off
+        const toggle = document.getElementById('toggleMyCompletedOrders');
+        if (toggle && !toggle.checked) {
+          row.style.display = 'none';
+        }
+
     
         // Button actions
         const goBtn = document.getElementById('goToWalletBtn');
@@ -888,4 +927,32 @@ document.addEventListener('click', function (e) {
       }, 3000);
     });
   }
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+    const toggle = document.getElementById('toggleMyCompletedOrders');
+    
+    if (!toggle) {
+      console.warn('⚠️ toggleMyCompletedOrders not found in DOM.');
+      return;
+    }
+    
+    function filterOrders() {
+      const showCompleted = toggle.checked;
+      console.log('Show Completed?', showCompleted);
+    
+      document.querySelectorAll('.myOrderCard').forEach(card => {
+        const status = card.dataset.status;
+        console.log('Checking card with status:', status);
+    
+        if (status === 'completed') {
+          card.style.display = showCompleted ? '' : 'none';
+        } else {
+          card.style.display = '';
+        }
+      });
+    }
+    
+    toggle.addEventListener('change', filterOrders);
+    filterOrders(); // Initial run
 });
