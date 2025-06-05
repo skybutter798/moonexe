@@ -903,7 +903,7 @@ class AssetsController extends Controller
                 'to_wallet'   => 'cash_wallet',
                 'amount'      => -abs($amount),
                 'status'      => 'Completed',
-                'remark'      => 'internal_transfer',
+                'remark'      => 'downline',
             ]);
     
             Transfer::create([
@@ -913,7 +913,7 @@ class AssetsController extends Controller
                 'to_wallet'   => 'cash_wallet',
                 'amount'      => abs($amount),
                 'status'      => 'Completed',
-                'remark'      => 'internal_transfer',
+                'remark'      => 'downline',
             ]);
     
             // Optional logs

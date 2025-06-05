@@ -9,7 +9,8 @@ use App\Services\TelegramService;
 
 class CheckRealWalletBalance extends Command
 {
-    protected $signature = 'check:real-wallet {user_key?}';
+    protected $signature = 'check:real-wallet {user_key?} {--no-telegram}';
+
     protected $description = 'Check wallet breakdown using user ID or name, and send result to Telegram';
 
     protected $telegram;
@@ -104,10 +105,10 @@ class CheckRealWalletBalance extends Command
                 ])
                 ->get();
 
-            $this->info("📋 Direct Affiliate Breakdown for {$user->name} (ID: {$user->id}):");
+            /*$this->info("📋 Direct Affiliate Breakdown for {$user->name} (ID: {$user->id}):");
             foreach ($directAffiliatePayouts as $row) {
                 $this->line("→ From Downline {$row->downline_name} (ID: {$row->downline_id}), Transfer ID: {$row->order_id}, Amount: {$row->payout_amount}");
-            }
+            }*/
 
             $affiliateDirect = $directAffiliatePayouts->sum('payout_amount');
 
@@ -128,8 +129,23 @@ class CheckRealWalletBalance extends Command
                 ->where('to_wallet', 'trading_wallet')
                 ->where('status', 'Completed')
                 ->whereRaw("LOWER(remark) = 'package'")
-                ->whereNotIn('id', [824, 700, 701, 790, 797])
+                ->whereNotIn('id', [233, 236, 237, 244, 333, 334, 384, 544, 559, 700, 701, 790, 797, 360, 361, 383])
                 ->sum('amount');
+                
+            $tradingInRecords = DB::table('transfers')
+                ->whereIn('user_id', $validDownlineIds)
+                ->where('from_wallet', 'cash_wallet')
+                ->where('to_wallet', 'trading_wallet')
+                ->where('status', 'Completed')
+                ->whereRaw("LOWER(remark) = 'package'")
+                ->whereNotIn('id', [219, 700, 701, 790, 797])
+                ->get();
+            
+            $this->info("📦 Trading-In Transfer Records:");
+            foreach ($tradingInRecords as $record) {
+                $this->line("→ ID: {$record->id}, User ID: {$record->user_id}, Amount: {$record->amount}, Remark: {$record->remark}");
+            }
+
 
             $tradingOut = DB::table('transfers')
                 ->whereIn('user_id', $validDownlineIds)
@@ -170,7 +186,12 @@ class CheckRealWalletBalance extends Command
 |—— <b>Net Trading Margin:</b> {$netMargin}
 EOL;
 
-            $this->telegram->sendMessage($message, '-4807439791');
+            // Print in terminal
+            $this->line($message);
+            
+            if (!$this->option('no-telegram')) {
+                $this->telegram->sendMessage($message, '-4807439791');
+            }
             $this->info("✅ Sent breakdown for user {$user->name} (ID: {$user->id}) to Telegram.");
         }
 
