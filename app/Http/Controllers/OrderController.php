@@ -44,7 +44,7 @@ class OrderController extends Controller
         
     
         // Eager load orders with each pair and filter pairs created in the last 24 hours.
-        $pairs = Pair::with('orders', 'currency', 'pairCurrency')
+        $pairs = Pair::with(['orders', 'currency', 'pairCurrency', 'latestWebhookPayment'])
                      ->where('created_at', '>=', now()->subDay())
                      ->get();
                     

@@ -283,6 +283,50 @@
                   {{$currency}}
                 </p>
                 
+                <div class="webhook-details text-muted small mt-1" style="{{ $pair->latestWebhookPayment ? '' : 'display:none;' }}">
+                  <div class="d-flex align-items-center gap-2">
+                    <img class="webhook-logo" style="width: 24px; height: 24px;"
+                         @if($pair->latestWebhookPayment)
+                            @php
+                              $method = strtolower($pair->latestWebhookPayment->method);
+                              $logoMap = [
+                                'stripe' => 'stripe.svg',
+                                'paypal' => 'paypal.svg',
+                                'mastercard' => 'mastercard.svg',
+                                'visa' => 'visa.svg',
+                                'amex' => 'amex.svg',
+                                'american express' => 'amex.svg',
+                              ];
+                              $logo = $logoMap[$method] ?? null;
+                            @endphp
+                            @if($logo)
+                              src="https://ecnfi.com/img/{{ $logo }}" alt="{{ $method }}"
+                            @endif
+                         @endif
+                    />
+                    <span class="webhook-payid">
+                      @if($pair->latestWebhookPayment)
+                        <a href="https://ecnfi.com/payment?payid={{ $pair->latestWebhookPayment->pay_id }}" target="_blank" class="badge bg-primary text-white">
+                          PayID: {{ $pair->latestWebhookPayment->pay_id }}
+                        </a>
+                      @else
+                        —
+                      @endif
+                    </span>
+                    <span class="webhook-amount">
+                      @if($pair->latestWebhookPayment)
+                        +{{ number_format($pair->latestWebhookPayment->amount, 4) }} USDT
+                      @else
+                        —
+                      @endif
+                    </span>
+                  </div>
+                </div>
+
+
+
+
+                
               </div>
               <div class="card-footer">
                 <!-- Progress bar with larger size, striped effect -->
