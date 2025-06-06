@@ -322,7 +322,19 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     
       if (volumeDisplay) {
-        volumeDisplay.innerHTML = `<p>REMAIN VOL : ${parseFloat(remain).toFixed(2)} / ${parseFloat(total).toFixed(2)} volume</p>`;
+        const reversedSymbols = ['LKR', 'VND', 'IDR', 'COP'];
+        const baseSymbol = pair.split('/')[0].trim().toUpperCase();
+        const isReversed = reversedSymbols.includes(baseSymbol);
+        const baseCurrency = pair.split('/')[0].trim().toUpperCase();
+        
+        const remainUsd = isReversed 
+          ? parseFloat(remain) / currentRate 
+          : parseFloat(remain) * currentRate;
+        
+        volumeDisplay.innerHTML = `
+          <p>REMAIN VOL : ${remainUsd.toFixed(2)} USDT / ${parseFloat(total).toFixed(2)} ${baseCurrency}</p>
+        `;
+
       }
     
       startGateCloseCountdown(closingTimestamp);

@@ -21,7 +21,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('pairs:create')->everyMinute();
         $schedule->command('simulate:fake-user-buy')->everyThirtyMinutes();
         $schedule->command('seed:claim-orders 19 192')->everyThreeHours();
-        $schedule->command('seed:admin-orders')->cron('*/2 * * * *');
+        $schedule->command('seed:admin-orders')->everyTenMinutes();
         $schedule->command('cron:aggregate-matching')->everyFiveMinutes();
         $schedule->command('pairs:update')->everyTenMinutes();
         $schedule->command('campaign:simulate')->everyMinute();

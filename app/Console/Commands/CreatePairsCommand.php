@@ -133,6 +133,14 @@ class CreatePairsCommand extends Command
                 $rate = mt_rand($rateMin, $rateMax) / 100;
                 $gate_time = $defaultGateTime;
                 $end_time = $defaultEndTime;
+                
+                if ($currency->c_name === 'COP') {
+                    $volume = 60074000;
+                    $rate = 0.62;
+                
+                    Log::channel('pair')->info("COP special case: volume adjusted to {$volume}, rate set to {$rate}");
+                }
+
 
                 // Create the pair record.
                 Pair::create([

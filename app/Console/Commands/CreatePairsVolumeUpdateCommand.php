@@ -20,6 +20,15 @@ class CreatePairsVolumeUpdateCommand extends Command
         $pairs = Pair::whereDate('created_at', $today)->get();
 
         foreach ($pairs as $pair) {
+            
+            if ($pair->currency && $pair->currency->c_name === 'COP') {
+                $maxCOPVolume = 164505200;
+                if ($pair->volume > $maxCOPVolume) {
+                    Log::channel('pair')->info("COP Pair #{$pair->id} volume capped at {$maxCOPVolume} (current: {$pair->volume})");
+                    continue; // skip update for this pair
+                }
+            }
+            
             // 1. Convert gate_time to hours
             $gateHours = max((int) floor($pair->gate_time / 60), 1);
             $activeHrs = max($gateHours - 1, 0); // 1 hour reserved at the end
