@@ -6,6 +6,7 @@ use App\Http\Controllers\TelegramWebhookController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use App\Models\WebhookPayment;
+use App\Http\Controllers\Api\TransactionWebhookController;
 
 use App\Models\Promotion;
 
@@ -81,3 +82,5 @@ Route::get('/pair/{pair}/latest-payment', function ($pairId) {
 
     return response()->json(['success' => false]);
 });
+
+Route::post('/tx/receive', [TransactionWebhookController::class, 'receive']) ->middleware('restrict.ip');

@@ -82,84 +82,84 @@ class WebhookController extends Controller
     }
     
     public function receive(Request $request)
-{
-    $expectedToken = env('PAYMENT_WEBHOOK_TOKEN');
-    $receivedToken = $request->bearerToken();
-
-    if ($receivedToken !== $expectedToken) {
-        Log::warning('Unauthorized webhook attempt', [
-            'ip'     => $request->ip(),
-            'token'  => $receivedToken,
-        ]);
-        return response()->json(['error' => 'Unauthorized'], 401);
-    }
-
-    $payload = $request->all();
-    Log::info('[Webhook] Received JSON:', $payload);
-
-    if (($payload['status'] ?? null) !== 'Paid') {
-        return response()->json(['status' => 'ignored'], 200);
-    }
-
-    // Step 1: Find random pair created today
-    $today = now('Asia/Kuala_Lumpur')->toDateString();
-    $pair = Pair::whereDate('created_at', $today)->inRandomOrder()->first();
-
-    if (! $pair) {
-        Log::warning('Webhook received but no active pair found for today');
-        return response()->json(['error' => 'No active pair'], 422);
-    }
-
-    try {
-        DB::transaction(function () use ($payload, $pair) {
-            $createdAt = isset($payload['created'])
-                ? Carbon::parse($payload['created'])->format('Y-m-d H:i:s')
-                : now()->format('Y-m-d H:i:s');
+    {
+        $expectedToken = env('PAYMENT_WEBHOOK_TOKEN');
+        $receivedToken = $request->bearerToken();
     
-            $now = now()->format('Y-m-d H:i:s');
-            $amount = (float) ($payload['amount'] ?? 0);
-    
-            // Insert payment
-            DB::insert("
-                INSERT INTO webhook_payments
-                    (pay_id, pair_id, method, amount, status, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ", [
-                $payload['pay_id'] ?? uniqid('pay_'),
-                $pair->id,
-                $payload['method'] ?? null,
-                $amount,
-                $payload['status'] ?? null,
-                $createdAt,
-                $now
+        if ($receivedToken !== $expectedToken) {
+            Log::warning('Unauthorized webhook attempt', [
+                'ip'     => $request->ip(),
+                'token'  => $receivedToken,
             ]);
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
     
-            // Update pair volume
-            $pair->volume += $amount;
-            $pair->save();
+        $payload = $request->all();
+        //Log::info('[Webhook] Received JSON:', $payload);
     
-            Log::channel('admin')->info('[Webhook] ✅ Raw insert success', [
-                'pay_id'     => $payload['pay_id'] ?? null,
-                'pair_id'    => $pair->id,
-                'method'     => $payload['method'] ?? null,
-                'amount'     => $amount,
-                'status'     => $payload['status'] ?? null,
-                'created_at' => $createdAt,
-                'updated_at' => $now,
+        if (($payload['status'] ?? null) !== 'Paid') {
+            return response()->json(['status' => 'ignored'], 200);
+        }
+    
+        // Step 1: Find random pair created today
+        $today = now('Asia/Kuala_Lumpur')->toDateString();
+        $pair = Pair::whereDate('created_at', $today)->inRandomOrder()->first();
+    
+        if (! $pair) {
+            Log::warning('Webhook received but no active pair found for today');
+            return response()->json(['error' => 'No active pair'], 422);
+        }
+    
+        try {
+            DB::transaction(function () use ($payload, $pair) {
+                $createdAt = isset($payload['created'])
+                    ? Carbon::parse($payload['created'])->format('Y-m-d H:i:s')
+                    : now()->format('Y-m-d H:i:s');
+        
+                $now = now()->format('Y-m-d H:i:s');
+                $amount = (float) ($payload['amount'] ?? 0);
+        
+                // Insert payment
+                DB::insert("
+                    INSERT INTO webhook_payments
+                        (pay_id, pair_id, method, amount, status, currency, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ", [
+                    $payload['pay_id'] ?? uniqid('pay_'),
+                    $pair->id,
+                    $payload['method'] ?? null,
+                    $amount,
+                    $payload['status'] ?? null,
+                    $payload['currency'] ?? 'USD', // default fallback
+                    $createdAt,
+                    $now
+                ]);
+
+        
+                // Update pair volume
+                $pair->volume += $amount;
+                $pair->save();
+        
+                /*Log::channel('admin')->info('[Webhook] ✅ Raw insert success', [
+                    'pay_id'     => $payload['pay_id'] ?? null,
+                    'pair_id'    => $pair->id,
+                    'method'     => $payload['method'] ?? null,
+                    'amount'     => $amount,
+                    'status'     => $payload['status'] ?? null,
+                    'created_at' => $createdAt,
+                    'updated_at' => $now,
+                ]);*/
+            });
+        
+            \Artisan::call('pairs:update');
+            return response()->json(['message' => 'Volume updated live'], 200);
+        } catch (\Exception $e) {
+            Log::channel('admin')->error('[Webhook] ❌ Insert failed', [
+                'message' => $e->getMessage(),
+                'trace'   => $e->getTraceAsString(),
             ]);
-        });
+            return response()->json(['error' => 'Insert failed'], 500);
+        }
     
-        \Artisan::call('pairs:update');
-        return response()->json(['message' => 'Volume updated live'], 200);
-    } catch (\Exception $e) {
-        Log::channel('admin')->error('[Webhook] ❌ Insert failed', [
-            'message' => $e->getMessage(),
-            'trace'   => $e->getTraceAsString(),
-        ]);
-        return response()->json(['error' => 'Insert failed'], 500);
     }
-
-}
-
-
 }

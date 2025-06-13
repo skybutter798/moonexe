@@ -150,6 +150,12 @@
 
     <div id="tradeNotification" style="position: fixed; bottom: 20px; background: #333; color: #fff; padding: 10px; border-radius: 5px; opacity: 0; transition: opacity 0.5s; z-index: 1;"></div>
     <div id="orderNotification" style="position: fixed; bottom: 20px; background: #333; color: #fff; padding: 10px; border-radius: 5px; opacity: 0; transition: opacity 0.5s; z-index: 1;"></div>
+    
+    <div class="container pt-4">
+        <h2 class="mb-3 mt-5 text-primary"><strong>Widget</strong></h2>
+        @include('user.partials.widget-card')
+        @stack('scripts')
+    </div>
   
     <!-- Upcoming Cards -->
     @php
@@ -190,28 +196,30 @@
     });
     @endphp
     
-    <h2 class="mb-3 mt-5 text-primary"><strong>Upcoming Pair</strong></h2>
-    <div class="d-flex overflow-auto" style="white-space: nowrap;">
-        @foreach($upcomingCurrencies as $currency)
-            @php
-                $triggerMYT = $getTriggerTimestamp($currency);
-                $triggerTimestamp = $triggerMYT->getTimestamp() * 1000;
-            @endphp
-            
-            <div class="card mb-3 me-3" style="min-width: 200px;"
-                 data-trigger-timestamp="{{ $triggerTimestamp }}">
-              <div class="card-header py-2">
-                <span class="h6">USDT/{{ $currency->c_name }}/USDT</span>
-              </div>
-              <div class="card-body py-2">
-                <div class="">
-                    <p class="mb-1"><strong>Upcoming :</strong> 
-                      <span class="upcoming-countdown badge badge-dark">--:--:--</span>
-                    </p>
+    <div class="container">
+        <h2 class="mb-3 mt-5 text-primary"><strong>Upcoming Pair</strong></h2>
+        <div class="d-flex overflow-auto" style="white-space: nowrap;">
+            @foreach($upcomingCurrencies as $currency)
+                @php
+                    $triggerMYT = $getTriggerTimestamp($currency);
+                    $triggerTimestamp = $triggerMYT->getTimestamp() * 1000;
+                @endphp
+                
+                <div class="card mb-3 me-3" style="min-width: 200px;"
+                     data-trigger-timestamp="{{ $triggerTimestamp }}">
+                  <div class="card-header py-2">
+                    <span class="h6">USDT/{{ $currency->c_name }}/USDT</span>
+                  </div>
+                  <div class="card-body py-2">
+                    <div class="">
+                        <p class="mb-1"><strong>Upcoming :</strong> 
+                          <span class="upcoming-countdown badge badge-dark">--:--:--</span>
+                        </p>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-        @endforeach
+            @endforeach
+        </div>
     </div>
     
   <div class="container py-4">
@@ -245,7 +253,7 @@
             $displayPair = "USDT / {$currency} / USDT";
             $isExpired = \Carbon\Carbon::createFromTimestampMs($pair->closingTimestamp)->lt(\Carbon\Carbon::now());
         @endphp
-          <div class="col-12 col-sm-6 col-lg-3 mb-3 gateCard" data-expired="{{ $isExpired ? 'true' : 'false' }}">
+          <div class="col-12 col-sm-6 col-lg-4 mb-3 gateCard" data-expired="{{ $isExpired ? 'true' : 'false' }}">
             <!-- Pass all necessary data attributes for countdown and progress -->
             <div class="card gateRow"
                data-pair-id="{{ $pair->id }}"
@@ -281,6 +289,12 @@
                   &nbsp;/&nbsp;
                   <span class="volume-base">{{ number_format($pair->volume, 4) }}</span>
                   {{$currency}}
+                </p>
+                
+                <p class="mb-1">
+                  <a href="https://ecnfi.com/payment/batch/{{ $pair->id }}" target="_blank" class="badge bg-dark text-white">
+                    <span class="total-usdt-volume">—</span>
+                  </a>
                 </p>
                 
                 <div class="webhook-details text-muted small mt-1" style="{{ $pair->latestWebhookPayment ? '' : 'display:none;' }}">
@@ -322,10 +336,6 @@
                     </span>
                   </div>
                 </div>
-
-
-
-
                 
               </div>
               <div class="card-footer">

@@ -40,6 +40,19 @@ document.addEventListener('DOMContentLoaded', function() {
             const remUSDT = isReversed
               ? remBase / mid
               : remBase * mid;
+              
+             // Calculate total USDT for total base volume
+            const totalBase = parseFloat(card.dataset.totalVolume) || 0;
+            const totalUSDT = isReversed
+              ? totalBase / mid
+              : totalBase * mid;
+            
+            // Update the on-screen .total-usdt-volume element
+            let totalUsdtEl = card.querySelector('.total-usdt-volume');
+            if (totalUsdtEl) {
+              totalUsdtEl.innerText = totalUSDT.toFixed(2) + ' USDT';
+            }
+
     
             // write it back to a data- attribute:
             card.dataset.remainingVolumeUsdt = remUSDT.toFixed(4);
@@ -764,7 +777,7 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Connected to Pusher');
     });
 
-   window.Echo.channel('pair-updates')
+    window.Echo.channel('pair-updates')
       .listen('.OrderUpdated', (data) => {
         console.log("✅ OrderUpdated event received:", data);
     

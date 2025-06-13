@@ -22,7 +22,7 @@ class CampaignBalanceUpdated implements ShouldBroadcast
 
     public function broadcastOn()
     {
-        \Log::info('📡 Broadcasting on campaign-channel');
+        //\Log::info('📡 Broadcasting on campaign-channel');
         return new Channel('campaign-channel'); // public channel
     }
 

@@ -25,11 +25,11 @@ class OrderUpdated implements ShouldBroadcast
         $this->totalVolume = $totalVolume;
 
         // ✅ Log to default laravel.log
-        Log::info('🔔 OrderUpdated event fired', [
+        /*Log::info('🔔 OrderUpdated event fired', [
             'pair_id' => $pairId,
             'remaining_volume' => $remainingVolume,
             'total_volume' => $totalVolume,
-        ]);
+        ]);*/
     }
 
     /**

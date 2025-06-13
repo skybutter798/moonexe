@@ -86,7 +86,7 @@ class DashboardController extends Controller
                        
         // Set the MEGADROP campaign time (converted from New York to Malaysia time)
         $startMY = Carbon::createFromFormat('Y-m-d H:i:s', '2025-05-20 12:01:00', 'Asia/Kuala_Lumpur');
-        $endMY   = Carbon::createFromFormat('Y-m-d H:i:s', '2025-06-06 11:59:59', 'Asia/Kuala_Lumpur');
+        $endMY   = Carbon::createFromFormat('Y-m-d H:i:s', '2025-06-11 11:00:00', 'Asia/Kuala_Lumpur');
 
         
         // Get the user

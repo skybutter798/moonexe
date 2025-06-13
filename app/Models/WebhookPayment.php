@@ -16,6 +16,7 @@ class WebhookPayment extends Model
         'status',
         'created_at',
         'updated_at',
+        'currency',
     ];
 
     public $timestamps = false;
