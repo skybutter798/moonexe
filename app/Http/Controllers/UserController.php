@@ -94,6 +94,12 @@ class UserController extends Controller
         return view('app.users.index', compact('users','packages','roles'));
     }
 
+    public function walletBreakdown($id)
+    {
+        $data = \App\Services\WalletBreakdownService::generate($id);
+        return response()->json($data);
+    }
+    
     public function disable($id)
     {
         $user = User::findOrFail($id);

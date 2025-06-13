@@ -58,6 +58,15 @@
                       </div>
                     </form>
                     {{-- End search form --}}
+                    
+                    @if($deposits->count())
+                      <div class="mt-3 text-end">
+                          <span class="badge bg-primary fs-6">
+                            Total Deposit: {{ number_format($totalAmount, 2) }}
+                          </span>
+                        </div>
+
+                    @endif
         
                     <div class="table-responsive">
                       <table class="table table-bordered">

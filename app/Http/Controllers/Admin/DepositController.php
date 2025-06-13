@@ -11,7 +11,13 @@ class DepositController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Deposit::with('user')->orderBy('created_at', 'desc');
+        $query = Deposit::with('user')
+            ->where('status', 'Completed')
+            ->whereNotNull('external_txid')
+            ->whereNotIn('id', [302, 245, 279])
+            ->orderBy('created_at', 'desc');
+
+
     
         // username search
         if ($request->filled('username')) {
@@ -43,7 +49,14 @@ class DepositController extends Controller
         // paginate, keep query string for filters
         $deposits = $query->paginate(15)->withQueryString();
     
-        return view('admin.deposits.index', compact('deposits'));
+        // Clone the query to calculate total amount separately
+        $totalAmount = (clone $query)->sum('amount');
+        
+        // Paginate the original query
+        $deposits = $query->paginate(15)->withQueryString();
+        
+        // Pass total amount to the view
+        return view('admin.deposits.index', compact('deposits', 'totalAmount'));
     }
 
     /**

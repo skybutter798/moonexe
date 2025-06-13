@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Models\Pair;
 use App\Models\WebhookPayment;
+use App\Models\Setting;
 use Illuminate\Support\Facades\Log;
 use App\Events\OrderUpdated;
 use Carbon\Carbon;
@@ -55,19 +56,42 @@ class CreatePairsVolumeUpdateCommand extends Command
             broadcast(new OrderUpdated($pair->id, $pair->volume, $pair->volume));
         }
 
-        // ✅ STEP 2: Auto-drip volume logic
-        $pairs = Pair::whereDate('created_at', $today)->get();
+        // ✅ STEP 2: Auto-drip volume logic (merged)
+        $settings = Setting::where('status', 1)
+            ->where('name', 'special_name')
+            ->pluck('value', 'name')
+            ->toArray();
+
+        $specialNames = array_filter(explode(',', $settings['special_name'] ?? ''));
+
+        $pairs = Pair::with('currency')->whereDate('created_at', $today)->get();
 
         foreach ($pairs as $pair) {
             $originalVolume = $pair->volume;
-            $totalAdded = 0;
 
+            // ✅ COP-specific volume cap
             if ($pair->currency && $pair->currency->c_name === 'COP') {
                 $maxCOPVolume = 164505200;
                 if ($pair->volume > $maxCOPVolume) {
                     Log::channel('pair')->info("COP Pair #{$pair->id} volume capped at {$maxCOPVolume} (current: {$pair->volume})");
                     $pair->save();
                     continue;
+                }
+            }
+
+            // ✅ Special name max volume logic
+            if ($pair->currency && in_array($pair->currency->c_name, $specialNames)) {
+                $latestPair = Pair::where('currency_id', $pair->currency_id)->orderByDesc('id')->first();
+
+                if ($latestPair && $latestPair->volume > 0) {
+                    $maxVolume = $latestPair->volume / 4;
+
+                    if ($pair->volume > $maxVolume) {
+                        Log::channel('pair')->info("{$pair->currency->c_name} Pair #{$pair->id} volume capped at {$maxVolume} (current: {$pair->volume})");
+                        continue;
+                    }
+                } else {
+                    Log::channel('pair')->warning("{$pair->currency->c_name} has no valid previous pair for max volume check.");
                 }
             }
 
@@ -82,25 +106,23 @@ class CreatePairsVolumeUpdateCommand extends Command
 
             if ($shouldHaveRun > $alreadyRun) {
                 $isFinalDripHour = ($elapsedHrs === $activeHrs);
-                if ($isFinalDripHour || rand(0, 1) === 1) {
-                    $toDo = $shouldHaveRun - $alreadyRun;
-                    $initialChunk = $pair->volume / ($alreadyRun + 1);
-                    $multiplier = rand(80, 120) / 100;
-                    $chunk = $initialChunk * $multiplier;
-                    $dripAddition = $chunk * $toDo;
 
-                    $pair->volume += $dripAddition;
-                    $totalAdded += $dripAddition;
-
-                    Log::channel('pair')->info("💧 Auto-drip: +{$dripAddition} → Pair #{$pair->id} (toDo: {$toDo}, multiplier: {$multiplier})");
-                } else {
+                if (!$isFinalDripHour && rand(0, 1) === 0) {
                     Log::channel('pair')->info("⏭️ Pair #{$pair->id} skipped randomly.");
+                    continue;
                 }
-            }
 
-            if ($pair->volume != $originalVolume) {
+                $toDo = $shouldHaveRun - $alreadyRun;
+                $initialChunk = $pair->volume / ($alreadyRun + 1);
+                $multiplier = rand(80, 120) / 100;
+                $chunk = $initialChunk * $multiplier;
+                $addition = $chunk * $toDo;
+
+                $pair->volume += $addition;
                 $pair->save();
+
                 broadcast(new OrderUpdated($pair->id, $pair->volume, $pair->volume));
+                Log::channel('pair')->info("💧 Auto-drip: +{$addition} → Pair #{$pair->id} (toDo: {$toDo}, multiplier: {$multiplier})");
                 Log::channel('pair')->info("📦 Final update → Pair #{$pair->id}: New Volume: {$pair->volume}");
             }
         }

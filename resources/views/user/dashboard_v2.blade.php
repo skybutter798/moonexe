@@ -416,7 +416,7 @@
                     <div class="mt-1 text-black small " id="bonusInfoText">
                         Congratulation! Total campaign Bonus Margin: <strong class="text-success">${{ number_format($megadropDeposit, 2) }}</strong><br>
                         <small class="text-black" id="bonusCreditNote">
-                            Bonuses will be credited soon. Stay tuned for upcoming campaigns!
+                           All margin bonus rewards will be distributed within the next 7 days
                         </small>
                     </div>
 
@@ -740,7 +740,7 @@
                     
                             <div class="alert alert-warning mt-4" id="withdrawalFeeInfo">
                                 <strong>Note:</strong> A fee of <b>3%</b> or <b>minimum 7 USDT</b> (whichever is higher) will be deducted.
-                                You will receive: <span class="fw-bold text-danger">0 USDT</span>
+                                You will receive: <span class="fw-bold text-danger">0 USDT</span> <br>All withdrawals are processed within 24 hours.
                             </div>
                         </div>
                     
@@ -886,7 +886,7 @@
                             <p id="modalCountdownNote" class="text-danger fw-bold d-block">
                                 ⏳ CAMPAIGN <span id="modalCountdownTimer">Loading...</span>
                                 <span class="text-danger fw-normal" id="bonusNote">
-                                    <strong>Register and top up between May 20 and May 27, 2025 (New York Time, EDT) to qualify for the bonus trading margin!</strong>
+                                    <strong>Register and top up between May 20 until end of campaign (New York Time, EDT) to qualify for the bonus trading margin!</strong>
                                 </span>
                             </p>
                         </div>-->
