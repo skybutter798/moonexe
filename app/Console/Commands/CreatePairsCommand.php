@@ -34,6 +34,9 @@ class CreatePairsCommand extends Command
                 'pair_rate_max',
                 'pair_gate_time',
                 'pair_end_time',
+                'special_name',
+                'special_rate_min',
+                'special_rate_max',
             ])
             ->pluck('value', 'name')
             ->toArray();
@@ -134,12 +137,27 @@ class CreatePairsCommand extends Command
                 $gate_time = $defaultGateTime;
                 $end_time = $defaultEndTime;
                 
-                if ($currency->c_name === 'COP') {
-                    $volume = 60074000;
-                    $rate = 0.62;
+                $specialNames = explode(',', $settings['special_name'] ?? '');
+                $specialRateMin = isset($settings['special_rate_min']) ? (float)$settings['special_rate_min'] : 0.5;
+                $specialRateMax = isset($settings['special_rate_max']) ? (float)$settings['special_rate_max'] : 0.6;
                 
-                    Log::channel('pair')->info("COP special case: volume adjusted to {$volume}, rate set to {$rate}");
+                if (in_array($currency->c_name, $specialNames)) {
+                    $latestPair = Pair::where('currency_id', $currency->id)
+                        ->orderByDesc('id')
+                        ->first();
+                
+                    if ($latestPair) {
+                        $prevVol = $latestPair->volume;
+                        $volume = $prevVol / 20;
+                    } else {
+                        $volume = 100000; // fallback
+                    }
+                
+                    $rate = mt_rand($specialRateMin * 100, $specialRateMax * 100) / 100;
+                
+                    Log::channel('pair')->info("{$currency->c_name} special case: volume={$volume}, rate={$rate}");
                 }
+
 
 
                 // Create the pair record.

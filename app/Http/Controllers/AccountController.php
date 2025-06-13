@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\NewsletterSubscriber;
 use Illuminate\Support\Facades\Storage;
 use PragmaRX\Google2FAQRCode\Google2FA;
+use Illuminate\Support\Facades\Hash;
 
 class AccountController extends Controller
 {

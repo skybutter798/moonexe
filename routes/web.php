@@ -40,6 +40,7 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::post('/users/{id}/disable', [UserController::class, 'disable'])->name('admin.users.disable');
     Route::post('/users/{id}/enable', [UserController::class, 'enable'])->name('admin.users.enable');
     Route::put('/users/{id}', [UserController::class, 'update'])->name('admin.users.update');
+    Route::get('/users/{id}/wallet-breakdown', [UserController::class, 'walletBreakdown']);
 
     // DirectRange Management
     Route::prefix('directranges')

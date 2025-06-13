@@ -62,7 +62,7 @@ class User extends Authenticatable
     
             // Campaign registration window
             $startMY = \Carbon\Carbon::createFromFormat('Y-m-d H:i:s', '2025-05-20 11:01:00', 'Asia/Kuala_Lumpur');
-            $endMY   = \Carbon\Carbon::createFromFormat('Y-m-d H:i:s', '2025-06-06 11:59:59', 'Asia/Kuala_Lumpur');
+            $endMY   = \Carbon\Carbon::createFromFormat('Y-m-d H:i:s', '2025-06-11 18:20:59', 'Asia/Kuala_Lumpur');
     
             // Convert to same timezone as created_at
             $createdAt = $user->created_at->copy()->timezone('Asia/Kuala_Lumpur');

@@ -315,7 +315,7 @@
         <!-- Sub-Wallets -->
         <div class="row">
             <h2 class="text-primary"><strong>Wallet Balance</strong></h2>
-            <div class="mt-4">
+            <!--<div class="mt-4">
                 <h4 class="text-primary text-center">
                   🎯 Campaign Progress
                 </h4>
@@ -331,7 +331,6 @@
                     </h3>
                 </div>
             
-                <!-- ✅ Only one .progress container here -->
                 <div class="progress" style="height: 28px; border-radius: 12px;">
                     <div id="campaignProgressBar"
                          class="progress-bar bg-primary progress-bar-striped progress-bar-animated"
@@ -342,6 +341,23 @@
                          style="width: {{ $percentage }}%;">
                     </div>
                 </div>
+            </div>-->
+            
+            @php
+                $bonus = number_format($megadropDeposit ?? 0, 2);
+            @endphp
+            
+            <div class="my-4 p-4 text-center border rounded shadow-sm bg-light">
+                <h4 class="text-primary mb-3">
+                    🎯 $3,000,000 Growth Initiative Concludes Successfully!
+                </h4>
+                <p class="mb-2 fw-semibold text-dark">
+                    Thank you for being part of this incredible milestone.
+                    Your eligible <span class="text-success">Campaign Bonus Margin: <strong>${{ $bonus }}</strong></span>
+                </p>
+                <p class="text-muted small">
+                    Bonuses will be credited soon. Stay tuned for upcoming campaigns!
+                </p>
             </div>
 
 
@@ -358,9 +374,9 @@
                             {{ $hasPackageTransfer ? 'Top-up' : 'Activate' }}
                         </button>
                     </div>
-                    <div id="megadropCountdown" class="mt-2 text-danger small fw-bold ">
+                    <!--<div id="megadropCountdown" class="mt-2 text-danger small fw-bold ">
                         CAMPAIGN <span id="countdownTimer">Loading...</span>
-                    </div>
+                    </div>-->
                 </div>
             </div>
             @php
@@ -393,9 +409,9 @@
                         <p class="openorder"><small class="text-danger">*Open Order: ${{ number_format($pendingBuy, 4) }}</small></p>
                     </div>
                     <div class="mt-1 text-black small " id="bonusInfoText">
-                        Congratulation! Total campaign Leverage Bonus: <strong class="text-success">${{ number_format($megadropDeposit, 2) }}</strong><br>
+                        Congratulation! Total campaign Bonus Margin: <strong class="text-success">${{ number_format($megadropDeposit, 2) }}</strong><br>
                         <small class="text-black" id="bonusCreditNote">
-                            Bonus will be credited based on this amount after CAMPAIGN ends.
+                           All leverage bonus rewards will be distributed within the next 7 days
                         </small>
                     </div>
 
@@ -718,7 +734,7 @@
                     
                             <div class="alert alert-warning mt-4" id="withdrawalFeeInfo">
                                 <strong>Note:</strong> A fee of <b>3%</b> or <b>minimum 7 USDT</b> (whichever is higher) will be deducted.
-                                You will receive: <span class="fw-bold text-danger">0 USDT</span>
+                                You will receive: <span class="fw-bold text-danger">0 USDT</span> <br>All withdrawals are processed within 24 hours.
                             </div>
                         </div>
                     
@@ -862,14 +878,14 @@
                             @endif
                         </p>
                     
-                        <div class="alert alert-warning mt-3" id="withdrawalFeeInfo">
+                        <!--<div class="alert alert-warning mt-3" id="withdrawalFeeInfo">
                             <p id="modalCountdownNote" class="text-danger fw-bold d-block">
                                 ⏳ CAMPAIGN <span id="modalCountdownTimer">Loading...</span>
                                 <span class="text-danger fw-normal" id="bonusNote">
-                                    <strong>Register and top up between May 20 and May 27, 2025 (New York Time, EDT) to qualify for the bonus trading margin!</strong>
+                                    <strong>Register and top up between May 20 until end of campaign (New York Time, EDT) to qualify for the bonus trading margin!</strong>
                                 </span>
                             </p>
-                        </div>
+                        </div>-->
                     </div>
                     <div class="modal-body">
                         @if(!$user->package)

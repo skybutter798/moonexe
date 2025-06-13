@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\Pair;
+use App\Models\Setting;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
@@ -17,25 +18,38 @@ class CreatePairsVolumeUpdateCommand extends Command
         $now   = Carbon::now('Asia/Kuala_Lumpur');
         $today = Carbon::today('Asia/Kuala_Lumpur');
 
-        $pairs = Pair::whereDate('created_at', $today)->get();
+        // ✅ Load special_name from settings table
+        $settings = Setting::where('status', 1)
+            ->where('name', 'special_name')
+            ->pluck('value', 'name')
+            ->toArray();
+
+        $specialNames = array_filter(explode(',', $settings['special_name'] ?? ''));
+
+        // ✅ Eager-load currency to avoid multiple DB hits
+        $pairs = Pair::with('currency')->whereDate('created_at', $today)->get();
 
         foreach ($pairs as $pair) {
-            
-            if ($pair->currency && $pair->currency->c_name === 'COP') {
-                $maxCOPVolume = 164505200;
-                if ($pair->volume > $maxCOPVolume) {
-                    Log::channel('pair')->info("COP Pair #{$pair->id} volume capped at {$maxCOPVolume} (current: {$pair->volume})");
-                    continue; // skip update for this pair
+            if ($pair->currency && in_array($pair->currency->c_name, $specialNames)) {
+                $latestPair = Pair::where('currency_id', $pair->currency_id)->orderByDesc('id')->first();
+
+                if ($latestPair && $latestPair->volume > 0) {
+                    $maxVolume = $latestPair->volume / 4;
+
+                    if ($pair->volume > $maxVolume) {
+                        Log::channel('pair')->info("{$pair->currency->c_name} Pair #{$pair->id} volume capped at {$maxVolume} (current: {$pair->volume})");
+                        continue;
+                    }
+                } else {
+                    Log::channel('pair')->warning("{$pair->currency->c_name} has no valid previous pair for max volume check.");
                 }
             }
-            
-            // 1. Convert gate_time to hours
+
             $gateHours = max((int) floor($pair->gate_time / 60), 1);
-            $activeHrs = max($gateHours - 1, 0); // 1 hour reserved at the end
+            $activeHrs = max($gateHours - 1, 0);
 
             if ($activeHrs === 0) continue;
 
-            // 2. Time tracking
             $elapsedHrs = $pair->created_at->diffInHours($now);
             $lastRunHrs = $pair->created_at->diffInHours($pair->updated_at);
 
@@ -44,27 +58,19 @@ class CreatePairsVolumeUpdateCommand extends Command
 
             if ($shouldHaveRun <= $alreadyRun) continue;
 
-            // 3. Is this the final eligible drip hour?
             $isFinalDripHour = ($elapsedHrs === $activeHrs);
 
-            // 4. Skip randomly unless it's the final drip hour
             if (!$isFinalDripHour && rand(0, 1) === 0) {
                 Log::channel('pair')->info("Pair #{$pair->id} skipped randomly.");
                 continue;
             }
 
-            // 5. How many missed drips
             $toDo = $shouldHaveRun - $alreadyRun;
-
-            // 6. Calculate base chunk from current volume
             $initialChunk = $pair->volume / ($alreadyRun + 1);
-
-            // 7. Apply random multiplier (80–120%)
             $multiplier = rand(80, 120) / 100;
             $chunk = $initialChunk * $multiplier;
-
-            // 8. Apply missed chunks
             $addition = $chunk * $toDo;
+
             $pair->volume += $addition;
             $pair->save();
 

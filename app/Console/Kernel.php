@@ -20,7 +20,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('marketdata:persist')->everyThirtyMinutes();
         $schedule->command('pairs:create')->everyMinute();
         $schedule->command('simulate:fake-user-buy')->everyThirtyMinutes();
-        $schedule->command('seed:claim-orders 19 192')->everyThreeHours();
+        $schedule->command('seed:claim-orders 19 555')->everyThreeHours();
         $schedule->command('seed:admin-orders')->everyTenMinutes();
         $schedule->command('cron:aggregate-matching')->everyFiveMinutes();
         $schedule->command('pairs:update')->everyTenMinutes();

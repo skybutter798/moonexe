@@ -190,7 +190,7 @@ EOL;
             $this->line($message);
             
             if (!$this->option('no-telegram')) {
-                $this->telegram->sendMessage($message, '-4807439791');
+                //$this->telegram->sendMessage($message, '-4807439791');
             }
             $this->info("✅ Sent breakdown for user {$user->name} (ID: {$user->id}) to Telegram.");
         }
