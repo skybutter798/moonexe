@@ -54,12 +54,14 @@ class WebhookController extends Controller
             }
 
             $externalTxid = $payload['txid'] ?? null;
+            $walletName = $payload['wallet_name'] ?? null;
 
             $deposit = $coinService->depositToUser(
                 $user->id,
                 (float) $payload['amount'],
                 $payload['address'],
-                $externalTxid
+                $externalTxid,
+                $walletName
             );
 
             Log::channel('admin')->info('[Webhook] Deposit processed successfully', [

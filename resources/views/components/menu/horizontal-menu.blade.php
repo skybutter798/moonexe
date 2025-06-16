@@ -189,6 +189,10 @@
           </a>
         </li>
         
+        @if(session()->has('impersonate_admin_id'))
+            <a href="{{ route('admin.users.leave') }}" class="btn btn-danger btn-sm">🔙 Return to Admin</a>
+        @endif
+        
         <!-- Tutorial 
         <li class="menu">
           <a href="" aria-expanded="false" class="dropdown-toggle">

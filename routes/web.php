@@ -15,6 +15,7 @@ use App\Http\Controllers\FaqController;
 use App\Http\Controllers\VerificationController;
 use App\Http\Controllers\AuthController;
 
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -25,6 +26,7 @@ use App\Http\Controllers\Admin\PairController;
 use App\Http\Controllers\Admin\WalletController;
 use App\Http\Controllers\Admin\ReferralController as AdminReferralController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\AdminToolController;
 
 require_once 'theme-routes.php';
 
@@ -97,7 +99,17 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::post('annoucement', [AnnoucementController::class, 'store']) ->name('admin.annoucement.store');
     Route::get('annoucement/{annoucement}/edit', [AnnoucementController::class, 'edit']) ->name('admin.annoucement.edit');
     Route::patch('annoucement/{annoucement}', [AnnoucementController::class, 'update']) ->name('admin.annoucement.update');
+    
+    // Show the form
+    Route::get('/walletreport', [AdminToolController::class, 'index'])->name('admin.tools.index');
+    Route::post('/walletreport', [AdminToolController::class, 'walletReport'])->name('admin.tools.walletReport');
+    Route::post('/walletbreakdown', [AdminToolController::class, 'realWalletBreakdown'])->name('admin.tools.realWalletBreakdown');
+    Route::post('/walletflow', [AdminToolController::class, 'walletFlowReport'])->name('admin.tools.walletFlowReport');
+    
+    Route::get('/impersonate/{id}', [UserController::class, 'impersonate'])->name('admin.users.impersonate');
 });
+
+Route::get('/admin/impersonate-leave', [UserController::class, 'leaveImpersonation'])->name('admin.users.leave');
 
 // For regular users (with custom middleware to ensure non-admin)
 Route::prefix('user-dashboard')->middleware(['auth', 'user.only'])->group(function () {

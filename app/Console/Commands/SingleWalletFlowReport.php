@@ -45,8 +45,8 @@ class SingleWalletFlowReport extends Command
         $this->line("\n📉 Withdrawals:");
         foreach ($withdrawals as $w) {
             $date = Carbon::parse($w->created_at)->format($dateFormat);
-            $this->line(sprintf("  - #%4d | %-10s | Amount: %10.2f | Method: %-10s | Date: %s", 
-                $w->id, $w->status, $w->amount, $w->method, $date));
+            $this->line(sprintf("  - #%4d | %-10s | Amount: %10.2f | Date: %s", 
+                $w->id, $w->status, $w->amount, $date));
             if (strtolower($w->status) === 'completed') {
                 $totalOut += $w->amount;
             }

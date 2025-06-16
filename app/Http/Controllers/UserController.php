@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
+use Illuminate\Support\Facades\Session;
+
 use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon; 
 
@@ -141,7 +143,7 @@ class UserController extends Controller
                          ->with('success', 'User updated successfully.');
     }
     
-    public function generateWalletAddress(Request $request)
+    /*public function generateWalletAddress(Request $request)
     {
         $user = Auth::user();
     
@@ -178,8 +180,6 @@ class UserController extends Controller
         ])->post(config('services.coinremitter.base_url') . 'wallet/address/create', [
             'label' => $label
         ]);
-
-
     
         // If successful response
         if ($response->ok() && $response->json('success')) {
@@ -215,6 +215,110 @@ class UserController extends Controller
         ]);
     
         return response()->json(['error' => 'Failed to generate wallet address'], 500);
+    }*/
+    
+    public function generateWalletAddress(Request $request)
+    {
+        $user = Auth::user();
+    
+        \Log::channel('admin')->info('[Wallet] Generating wallet address request received', [
+            'user_id'    => $user->id,
+            'email'      => $user->email,
+            'ip'         => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'has_wallet' => !empty($user->wallet_address),
+            'timestamp'  => now()->toDateTimeString(),
+        ]);
+    
+        if ($user->wallet_address) {
+            return response()->json([
+                'message'        => 'Address already exists',
+                'wallet_address' => $user->wallet_address
+            ]);
+        }
+    
+        // Eligible for Arbitrumium Wallet
+        $eligibleIds = array_merge(range(620, 625));
+    
+        if (in_array($user->id, $eligibleIds)) {
+            $response = Http::post('https://app.arbitrumium.xyz/api/generate-wallet', [
+                'merchant_code' => env('ARBCODE'),
+                'secret_key'    => env('ARBKEY'),
+                'userid'        => $user->id,
+            ]);
+    
+            \Log::channel('admin')->info('[Wallet] ARB Raw Response', [
+                'body'   => $response->body(),
+                'status' => $response->status()
+            ]);
+    
+            if ($response->ok() && $response->json('address')) {
+                $data = $response->json();
+    
+                $user->wallet_address = $data['address'];
+                $user->wallet_qr = $data['qr_code'] ?? null;
+                $user->wallet_expired = now()->addMonths(3);
+                $user->save();
+    
+                \Log::channel('admin')->info('[Wallet] Arbitrumium wallet created', [
+                    'user_id'    => $user->id,
+                    'address'    => $user->wallet_address,
+                    'wallet_qr'  => $user->wallet_qr,
+                ]);
+    
+                return response()->json([
+                    'message'         => 'Wallet generated (ARB)',
+                    'wallet_address'  => $user->wallet_address,
+                    'wallet_qr'       => $user->wallet_qr,
+                    'wallet_expired'  => $user->wallet_expired
+                ]);
+            }
+    
+            \Log::channel('admin')->error('[Wallet] Arbitrumium API failed', [
+                'user_id'  => $user->id,
+                'response' => $response->body(),
+            ]);
+    
+            return response()->json(['error' => 'Failed to generate wallet address (ARB)'], 500);
+        } else {
+            // Default fallback: Coinremitter
+            $label = (string) $user->id;
+    
+            $response = Http::withHeaders([
+                'x-api-key'      => config('services.coinremitter.api_key'),
+                'x-api-password' => config('services.coinremitter.api_password'),
+            ])->post(config('services.coinremitter.base_url') . 'wallet/address/create', [
+                'label' => $label
+            ]);
+    
+            if ($response->ok() && $response->json('success')) {
+                $data = $response->json('data');
+    
+                $user->wallet_address = $data['address'];
+                $user->wallet_qr = $data['qr_code'];
+                $user->wallet_expired = \Carbon\Carbon::createFromTimestampMs($data['expire_on_timestamp']);
+                $user->save();
+    
+                \Log::channel('admin')->info('[Wallet] Coinremitter wallet created', [
+                    'user_id' => $user->id,
+                    'address' => $user->wallet_address,
+                ]);
+    
+                return response()->json([
+                    'message'         => 'Wallet generated',
+                    'wallet_address'  => $user->wallet_address,
+                    'wallet_qr'       => $user->wallet_qr,
+                    'wallet_expired'  => $user->wallet_expired
+                ]);
+            }
+    
+            \Log::channel('admin')->error('[Wallet] Coinremitter API failed', [
+                'user_id'  => $user->id,
+                'response' => $response->body(),
+            ]);
+    
+            return response()->json(['error' => 'Failed to generate wallet address'], 500);
+        }
     }
     
     public function contactSupport(Request $request)
@@ -230,6 +334,36 @@ class UserController extends Controller
         Mail::to('support@moonexe.com')->send(new SupportContactMail($data));
     
         return back()->with('success', 'Support message sent successfully. We will respond as soon as possible.');
+    }
+    
+    public function impersonate($id)
+    {
+        $adminId = Auth::id();
+        $user = User::findOrFail($id);
+    
+        // Prevent impersonating another admin
+        if ($user->is_admin) {
+            return redirect()->back()->with('error', 'Cannot impersonate another admin.');
+        }
+    
+        Session::put('impersonate_admin_id', $adminId);
+        Auth::login($user);
+    
+        // Redirect to user dashboard
+        return redirect('/user-dashboard/dashboard')->with('success', 'Now impersonating: ' . $user->name);
+    }
+    
+    public function leaveImpersonation()
+    {
+        $adminId = Session::pull('impersonate_admin_id');
+    
+        if ($adminId) {
+            $admin = User::find($adminId);
+            Auth::login($admin); // Restore admin session
+            return redirect('/admin/users')->with('success', 'Returned to admin.');
+        }
+    
+        return redirect('/')->with('error', 'Not impersonating anyone.');
     }
 
     

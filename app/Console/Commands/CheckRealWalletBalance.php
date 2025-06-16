@@ -124,13 +124,20 @@ class CheckRealWalletBalance extends Command
                 ->toArray();
 
             $tradingIn = DB::table('transfers')
-                ->whereIn('user_id', $validDownlineIds)
-                ->where('from_wallet', 'cash_wallet')
-                ->where('to_wallet', 'trading_wallet')
-                ->where('status', 'Completed')
-                ->whereRaw("LOWER(remark) = 'package'")
-                ->whereNotIn('id', [233, 236, 237, 244, 333, 334, 384, 544, 559, 700, 701, 790, 797, 360, 361, 383])
-                ->sum('amount');
+                ->join('users', 'transfers.user_id', '=', 'users.id')
+                ->whereIn('transfers.user_id', $validDownlineIds)
+                ->where('users.status', 1) // this filters only active users
+                ->where('transfers.from_wallet', 'cash_wallet')
+                ->where('transfers.to_wallet', 'trading_wallet')
+                ->where('transfers.status', 'Completed') // disambiguate this line!
+                ->whereRaw("LOWER(transfers.remark) = 'package'")
+                ->whereNotIn('transfers.id', [
+                    233, 236, 237, 244, 333, 334, 544, 701,
+                    790, 797, 360, 361, 383, 1859, 2045, 2150
+                ])
+                ->sum('transfers.amount');
+
+
                 
             $tradingInRecords = DB::table('transfers')
                 ->whereIn('user_id', $validDownlineIds)
@@ -143,7 +150,7 @@ class CheckRealWalletBalance extends Command
             
             $this->info("📦 Trading-In Transfer Records:");
             foreach ($tradingInRecords as $record) {
-                $this->line("→ ID: {$record->id}, User ID: {$record->user_id}, Amount: {$record->amount}, Remark: {$record->remark}");
+                //$this->line("→ ID: {$record->id}, User ID: {$record->user_id}, Amount: {$record->amount}, Remark: {$record->remark}");
             }
 
 
@@ -190,7 +197,7 @@ EOL;
             $this->line($message);
             
             if (!$this->option('no-telegram')) {
-                //$this->telegram->sendMessage($message, '-4807439791');
+                $this->telegram->sendMessage($message, '-4807439791');
             }
             $this->info("✅ Sent breakdown for user {$user->name} (ID: {$user->id}) to Telegram.");
         }

@@ -411,7 +411,7 @@
                     <div class="mt-1 text-black small " id="bonusInfoText">
                         Congratulation! Total campaign Bonus Margin: <strong class="text-success">${{ number_format($megadropDeposit, 2) }}</strong><br>
                         <small class="text-black" id="bonusCreditNote">
-                           All leverage bonus rewards will be distributed within the next 7 days
+                           All margin bonus rewards will be distributed within the next 7 days
                         </small>
                     </div>
 
@@ -474,7 +474,7 @@
                     <div class="mt-1 text-black small " id="bonusInfoText">
                         Congratulation! Total campaign Leverage Bonus: <strong class="text-success">${{ number_format($megadropDeposit, 2) }}</strong><br>
                         <small class="text-black" id="bonusCreditNote">
-                            Bonus will be credited based on this amount after CAMPAIGN ends.
+                            All margin bonus rewards will be distributed within the next 7 days
                         </small>
                     </div>
 
@@ -1558,9 +1558,6 @@
             }
             
             showNextAnnouncement();
-
-
-            
             
             const toastEl = document.getElementById('flashToast');
             if (toastEl) new bootstrap.Toast(toastEl, { delay: 6000 }).show();
