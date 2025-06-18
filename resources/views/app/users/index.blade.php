@@ -119,7 +119,11 @@
                                     <td><span class="badge badge-dark">@switch($user->status)@case(2) Robot @break @case(1) Normal @break @default None @endswitch</span></td>
                                     <td>{{ optional($user->last_login)->format('d M Y') ?? '-' }}</td>
                                     <td>{{ $user->created_at->format('d M Y') }}</td>
-                                    <td class="text-center">{{-- Buttons --}}</td>
+                                    <td class="text-center">
+                                    @if($user->status == 1 && auth()->id() != $user->id)
+                                        <a href="{{ route('admin.users.impersonate', $user->id) }}" class="btn btn-sm btn-warning">Login</a>
+                                    @endif
+                                    </td>
                                 </tr>
                                 
                             @empty

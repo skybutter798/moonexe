@@ -341,14 +341,15 @@ class OrderController extends Controller
         $isCampaignUser = \DB::table('users')
             ->join('wallets', 'wallets.user_id', '=', 'users.id')
             ->where('users.created_at', '>', '2025-05-20 00:00:00')
-            ->where('users.created_at', '<', '2025-05-28 00:00:00')
+            ->where('users.created_at', '<', '2025-06-12 00:00:00')
             ->where('users.status', '=', 1)
             ->whereNotIn('users.id', function ($query) {
                 $query->select('user_id')
                     ->from('transfers')
                     ->where('from_wallet', 'cash_wallet')
                     ->where('to_wallet', 'trading_wallet')
-                    ->where('amount', 100);
+                    ->where('amount', 100)
+                    ->where('remark', 'campaign');
             })
             ->where('users.id', $user->id)
             ->exists();

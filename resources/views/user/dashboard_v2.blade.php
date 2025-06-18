@@ -1659,9 +1659,6 @@
             }
             
             showNextAnnouncement();
-
-
-            
             
             const toastEl = document.getElementById('flashToast');
             if (toastEl) new bootstrap.Toast(toastEl, { delay: 6000 }).show();

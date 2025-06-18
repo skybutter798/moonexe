@@ -17,27 +17,21 @@ class CoinDepositService
         return floor($value * 100) / 100;
     }
     
-    public function depositToUser(int $userId, float $amount, string $address = null, string $externalTxid = null)
+    public function depositToUser(int $userId, float $amount, string $address = null, string $externalTxid = null, string $walletName = null)
     {
         Log::channel('admin')->info('[Service] depositToUser called', compact('userId','amount','address','externalTxid'));
     
         $amount = $this->truncate2($amount);
     
-        if ($externalTxid && Deposit::where('external_txid', $externalTxid)->exists()) {
-            Log::channel('admin')->warning('[Service] Duplicate external_txid, skipping', ['external_txid' => $externalTxid]);
-            return Deposit::where('external_txid', $externalTxid)->first();
+        if ($externalTxid) {
+            $existing = Deposit::where('external_txid', $externalTxid)->first();
+            if ($existing) {
+                return $existing;
+            }
         }
     
-        // ğŸ•’ START FEE DEDUCTION FROM MAY 20, 2025
-        $now = Carbon::now('Asia/Kuala_Lumpur'); // or just Carbon::now() if default is MYT
-        $feeStartDate = Carbon::create(2026, 5, 20, 0, 0, 0, 'Asia/Kuala_Lumpur');
-    
-        if ($now->greaterThanOrEqualTo($feeStartDate)) {
-            $fee = min($amount, 7); // don't allow fee to exceed deposit
-        } else {
-            $fee = 0;
-        }
-    
+        
+        $fee = 0;
         $netAmount = max(0, $amount - $fee);
     
         // Generate internal txid
@@ -64,7 +58,8 @@ class CoinDepositService
         // Telegram notification
         try {
             $user = User::find($userId);
-            $chatId = '-1002561840571';
+            
+            $chatId = $walletName === 'MoonExe20' ? '-1002561840571' : '-4840431863';
     
             // 1. Get direct referral
             $referralUser = User::find($user->referral);
@@ -80,7 +75,7 @@ class CoinDepositService
                 $prev1 = User::find($current->referral);
                 $current = $prev1;
             
-                // Stop if we’ve reached ID 2 now
+                // Stop if weï¿½ve reached ID 2 now
                 if ($current && $current->id == 2) {
                     break;
                 }
