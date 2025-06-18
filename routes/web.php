@@ -118,6 +118,8 @@ Route::prefix('user-dashboard')->middleware(['auth', 'user.only'])->group(functi
     Route::put('/account/update', [AccountController::class, 'updateProfile'])->name('user.updateProfile');
     Route::post('/apply-promotion', [UserDashboardController::class, 'applyPromotion'])->name('user.applyPromotion');
     
+    Route::post('/bonusclaim', [AssetsController::class, 'claimCampaignBonus'])->name('user.claimCampaignBonus');
+    
     //New layout
     Route::get('/account_v2', [AccountController::class, 'index'])->name('user.account_v2');
     Route::get('/assets_v2', [AssetsController::class, 'index'])->name('user.assets_v2');

@@ -791,20 +791,45 @@ document.addEventListener('DOMContentLoaded', function() {
           console.log("📌 Updated card data attributes");
     
           // Update volume text
-          const usdtEl = card.querySelector('.volume-usdt');
-          const baseEl = card.querySelector('.volume-base');
-          const symbol = card.getAttribute('data-symbol'); // Assuming it's set in your HTML
-          const rate = lastValidRates[symbol] || 1;
-    
-          console.log(`🔢 Symbol: ${symbol}, Rate: ${rate}`);
-          console.log(`📉 Remaining volume: ${data.remainingVolume}, Total volume: ${data.totalVolume}`);
-    
-          if (usdtEl && baseEl) {
-            const remUSDT = parseFloat(data.remainingVolume) * rate;
-            usdtEl.innerText = remUSDT.toFixed(2) + ' USDT';
-            baseEl.innerText = parseFloat(data.remainingVolume).toFixed(4);
-            console.log(`🆙 Volume updated to: ${remUSDT.toFixed(2)} USDT / ${parseFloat(data.remainingVolume).toFixed(4)} base`);
-          }
+            const usdtEl = card.querySelector('.volume-usdt');
+            const baseEl = card.querySelector('.volume-base');
+            const totalUsdtEl = card.querySelector('.total-usdt-volume');
+            const symbol = card.getAttribute('data-symbol');
+            const rate = parseFloat(card.getAttribute('data-rate')) || 1;
+            
+            console.log(`🔢 Symbol: ${symbol}, Rate: ${rate}`);
+            console.log(`📉 Remaining volume: ${data.remainingVolume}, Total volume: ${data.totalVolume}`);
+            
+            // ✅ Define once for both blocks
+            const reversedSymbols = ['LKR', 'VND', 'IDR', 'COP'];
+            const base = symbol?.slice(0, 3).toUpperCase();
+            const isReversed = reversedSymbols.includes(base);
+            
+            if (usdtEl && baseEl) {
+              const remBase = parseFloat(data.remainingVolume);
+              const totalBase = parseFloat(data.totalVolume);
+              const remUSDT = isReversed ? remBase / rate : remBase * rate;
+            
+              console.log('🔢 Parsed remainingBase:', remBase);
+              console.log(`🔁 isReversed: ${isReversed}, rate: ${rate}, calculated remUSDT: ${remUSDT}`);
+            
+              usdtEl.innerText = remUSDT.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' USDT';
+              baseEl.innerText = totalBase.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+            
+              console.log(`🆙 Volume updated to: ${remUSDT.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT / ${totalBase.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })} base`);
+            }
+
+
+            
+            if (totalUsdtEl) {
+              const totalBase = parseFloat(data.totalVolume);
+              const totalUSDT = isReversed ? totalBase / rate : totalBase * rate;
+            
+              totalUsdtEl.innerText = totalUSDT.toFixed(2) + ' USDT';
+              console.log(`📦 Total volume updated: ${totalUSDT.toFixed(2)} USDT`);
+            }
+
+
     
           // Fetch latest webhook info
           fetch(`/api/pair/${data.pairId}/latest-payment`)

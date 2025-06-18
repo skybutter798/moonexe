@@ -13,6 +13,7 @@
         <link href="{{ asset('css/users/bs5-intro-tour.css') }}" rel="stylesheet">
         <script src="{{ asset('js/users/bs5-intro-tour.js') }}"></script>
         <meta name="csrf-token" content="{{ csrf_token() }}">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 
         <style>
             /* Force Next button to display */
@@ -165,6 +166,17 @@
                 font-size: 14px;
                 line-height: 28px;
                 color: white;
+            }
+            
+            .bonus-glow {
+              text-shadow: 0 0 8px #28a745, 0 0 16px #28a745, 0 0 24px #28a745;
+              animation: glowPulse 1.5s infinite ease-in-out;
+            }
+            
+            @keyframes glowPulse {
+              0%   { text-shadow: 0 0 8px #28a745; }
+              50%  { text-shadow: 0 0 16px #28a745, 0 0 24px #28a745; }
+              100% { text-shadow: 0 0 8px #28a745; }
             }
 
         </style>
@@ -321,35 +333,8 @@
         <!-- Sub-Wallets -->
         <div class="row">
             <h2 class="text-primary"><strong>Wallet Balance</strong></h2>
-            <!--<div class="mt-4">
-                <h4 class="text-primary text-center">
-                  🎯 Campaign Progress
-                </h4>
-                @php
-                    $campaignMax = 3000000;
-                    $remaining = $campaignBalance ?? 0;
-                    $percentage = min(100, max(0, ($remaining / $campaignMax) * 100));
-                @endphp
             
-                <div class="text-center fw-bold mb-2">
-                    <h3 id="campaignProgressText">
-                        <span class="text-danger">${{ number_format($remaining, 0) }}</span> / ${{ number_format($campaignMax, 0) }} Remaining
-                    </h3>
-                </div>
-            
-                <div class="progress" style="height: 28px; border-radius: 12px;">
-                    <div id="campaignProgressBar"
-                         class="progress-bar bg-primary progress-bar-striped progress-bar-animated"
-                         role="progressbar"
-                         aria-valuemin="0"
-                         aria-valuemax="100"
-                         aria-valuenow="{{ $percentage }}"
-                         style="width: {{ $percentage }}%;">
-                    </div>
-                </div>
-            </div>-->
-            
-            @php
+            <!--@php
                 $bonus = number_format($megadropDeposit ?? 0, 2);
             @endphp
             
@@ -364,7 +349,7 @@
                 <p class="text-muted small">
                     Bonuses will be credited soon. Stay tuned for upcoming campaigns!
                 </p>
-            </div>
+            </div>-->
 
             <!-- USDT Wallet Card -->
             <div class="col-12 col-md-6 mb-3">
@@ -416,7 +401,7 @@
                     <div class="mt-1 text-black small " id="bonusInfoText">
                         Congratulation! Total campaign Bonus Margin: <strong class="text-success">${{ number_format($megadropDeposit, 2) }}</strong><br>
                         <small class="text-black" id="bonusCreditNote">
-                           All margin bonus rewards will be distributed within the next 7 days
+                           All bonus margin will be distributed within the next 7 days
                         </small>
                     </div>
 
@@ -454,17 +439,26 @@
                     @endif
                     <div class="card-body d-flex flex-column">
                         <h5 class="text-custom">Trade Margin</h5>
-                        <p class="sub-wallet-amount mb-1 value" style="position: relative;">
+                        <p class="sub-wallet-amount mb-1 value position-relative" style="font-size: 1.1rem;">
                             {{ number_format($wallets->trading_wallet, 2) }}
                             <button type="button"
                                     class="btn btn-sm custom-btn"
-                                    style="position: absolute; right: 5px; top: 10%; padding: 8px 12px; line-height: 1; border-radius: 100px;"
+                                    style="position: absolute; right: 5px; top: 10%; padding: 6px 10px; line-height: 1; border-radius: 100px;"
                                     data-bs-toggle="modal"
                                     data-bs-target="#tradingTransferModal"
                                     {{ $isDeactivated ? 'disabled' : '' }}>
                                 -
                             </button>
                         </p>
+                        <div class="d-flex flex-column align-items-center gap-1 mt-2">
+                            <span class="badge rounded-pill bg-primary text-white px-3 py-1">
+                                Bonus Margin: ${{ number_format($campaignTradingBonus, 2) }}
+                            </span>
+                            <!--<span class="badge rounded-pill bg-primary px-3 py-1">
+                                ✅ Real Margin: ${{ number_format($wallets->trading_wallet - $campaignTradingBonus, 2) }}
+                            </span>-->
+                        </div>
+
                         <div class="row mt-2">
                             <div class="col-12">
                                 <a href="{{ route('user.order') }}"
@@ -476,16 +470,20 @@
                         </div>
                         <p class="openorder"><small class="text-danger">*Open Order: ${{ number_format($pendingBuy, 4) }}</small></p>
                     </div>
-                    <div class="mt-1 text-black small " id="bonusInfoText">
-                        Congratulation! Total campaign Leverage Bonus: <strong class="text-success">${{ number_format($megadropDeposit, 2) }}</strong><br>
-                        <small class="text-black" id="bonusCreditNote">
-                            Bonus will be credited based on this amount after CAMPAIGN ends.
-                        </small>
-                    </div>
-
+                    @if($megadropDeposit > 0)
+                        <div class="p-3 bg-light border rounded text-center small" id="bonusInfoText" style="max-width: 500px; margin: 0 auto;">
+                            <div class="mb-2">
+                                <strong>Congratulations!</strong><br>
+                                Total Campaign Bonus Margin:
+                                <strong class="text-primary">${{ number_format($megadropDeposit, 2) }}</strong>
+                            </div>
+                            <button class="btn btn-primary" id="startClaimBtn"> Claim Bonus </button>
+                        </div>
+                    @endif
                 </div>
             </div>
             @endif
+            
 
             <!-- Earning Wallet -->
             <div class="col-12 col-md-6 mb-3">
@@ -812,7 +810,7 @@
                         <input type="hidden" name="otp" id="hiddenOtp">
         
                         <div class="modal-body">
-                            <p><strong>Trading Balance:</strong> {{ number_format($wallets->trading_wallet - $campaignTradingBonus, 2) }} USDT ({{ number_format($campaignTradingBonus, 2) }} Campaign bonus)</p>
+                            <p><strong>Trading Balance:</strong> {{ number_format($wallets->trading_wallet - $campaignTradingBonus, 2) }} USDT ({{ number_format($campaignTradingBonus, 2) }} Campaign bonus margin)</p>
                             <p><strong>Fee Rate:</strong> 20%</p>
                             <p class="text-danger">
                                 *** Upon termination, your full trading balance, including any open orders, will be credited to your USDT wallet. A 20% fee will be deducted.
@@ -866,7 +864,7 @@
         <!-- Top-up Modal -->
         <div class="modal fade" id="packageModal" tabindex="-1" aria-labelledby="packageModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-lg">
-                <div class="modal-content bg-white">
+                <div class="modal-content bg-white" style="width: 80%;">
                     <div class="modal-header">
                         <h5 class="modal-title" id="packageModalLabel">
                             {{ $hasPackageTransfer ? 'Top-up' : 'Activate Trade' }}
@@ -881,15 +879,6 @@
                                 Please key in the top-up amount to your trading margin.
                             @endif
                         </p>
-                    
-                        <!--<div class="alert alert-warning mt-3" id="withdrawalFeeInfo">
-                            <p id="modalCountdownNote" class="text-danger fw-bold d-block">
-                                ⏳ CAMPAIGN <span id="modalCountdownTimer">Loading...</span>
-                                <span class="text-danger fw-normal" id="bonusNote">
-                                    <strong>Register and top up between May 20 until end of campaign (New York Time, EDT) to qualify for the bonus trading margin!</strong>
-                                </span>
-                            </p>
-                        </div>-->
                     </div>
                     <div class="modal-body">
                         @if(!$user->package)
@@ -1012,6 +1001,114 @@
                 </div>
               </div>
             </form>
+          </div>
+        </div>
+        
+        <!-- Bonus Claim Modal -->
+        <div class="modal fade" id="bonusClaimModal" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content p-4 bg-white" style="width: 400px;">
+        
+            <!-- Step 1: Intro (Updated Design) -->
+            <div class="modal-step step-1 text-center px-3">
+              <h4 class="fw-bold text-primary mt-3">Congratulations!</h4>
+              
+              <img src="/img/claim.png" alt="Coins Drop" style="max-width: 260px;">
+            
+              <p class="px-2 mt-3">
+                You’ve been an essential part of our incredible growth journey — and we’re excited to reward your commitment.
+              </p>
+            
+              <p class="px-2">
+                You are officially eligible for our <strong>Campaign Bonus Margin Drop</strong> — a limited-time initiative celebrating our $3M campaign milestone.
+              </p>
+            
+              <p class="px-2 mb-3">
+                Get ready.. your details are being prepared!
+              </p>
+            
+              <button class="btn btn-outline-primary w-100 py-2 next-step">Next</button>
+            </div>
+        
+              <!-- Step 2: Loading/Processing -->
+              <div class="modal-step step-2 d-none text-center">
+                <h5 class="fw-bold text-primary mb-3 text-center">Processing...</h5>
+                <p class="text-dark" id="airdropStatus">Clearing previous records...</p>
+                <div class="spinner-border text-primary mt-3" role="status">
+                  <span class="visually-hidden">Loading...</span>
+                </div>
+              </div>
+        
+                <!-- Step 3: Breakdown & Claim (Updated Design) -->
+                <div class="modal-step step-3 d-none px-3 text-start">
+                  <h5 class="fw-bold text-primary mb-3 text-left">Campaign Bonus Margin Breakdown</h5>
+                
+                  <div class="">
+                    <div class="fw-semibold text-dark small">Total Bonus Margin:</div>
+                    <div class="fs-3 fw-bold text-dark">$<span id="totalBonus">{{ number_format($megadropDeposit, 2) }}</span></div>
+                    <hr style="margin-top: 10px;">
+                
+                    <div class="d-flex align-items-start mb-2">
+                      <img src="/img/icon1.png" width="22" height="22" class="me-2" alt="Top-up Icon">
+                      <div class="small text-dark">
+                        Inclusive Top-up: $<span id="topupAmount">{{ number_format($topupBeforeBoost, 2) }}</span>
+                      </div>
+                    </div>
+                
+                    <div class="d-flex align-items-start mt-2">
+                      <img src="/img/icon2.png" width="22" height="22" class="me-2" alt="Leverage Icon">
+                      <div class="small text-dark">
+                        Bonus Margin: $<span id="campaignBoost">{{ number_format($megadropDeposit, 2) }}</span>
+                      </div>
+                    </div>
+                
+                    <a href="javascript:void(0);" class="small text-primary mt-2 d-inline-block" id="toggleMoreBtn">
+                      Details <span id="detailsArrow">▼</span>
+                    </a>
+                    <div id="topupBreakdown" class="d-none mb-4 mt-4 small" style="margin-left: 14px;">
+                      <ul class="list-group list-group-flush">
+                        @foreach ($campaignTopups as $topup)
+                          <li class="text-dark px-0 py-1">
+                            {{ $topup->created_at->format('d M Y H:i') }} — ${{ number_format($topup->amount, 2) }}
+                          </li>
+                        @endforeach
+                      </ul>
+                    </div>
+                  </div>
+                
+                  <div class="form-check mt-3">
+                    <input class="form-check-input" type="checkbox" id="agreeTerms">
+                    <label class="form-check-label small text-muted" for="agreeTerms">
+                      I agree to the campaign <a href="javascript:void(0)" onclick="toggleTerms()" class="text-primary">terms and conditions</a>.
+                    </label>
+                  </div>
+                
+                  <button class="btn btn-outline-primary w-100 mt-3 disabled" id="processClaimBtn">
+                    Process to Claim
+                  </button>
+                
+                  @include('user.partials.campaign')
+                
+                </div>
+        
+                <!-- Step 4: Claimed Success (Updated Design) -->
+                <div class="modal-step step-4 d-none text-center px-4 py-5">
+                  <h5 class="text-primary fw-bold mb-3">Bonus Margin Claimed</h5>
+                
+                  <img src="/img/icon3.png" alt="Bonus Claimed Icon" class="mb-4" style="max-width: 160px;">
+                
+                  <div class="fw-bold display-5 text-white bg-primary rounded-pill d-inline-block px-4 py-2 shadow-sm">
+                    $<span id="bonusReveal">{{ number_format($topupBeforeBoost, 2) }}</span>
+                  </div>
+                
+                  <p class="text-dark mt-4 small">Your bonus has been credited successfully</p>
+                
+                    <button class="btn btn-outline-primary fw-bold mt-4" data-bs-dismiss="modal" onclick="location.reload();">
+                      Thank you for participating!
+                    </button>
+                </div>
+        
+            </div>
           </div>
         </div>
 
@@ -1731,6 +1828,144 @@
     });
     </script>
     
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const steps = document.querySelectorAll('.modal-step');
+        const nextStepBtn = document.querySelector('.step-1 .next-step');
+        const processBtn = document.getElementById('processClaimBtn');
+        const agreeCheckbox = document.getElementById('agreeTerms');
+        const bonusAmount = parseFloat("{{ $megadropDeposit }}");
+    
+        function showStep(stepNumber) {
+            steps.forEach(step => step.classList.add('d-none'));
+            const target = document.querySelector(`.step-${stepNumber}`);
+            if (target) target.classList.remove('d-none');
+        }
+    
+        function simulateAirdrop(callback) {
+            const statusEl = document.getElementById('airdropStatus');
+            const messages = [
+                "Clearing previous records...",
+                "Checking eligibility...",
+                "Calculating reward...",
+                "Allocating bonus...",
+                "Finalizing claim..."
+            ];
+            let index = 0;
+    
+            const interval = setInterval(() => {
+                statusEl.textContent = messages[index];
+                index++;
+                if (index >= messages.length) {
+                    clearInterval(interval);
+                    setTimeout(callback, 2000);
+                }
+            }, 800);
+        }
+    
+        function animateBonus(total) {
+            const el = document.getElementById('bonusReveal');
+            let current = 0;
+            const steps = 30;
+            const increment = total / steps;
+    
+            const interval = setInterval(() => {
+                current += increment;
+                if (current >= total) {
+                    el.textContent = total.toFixed(2);
+                    clearInterval(interval);
+                } else {
+                    el.textContent = current.toFixed(2);
+                }
+            }, 50);
+        }
+    
+        nextStepBtn.addEventListener('click', () => {
+            showStep(2);
+            simulateAirdrop(() => {
+                showStep(3);
+            });
+        });
+    
+        agreeCheckbox.addEventListener('change', function () {
+            processBtn.classList.toggle('disabled', !this.checked);
+        });
+    
+        processBtn.addEventListener('click', function () {
+            if (agreeCheckbox.checked) {
+                showStep(4);
+                animateBonus(bonusAmount);
+            }
+        });
+    
+        const startClaimBtn = document.getElementById('startClaimBtn');
+        startClaimBtn?.addEventListener('click', function () {
+            showStep(1);
+            const bonusModal = new bootstrap.Modal(document.getElementById('bonusClaimModal'));
+            bonusModal.show();
+        });
+        
+        document.getElementById('toggleMoreBtn')?.addEventListener('click', function () {
+            const breakdown = document.getElementById('topupBreakdown');
+            if (breakdown.classList.contains('d-none')) {
+                breakdown.classList.remove('d-none');
+                this.textContent = 'Details ▲';
+            } else {
+                breakdown.classList.add('d-none');
+                this.textContent = 'Details ▼';
+            }
+        });
+        
+        document.getElementById('processClaimBtn').addEventListener('click', function () {
+            if (agreeCheckbox.checked) {
+                animateBonus(bonusAmount); // Optional: simulate animation first
+        
+                // Send POST request to /bonusclaim
+                fetch("{{ route('user.claimCampaignBonus') }}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        // Step 4 must be visible *before* updating its elements
+                        showStep(4);
+        
+                        // Use optional chaining to prevent null error
+                        const topupEl = document.getElementById('topupAmount');
+                        const boostEl = document.getElementById('campaignBoost');
+                        
+                        if (topupEl) topupEl.textContent = '$' + data.total_topup;
+                        if (boostEl) boostEl.textContent = '$' + data.campaign_boost;
+
+                        animateBonus(parseFloat(data.bonus_margin));
+                    } else {
+                        alert(data.error || 'An error occurred.');
+                    }
+                })
+                .catch(err => {
+                    console.error('Bonus claim failed:', err);
+                    alert('Something went wrong while claiming your bonus.');
+                });
+            }
+        });
+
+
+    });
+    </script>
+    
+    <script>
+      function toggleTerms() {
+        const box = document.getElementById('termsBox');
+        box.classList.toggle('d-none');
+      }
+    </script>
+
     <script src="{{ asset('js/users/intro-steps.js') }}"></script>
     
     </x-slot:footerFiles>
