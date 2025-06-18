@@ -110,9 +110,6 @@ class SeedAdminOrdersCron extends Command
                 $randomVolume = round(min(0.01, $remainingVolume), 2);
             }
 
-
-
-
             // Ensure that the random volume is not 0.
             if ($randomVolume <= 0) {
                 $this->warn("Calculated random volume is zero for pair id {$pair->id}. Skipping.");
@@ -120,7 +117,17 @@ class SeedAdminOrdersCron extends Command
                 continue;
             }
 
-            $estimatedReceive = round($randomVolume, 2);
+            $buyInUSD = 0;
+            if (in_array($currency->c_name, $reverseCurrencies)) {
+                // USD / Local (e.g. 1 USD = 24,000 VND → 1/24000)
+                $buyInUSD = round($randomVolume / $marketData->price, 2);
+            } else {
+                // Local / USD (e.g. 1 TWD = 0.031 USD → 1 * 0.031)
+                $buyInUSD = round($randomVolume * $marketData->price, 2);
+            }
+            
+            $estimatedReceive = round($randomVolume, 2); // This is still in local currency
+
 
             $existingOrder = Order::where('pair_id', $pair->id)->first();
             $randomDelta = mt_rand(1, 4) / 100;
@@ -146,7 +153,7 @@ class SeedAdminOrdersCron extends Command
 
             if ($order) {
                 // Update the existing order by adding the new volumes.
-                $order->buy     = round($order->buy + $randomVolume, 2);
+                $order->buy     = round($order->buy + $buyInUSD, 2);
                 $order->receive = round($order->receive + $estimatedReceive, 2);
                 $order->earning = round($order->earning + $earning, 2);
                 $order->txid    = $txid; // Optionally update the txid.
@@ -161,7 +168,7 @@ class SeedAdminOrdersCron extends Command
                     'user_id' => 1,
                     'pair_id' => $pair->id,
                     'txid'    => $txid,
-                    'buy'     => $randomVolume,
+                    'buy'     => $buyInUSD,
                     'sell'    => null,
                     'est_rate' => $est_rate,
                     'receive' => $estimatedReceive,

@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Models\Payout;
 use Illuminate\Support\Str;
 use App\Models\Setting;
+use Carbon\Carbon;
 
 use App\Services\UserRangeCalculator;
 use App\Services\CoinDepositService;
@@ -929,7 +930,6 @@ class AssetsController extends Controller
         return redirect()->back()->with('success', 'Funds sent successfully.');
     }
 
-    
     public static function getAllDownlineIds($userId)
     {
         $downlines = User::where('referral', $userId)->pluck('id')->toArray();
@@ -953,7 +953,83 @@ class AssetsController extends Controller
     
         return $uplines;
     }
-
-
+    
+    public function claimCampaignBonus(Request $request)
+    {
+        $user = auth()->user();
+        $userId = $user->id;
+    
+        Log::channel('admin')->info("🎯 BonusClaim: User {$userId} started bonus claim.");
+    
+        $campaignTradingBonus = \App\Models\Transfer::where('user_id', $userId)
+            ->where('from_wallet', 'cash_wallet')
+            ->where('to_wallet', 'trading_wallet')
+            ->where('status', 'Completed')
+            ->where('remark', 'campaign')
+            ->sum('amount');
+    
+        $startMY = Carbon::createFromFormat('Y-m-d H:i:s', '2025-05-20 12:01:00', 'Asia/Kuala_Lumpur');
+        $endMY   = Carbon::createFromFormat('Y-m-d H:i:s', '2025-06-30 18:20:59', 'Asia/Kuala_Lumpur');
+    
+        $topupraw = Transfer::where('user_id', $userId)
+            ->where('remark', 'package')
+            ->where('status', 'Completed')
+            ->whereBetween('created_at', [$startMY, $endMY])
+            ->sum('amount');
+            
+        // Apply multiplier or minimum only *after* confirming topup > 0
+        if ($user->created_at < $startMY) {
+            $topupraw = $topupraw * 1.5;
+        } elseif ($topupraw < 100) {
+            $topupraw = 100;
+        }
+        
+        $topup = $topupraw - $campaignTradingBonus;
+    
+        
+    
+        // Final validation after manipulation
+        if ($topup <= 0) {
+            Log::channel('admin')->warning("❌ BonusClaim: Computed topup is invalid for user {$userId}.");
+            return redirect()->back()->withErrors('Something went wrong while computing your bonus.');
+        }
+    
+        // Calculate breakdown
+        $totalTopup = round($topup / 1.5, 2);
+        $boost = $topup - $totalTopup;
+    
+        Log::channel('admin')->info("🎁 BonusClaim: topup = {$topup} | totalTopup = {$totalTopup} | boost = {$boost}");
+    
+        // Credit trading_wallet with bonus
+        $wallet = Wallet::firstOrCreate(['user_id' => $userId]);
+        $wallet->trading_wallet += $topup;
+        $wallet->save();
+    
+        do {
+            $txid = 't_' . str_pad(random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
+        } while (Transfer::where('txid', $txid)->exists());
+    
+        Transfer::create([
+            'user_id'     => $userId,
+            'txid'        => $txid,
+            'from_wallet' => 'cash_wallet',
+            'to_wallet'   => 'trading_wallet',
+            'amount'      => $topup,
+            'status'      => 'Completed',
+            'remark'      => 'campaign',
+        ]);
+    
+        Log::channel('admin')->info("✅ BonusClaim: Transfer created for user {$userId} | txid: {$txid} | amount: {$topup}");
+    
+        
+        // ALWAYS return JSON for AJAX:
+        return response()->json([
+            'success'        => true,
+            'message'        => 'Campaign bonus successfully claimed!',
+            'total_topup'    => $totalTopup,
+            'campaign_boost' => $boost,
+            'bonus_margin'   => $topup,
+        ]);
+    }
 
 }

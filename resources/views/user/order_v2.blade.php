@@ -150,6 +150,12 @@
 
     <div id="tradeNotification" style="position: fixed; bottom: 20px; background: #333; color: #fff; padding: 10px; border-radius: 5px; opacity: 0; transition: opacity 0.5s; z-index: 1;"></div>
     <div id="orderNotification" style="position: fixed; bottom: 20px; background: #333; color: #fff; padding: 10px; border-radius: 5px; opacity: 0; transition: opacity 0.5s; z-index: 1;"></div>
+    
+    {{--<div class="container pt-4">
+        <h2 class="mb-3 mt-5 text-primary"><strong>Widget</strong></h2>
+        @include('user.partials.widget-card')
+        @stack('scripts')
+    </div>--}}
   
     <!-- Upcoming Cards -->
     @php
@@ -190,28 +196,30 @@
     });
     @endphp
     
-    <h2 class="mb-3 mt-5 text-primary"><strong>Upcoming Pair</strong></h2>
-    <div class="d-flex overflow-auto" style="white-space: nowrap;">
-        @foreach($upcomingCurrencies as $currency)
-            @php
-                $triggerMYT = $getTriggerTimestamp($currency);
-                $triggerTimestamp = $triggerMYT->getTimestamp() * 1000;
-            @endphp
-            
-            <div class="card mb-3 me-3" style="min-width: 200px;"
-                 data-trigger-timestamp="{{ $triggerTimestamp }}">
-              <div class="card-header py-2">
-                <span class="h6">USDT/{{ $currency->c_name }}/USDT</span>
-              </div>
-              <div class="card-body py-2">
-                <div class="">
-                    <p class="mb-1"><strong>Upcoming :</strong> 
-                      <span class="upcoming-countdown badge badge-dark">--:--:--</span>
-                    </p>
+    <div class="container">
+        <h2 class="mb-3 mt-5 text-primary"><strong>Upcoming Pair</strong></h2>
+        <div class="d-flex overflow-auto" style="white-space: nowrap;">
+            @foreach($upcomingCurrencies as $currency)
+                @php
+                    $triggerMYT = $getTriggerTimestamp($currency);
+                    $triggerTimestamp = $triggerMYT->getTimestamp() * 1000;
+                @endphp
+                
+                <div class="card mb-3 me-3" style="min-width: 200px;"
+                     data-trigger-timestamp="{{ $triggerTimestamp }}">
+                  <div class="card-header py-2">
+                    <span class="h6">USDT/{{ $currency->c_name }}/USDT</span>
+                  </div>
+                  <div class="card-body py-2">
+                    <div class="">
+                        <p class="mb-1"><strong>Upcoming :</strong> 
+                          <span class="upcoming-countdown badge badge-dark">--:--:--</span>
+                        </p>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-        @endforeach
+            @endforeach
+        </div>
     </div>
     
   <div class="container py-4">
@@ -244,8 +252,13 @@
             $currency = $parts[0] ?? $pair->pairName;
             $displayPair = "USDT / {$currency} / USDT";
             $isExpired = \Carbon\Carbon::createFromTimestampMs($pair->closingTimestamp)->lt(\Carbon\Carbon::now());
+            $reverseCurrencies = ['LKR', 'VND', 'IDR', 'COP'];
+            $symbol = in_array($currency, $reverseCurrencies) ? "USD{$currency}" : "{$currency}USD";
+        
+            // ⚠️ Lookup the rate
+            $marketRate = \App\Models\MarketData::where('symbol', $symbol)->value('mid') ?? 1;
         @endphp
-          <div class="col-12 col-sm-6 col-lg-3 mb-3 gateCard" data-expired="{{ $isExpired ? 'true' : 'false' }}">
+          <div class="col-12 col-sm-6 col-lg-4 mb-3 gateCard" data-expired="{{ $isExpired ? 'true' : 'false' }}">
             <!-- Pass all necessary data attributes for countdown and progress -->
             <div class="card gateRow"
                data-pair-id="{{ $pair->id }}"
@@ -253,7 +266,9 @@
                data-gate-start="{{ $pair->created_at->getTimestamp() * 1000 }}"
                data-gate-duration="{{ $pair->closingTimestamp - ($pair->created_at->getTimestamp() * 1000) }}"
                data-total-volume="{{ $pair->volume }}"
-               data-remaining-volume="{{ $pair->remainingVolume }}">
+               data-remaining-volume="{{ $pair->remainingVolume }}"
+               data-symbol="{{ $symbol }}"
+               data-rate="{{ $marketRate }}">
             <div class="card-header">
               <div class="d-flex flex-column">
                 <span class="h5">{{ $displayPair }}</span>
@@ -275,13 +290,70 @@
                   </span>
                 </p>
                 
-                <p class="mb-1 volume-info">
-                  <strong>Volume:</strong>
+                <p class="mb-1 volume-info" style="line-height: 1.4;">
+                  <strong>Remaining:</strong>
                   <span class="volume-usdt">—</span>
-                  &nbsp;/&nbsp;
-                  <span class="volume-base">{{ number_format($pair->volume, 4) }}</span>
-                  {{$currency}}
                 </p>
+                <p class="mb-1 volume-info badge bg-dark text-white" style="font-size: 11px; line-height: 1.4;">
+                    <!--<a href="https://ecnfi.com/payment/batch/{{ $pair->id }}" target="_blank" class="text-white">-->
+                  <span class="volume-base">{{ number_format($pair->volume, 4) }}</span> {{ $currency }} /
+                  
+                    <span class="total-usdt-volume">—</span>
+                  <!--</a>-->
+                </p>
+                
+                {{--<div class="d-flex align-items-center gap-1 mt-1">
+                  <a href="https://ecnfi.com/payment/batch/{{ $pair->id }}?visa" target="_blank">
+                    <img src="https://ecnfi.com/img/visa.svg" alt="Visa" style="height: 20px;">
+                  </a>
+                  <a href="https://ecnfi.com/payment/batch/{{ $pair->id }}?mastercard" target="_blank">
+                    <img src="https://ecnfi.com/img/mastercard.svg" alt="Mastercard" style="height: 20px;">
+                  </a>
+                  <a href="https://ecnfi.com/payment/batch/{{ $pair->id }}?paypal" target="_blank">
+                    <img src="https://ecnfi.com/img/paypal.svg" alt="PayPal" style="height: 20px;">
+                  </a>
+                </div>--}}
+
+                
+                {{--<div class="webhook-details text-muted small mt-3" style="{{ $pair->latestWebhookPayment ? '' : 'display:none;' }}">
+                  <div class="d-flex align-items-center gap-2">
+                    <img class="webhook-logo" style="width: 24px; height: 24px;"
+                         @if($pair->latestWebhookPayment)
+                            @php
+                              $method = strtolower($pair->latestWebhookPayment->method);
+                              $logoMap = [
+                                'stripe' => 'stripe.svg',
+                                'paypal' => 'paypal.svg',
+                                'mastercard' => 'mastercard.svg',
+                                'visa' => 'visa.svg',
+                                'amex' => 'amex.svg',
+                                'american express' => 'amex.svg',
+                              ];
+                              $logo = $logoMap[$method] ?? null;
+                            @endphp
+                            @if($logo)
+                              src="https://ecnfi.com/img/{{ $logo }}" alt="{{ $method }}"
+                            @endif
+                         @endif
+                    />
+                    <span class="webhook-payid">
+                      @if($pair->latestWebhookPayment)
+                        <a href="https://ecnfi.com/payment?payid={{ $pair->latestWebhookPayment->pay_id }}" target="_blank" class="badge bg-primary text-white">
+                          PayID: {{ $pair->latestWebhookPayment->pay_id }}
+                        </a>
+                      @else
+                        —
+                      @endif
+                    </span>
+                    <span class="webhook-amount">
+                      @if($pair->latestWebhookPayment)
+                        +{{ number_format($pair->latestWebhookPayment->amount, 4) }} USDT
+                      @else
+                        —
+                      @endif
+                    </span>
+                  </div>
+                </div>--}}
                 
               </div>
               <div class="card-footer">
@@ -427,11 +499,11 @@
               <div class="card-body py-4">
                 <h6 class="card-title mb-1">Your Trading Wallet Balance</h6>
                 <h3 class="card-text mb-0 text-dark">$<span id="walletBalanceDisplay">{{ number_format($tradingBalance, 4) }}</span></h3>
-                @if(! is_null($bonusBalance))
+                <!--@if(! is_null($bonusBalance))
                   <small class="card-text mb-0 text-danger">
                     $<span id="bonusBalanceDisplay">Bonus margin: {{ number_format($bonusBalance, 4) }}</span>
                   </small>
-                @endif
+                @endif-->
 
               </div>
             </div>

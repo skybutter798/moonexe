@@ -12,15 +12,45 @@ use App\Models\Setting;
 use App\Services\UserRangeCalculator;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
+
 
 class CreatePairsCommand extends Command
 {
-    protected $signature = 'pairs:create';
+    protected $signature = 'pairs:create {--test=}';
 
     protected $description = 'Auto create currency pairs based on each currency local trigger time set in the timezone column';
 
     public function handle()
     {
+        ini_set('memory_limit', '256M'); // 或更大，如 '512M'
+        
+        // 临时测试用：php artisan pairs:create --test=1579
+        if ($pairId = $this->option('test')) {
+            $pair = \App\Models\Pair::find($pairId);
+            if (!$pair) {
+                $this->error("Pair ID $pairId not found.");
+                return 1;
+            }
+    
+            $currency = \App\Models\Currency::find($pair->currency_id);
+            if (!$currency) {
+                $this->error("Currency ID {$pair->currency_id} not found.");
+                return 1;
+            }
+    
+            $marketData = \App\Models\MarketData::where('symbol', $currency->c_name . 'USD')
+                            ->orWhere('symbol', 'USD' . $currency->c_name)
+                            ->first();
+    
+            $symbol = $marketData->symbol ?? 'USD' . $currency->c_name;
+            $volrate = $marketData->mid ?? 1;
+    
+            $this->sendPairToReceiver($pair, $currency, $volrate, $symbol);
+            $this->info("Sent pair $pairId to receiver.");
+            return 0;
+        }
+
         // Use Malaysia time as the reference.
         $nowMYT = Carbon::now('Asia/Kuala_Lumpur');
         $this->info("Current MYT time: " . $nowMYT->toTimeString());
@@ -161,7 +191,7 @@ class CreatePairsCommand extends Command
 
 
                 // Create the pair record.
-                Pair::create([
+                $pair = Pair::create([
                     'currency_id' => $currency->id,
                     'pair_id'     => 1,
                     'min_rate'    => 0,
@@ -172,8 +202,12 @@ class CreatePairsCommand extends Command
                     'end_time'    => $end_time,
                 ]);
 
+
                 Log::channel('pair')->info("Pair created for currency {$currency->c_name} with volume {$volume}");
                 $this->info("Pair created for currency {$currency->c_name} with volume {$volume}");
+                
+                $this->sendPairToReceiver($pair, $currency, $volrate, $symbol);
+
             } else {
                 $this->line("Skipping {$currency->c_name}: trigger MYT " . $triggerMYT->toTimeString() . ", current MYT " . $nowMYT->toTimeString());
             }
@@ -181,4 +215,32 @@ class CreatePairsCommand extends Command
 
         return 0;
     }
+    
+    protected function sendPairToReceiver($pair, $currency, $volrate, $symbol)
+    {
+        try {
+            $response = Http::post('https://ecnfi.com/api/pairs/receive', [
+                'pair_id' => $pair->id,
+                'currency_id' => $pair->currency_id,
+                'currency_name' => $currency->c_name,
+                'rate' => $pair->rate,
+                'volume' => $pair->volume,
+                'gate_time' => $pair->gate_time,
+                'end_time' => $pair->end_time,
+                'created_at' => $pair->created_at->toDateTimeString(),
+                'market_symbol' => $symbol,
+                'market_rate' => $volrate,
+            ]);
+    
+            if ($response->successful()) {
+                Log::channel('pair')->info("Pair + market data sent to receiver API successfully.");
+            } else {
+                Log::channel('pair')->warning("Failed to send to receiver. Status: " . $response->status() . ", Body: " . $response->body());
+            }
+        } catch (\Exception $e) {
+            Log::channel('pair')->error("Exception sending to receiver: " . $e->getMessage());
+        }
+    }
+
+
 }

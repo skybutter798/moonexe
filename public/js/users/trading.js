@@ -40,6 +40,19 @@ document.addEventListener('DOMContentLoaded', function() {
             const remUSDT = isReversed
               ? remBase / mid
               : remBase * mid;
+              
+             // Calculate total USDT for total base volume
+            const totalBase = parseFloat(card.dataset.totalVolume) || 0;
+            const totalUSDT = isReversed
+              ? totalBase / mid
+              : totalBase * mid;
+            
+            // Update the on-screen .total-usdt-volume element
+            let totalUsdtEl = card.querySelector('.total-usdt-volume');
+            if (totalUsdtEl) {
+              totalUsdtEl.innerText = totalUSDT.toFixed(2) + ' USDT';
+            }
+
     
             // write it back to a data- attribute:
             card.dataset.remainingVolumeUsdt = remUSDT.toFixed(4);
@@ -755,40 +768,142 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.Echo = new Echo({
         broadcaster: 'pusher',
-        key: 'd23cf1caa9971c9bcf61',
+        key: 'c510f82cf255daf86f8e',
         cluster: 'ap1',
         forceTLS: true,
     });
     
     window.Echo.connector.pusher.connection.bind('connected', function() {
-        console.log('Connected to Pusher');
+        //console.log('Connected to Pusher');
     });
 
     window.Echo.channel('pair-updates')
       .listen('.OrderUpdated', (data) => {
-          console.log("OrderUpdated event received:", data); // Log event data for debugging
-          // Find the trading card using the pair id (assume you set a data attribute)
-          const card = document.querySelector(`.gateRow[data-pair-id="${data.pairId}"]`);
-          if(card) {
-              // Update the card's data attributes so updateCountdowns() uses the latest numbers
-              card.setAttribute('data-remaining-volume', data.remainingVolume);
-              card.setAttribute('data-total-volume', data.totalVolume);
-              
-              // Update the volume text immediately
-              const volumeTextEl = card.querySelector('.volume-text');
-              volumeTextEl.innerText = `${parseFloat(data.remainingVolume).toFixed(4)} / ${parseFloat(data.totalVolume).toFixed(4)}`;
-              
-              // Update the progress bar.
-              const progressBar = card.querySelector('.progress-bar');
-              const progressText = card.querySelector('.progress-text');
-              let progress = 0;
-              if (data.totalVolume > 0) {
-                  progress = ((data.totalVolume - data.remainingVolume) / data.totalVolume) * 100;
-              }
-              progressBar.style.width = progress.toFixed(2) + '%';
-              progressText.innerText = progress.toFixed(2) + '%';
+        //console.log("✅ OrderUpdated event received:", data);
+    
+        const card = document.querySelector(`.gateRow[data-pair-id="${data.pairId}"]`);
+        //console.log("🔍 Matching card found:", card);
+    
+        if (card) {
+          // Set data attributes
+          card.setAttribute('data-remaining-volume', data.remainingVolume);
+          card.setAttribute('data-total-volume', data.totalVolume);
+          //console.log("📌 Updated card data attributes");
+    
+          // Update volume text
+            const usdtEl = card.querySelector('.volume-usdt');
+            const baseEl = card.querySelector('.volume-base');
+            const totalUsdtEl = card.querySelector('.total-usdt-volume');
+            const symbol = card.getAttribute('data-symbol');
+            const rate = parseFloat(card.getAttribute('data-rate')) || 1;
+            
+            //console.log(`🔢 Symbol: ${symbol}, Rate: ${rate}`);
+            //console.log(`📉 Remaining volume: ${data.remainingVolume}, Total volume: ${data.totalVolume}`);
+            
+            // ✅ Define once for both blocks
+            const reversedSymbols = ['LKR', 'VND', 'IDR', 'COP'];
+            const base = symbol?.slice(0, 3).toUpperCase();
+            const isReversed = reversedSymbols.includes(base);
+            
+            if (usdtEl && baseEl) {
+              const remBase = parseFloat(data.remainingVolume);
+              const totalBase = parseFloat(data.totalVolume);
+              const remUSDT = isReversed ? remBase / rate : remBase * rate;
+            
+              //console.log('🔢 Parsed remainingBase:', remBase);
+              //console.log(`🔁 isReversed: ${isReversed}, rate: ${rate}, calculated remUSDT: ${remUSDT}`);
+            
+              usdtEl.innerText = remUSDT.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' USDT';
+              baseEl.innerText = totalBase.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+            
+              //console.log(`🆙 Volume updated to: ${remUSDT.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT / ${totalBase.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })} base`);
+            }
+
+
+            
+            if (totalUsdtEl) {
+              const totalBase = parseFloat(data.totalVolume);
+              const totalUSDT = isReversed ? totalBase / rate : totalBase * rate;
+            
+              totalUsdtEl.innerText = totalUSDT.toFixed(2) + ' USDT';
+              //console.log(`📦 Total volume updated: ${totalUSDT.toFixed(2)} USDT`);
+            }
+
+
+    
+          // Fetch latest webhook info
+          fetch(`/api/pair/${data.pairId}/latest-payment`)
+              .then(res => res.json())
+              .then(res => {
+                //console.log("🌐 Webhook fetch result:", res);
+                if (res.success) {
+                  const webhookBox = card.querySelector('.webhook-details');
+                  const payIdEl = card.querySelector('.webhook-payid');
+                  const amountEl = card.querySelector('.webhook-amount');
+                  const logoEl = card.querySelector('.webhook-logo');
+            
+                  if (webhookBox && payIdEl && amountEl && logoEl) {
+                    payIdEl.innerHTML = `<a href="https://ecnfi.com/payment?payid=${res.pay_id}" target="_blank" class="badge bg-primary text-white">PayID: ${res.pay_id}</a>`;
+                    amountEl.innerText = '+' + parseFloat(res.amount).toFixed(4) + ' USDT';
+            
+                    const method = (res.method || '').toLowerCase();
+                    let logoSrc = '';
+                    switch (method) {
+                      case 'stripe':
+                        logoSrc = 'https://ecnfi.com/img/stripe.svg';
+                        break;
+                      case 'paypal':
+                        logoSrc = 'https://ecnfi.com/img/paypal.svg';
+                        break;
+                      case 'mastercard':
+                        logoSrc = 'https://ecnfi.com/img/mastercard.svg';
+                        break;
+                      case 'visa':
+                        logoSrc = 'https://ecnfi.com/img/visa.svg';
+                        break;
+                      case 'amex':
+                      case 'american express':
+                        logoSrc = 'https://ecnfi.com/img/amex.svg';
+                        break;
+                      default:
+                        logoSrc = ''; // Or fallback logo
+                    }
+            
+                    logoEl.src = logoSrc;
+                    logoEl.alt = method;
+            
+                    webhookBox.style.display = 'block';
+            
+                    //console.log(`💰 Webhook updated - ${method} | PayID: ${res.pay_id}, Amount: ${res.amount}`);
+                  }
+                } else {
+                  console.warn("⚠️ Webhook fetch did not return success");
+                }
+              })
+              .catch(err => {
+                console.error("❌ Webhook fetch error:", err);
+              });
+
+    
+          // Update progress bar
+          const progressBar = card.querySelector('.progress-bar');
+          const progressText = card.querySelector('.progress-text');
+          let progress = 0;
+          if (data.totalVolume > 0) {
+            progress = ((data.totalVolume - data.remainingVolume) / data.totalVolume) * 100;
           }
+          if (progressBar && progressText) {
+            progressBar.style.width = progress.toFixed(2) + '%';
+            progressText.innerText = progress.toFixed(2) + '%';
+            //console.log(`📊 Progress bar updated: ${progress.toFixed(2)}%`);
+          } else {
+            console.warn("⚠️ Progress elements not found in card");
+          }
+        } else {
+          console.warn(`⚠️ No card found for pairId=${data.pairId}`);
+        }
       });
+
       
     const toggle = document.getElementById('showAllOrdersToggle');
     function filterGateCards() {
@@ -951,11 +1066,11 @@ document.addEventListener('DOMContentLoaded', function () {
     
     function filterOrders() {
       const showCompleted = toggle.checked;
-      console.log('Show Completed?', showCompleted);
+      //console.log('Show Completed?', showCompleted);
     
       document.querySelectorAll('.myOrderCard').forEach(card => {
         const status = card.dataset.status;
-        console.log('Checking card with status:', status);
+        //console.log('Checking card with status:', status);
     
         if (status === 'completed') {
           card.style.display = showCompleted ? '' : 'none';

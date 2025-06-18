@@ -55,5 +55,11 @@ class Pair extends Model
     {
         return $this->hasMany(\App\Models\Order::class, 'pair_id');
     }
+    
+    public function latestWebhookPayment()
+    {
+        return $this->hasOne(WebhookPayment::class, 'pair_id')->latestOfMany();
+    }
+
 
 }
