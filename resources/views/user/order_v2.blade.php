@@ -407,6 +407,9 @@
     @empty
       <div class="text-center">No exchange orders found.</div>
     @endforelse
+    <div class="mt-4 d-flex justify-content-center">
+        {{ $userOrders->links('vendor.pagination.bootstrap-5') }}
+    </div>
 </div>
 
     <!-- Modal Popout for Trade Details -->
