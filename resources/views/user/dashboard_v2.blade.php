@@ -258,8 +258,8 @@
         
         <hr>
         
-        @include('user.partials.widget-card')
-        @stack('scripts')
+        {{--@include('user.partials.widget-card')
+        @stack('scripts')--}}
 
         
         <!-- Estimated Balance + Actions -->
@@ -398,12 +398,12 @@
                         </a>
                         <p class="openorder"><small class="text-danger">*Open Order: ${{ number_format($pendingBuy, 4) }}</small></p>
                     </div>
-                    <div class="mt-1 text-black small " id="bonusInfoText">
+                    {{--<div class="mt-1 text-black small " id="bonusInfoText">
                         Congratulation! Total campaign Bonus Margin: <strong class="text-success">${{ number_format($megadropDeposit, 2) }}</strong><br>
                         <small class="text-black" id="bonusCreditNote">
                            All bonus margin will be distributed within the next 7 days
                         </small>
-                    </div>
+                    </div>--}}
 
                 </div>
             </div>
@@ -470,7 +470,7 @@
                         </div>
                         <p class="openorder"><small class="text-danger">*Open Order: ${{ number_format($pendingBuy, 4) }}</small></p>
                     </div>
-                    @if($megadropDeposit > 0)
+                    {{--@if($megadropDeposit > 0)
                         <div class="p-3 bg-light border rounded text-center small" id="bonusInfoText" style="max-width: 500px; margin: 0 auto;">
                             <div class="mb-2">
                                 <strong>Congratulations!</strong><br>
@@ -479,7 +479,7 @@
                             </div>
                             <button class="btn btn-primary" id="startClaimBtn"> Claim Bonus </button>
                         </div>
-                    @endif
+                    @endif--}}
                 </div>
             </div>
             @endif

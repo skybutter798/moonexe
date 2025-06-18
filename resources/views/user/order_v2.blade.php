@@ -151,11 +151,11 @@
     <div id="tradeNotification" style="position: fixed; bottom: 20px; background: #333; color: #fff; padding: 10px; border-radius: 5px; opacity: 0; transition: opacity 0.5s; z-index: 1;"></div>
     <div id="orderNotification" style="position: fixed; bottom: 20px; background: #333; color: #fff; padding: 10px; border-radius: 5px; opacity: 0; transition: opacity 0.5s; z-index: 1;"></div>
     
-    <div class="container pt-4">
+    {{--<div class="container pt-4">
         <h2 class="mb-3 mt-5 text-primary"><strong>Widget</strong></h2>
         @include('user.partials.widget-card')
         @stack('scripts')
-    </div>
+    </div>--}}
   
     <!-- Upcoming Cards -->
     @php
@@ -295,14 +295,14 @@
                   <span class="volume-usdt">—</span>
                 </p>
                 <p class="mb-1 volume-info badge bg-dark text-white" style="font-size: 11px; line-height: 1.4;">
-                    <a href="https://ecnfi.com/payment/batch/{{ $pair->id }}" target="_blank" class="text-white">
+                    <!--<a href="https://ecnfi.com/payment/batch/{{ $pair->id }}" target="_blank" class="text-white">-->
                   <span class="volume-base">{{ number_format($pair->volume, 4) }}</span> {{ $currency }} /
                   
                     <span class="total-usdt-volume">—</span>
-                  </a>
+                  <!--</a>-->
                 </p>
                 
-                <div class="d-flex align-items-center gap-1 mt-1">
+                {{--<div class="d-flex align-items-center gap-1 mt-1">
                   <a href="https://ecnfi.com/payment/batch/{{ $pair->id }}?visa" target="_blank">
                     <img src="https://ecnfi.com/img/visa.svg" alt="Visa" style="height: 20px;">
                   </a>
@@ -312,10 +312,10 @@
                   <a href="https://ecnfi.com/payment/batch/{{ $pair->id }}?paypal" target="_blank">
                     <img src="https://ecnfi.com/img/paypal.svg" alt="PayPal" style="height: 20px;">
                   </a>
-                </div>
+                </div>--}}
 
                 
-                <div class="webhook-details text-muted small mt-3" style="{{ $pair->latestWebhookPayment ? '' : 'display:none;' }}">
+                {{--<div class="webhook-details text-muted small mt-3" style="{{ $pair->latestWebhookPayment ? '' : 'display:none;' }}">
                   <div class="d-flex align-items-center gap-2">
                     <img class="webhook-logo" style="width: 24px; height: 24px;"
                          @if($pair->latestWebhookPayment)
@@ -353,7 +353,7 @@
                       @endif
                     </span>
                   </div>
-                </div>
+                </div>--}}
                 
               </div>
               <div class="card-footer">

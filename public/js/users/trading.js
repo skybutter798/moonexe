@@ -774,21 +774,21 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     window.Echo.connector.pusher.connection.bind('connected', function() {
-        console.log('Connected to Pusher');
+        //console.log('Connected to Pusher');
     });
 
     window.Echo.channel('pair-updates')
       .listen('.OrderUpdated', (data) => {
-        console.log("✅ OrderUpdated event received:", data);
+        //console.log("✅ OrderUpdated event received:", data);
     
         const card = document.querySelector(`.gateRow[data-pair-id="${data.pairId}"]`);
-        console.log("🔍 Matching card found:", card);
+        //console.log("🔍 Matching card found:", card);
     
         if (card) {
           // Set data attributes
           card.setAttribute('data-remaining-volume', data.remainingVolume);
           card.setAttribute('data-total-volume', data.totalVolume);
-          console.log("📌 Updated card data attributes");
+          //console.log("📌 Updated card data attributes");
     
           // Update volume text
             const usdtEl = card.querySelector('.volume-usdt');
@@ -797,8 +797,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const symbol = card.getAttribute('data-symbol');
             const rate = parseFloat(card.getAttribute('data-rate')) || 1;
             
-            console.log(`🔢 Symbol: ${symbol}, Rate: ${rate}`);
-            console.log(`📉 Remaining volume: ${data.remainingVolume}, Total volume: ${data.totalVolume}`);
+            //console.log(`🔢 Symbol: ${symbol}, Rate: ${rate}`);
+            //console.log(`📉 Remaining volume: ${data.remainingVolume}, Total volume: ${data.totalVolume}`);
             
             // ✅ Define once for both blocks
             const reversedSymbols = ['LKR', 'VND', 'IDR', 'COP'];
@@ -810,13 +810,13 @@ document.addEventListener('DOMContentLoaded', function() {
               const totalBase = parseFloat(data.totalVolume);
               const remUSDT = isReversed ? remBase / rate : remBase * rate;
             
-              console.log('🔢 Parsed remainingBase:', remBase);
-              console.log(`🔁 isReversed: ${isReversed}, rate: ${rate}, calculated remUSDT: ${remUSDT}`);
+              //console.log('🔢 Parsed remainingBase:', remBase);
+              //console.log(`🔁 isReversed: ${isReversed}, rate: ${rate}, calculated remUSDT: ${remUSDT}`);
             
               usdtEl.innerText = remUSDT.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' USDT';
               baseEl.innerText = totalBase.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 });
             
-              console.log(`🆙 Volume updated to: ${remUSDT.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT / ${totalBase.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })} base`);
+              //console.log(`🆙 Volume updated to: ${remUSDT.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT / ${totalBase.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })} base`);
             }
 
 
@@ -826,7 +826,7 @@ document.addEventListener('DOMContentLoaded', function() {
               const totalUSDT = isReversed ? totalBase / rate : totalBase * rate;
             
               totalUsdtEl.innerText = totalUSDT.toFixed(2) + ' USDT';
-              console.log(`📦 Total volume updated: ${totalUSDT.toFixed(2)} USDT`);
+              //console.log(`📦 Total volume updated: ${totalUSDT.toFixed(2)} USDT`);
             }
 
 
@@ -835,7 +835,7 @@ document.addEventListener('DOMContentLoaded', function() {
           fetch(`/api/pair/${data.pairId}/latest-payment`)
               .then(res => res.json())
               .then(res => {
-                console.log("🌐 Webhook fetch result:", res);
+                //console.log("🌐 Webhook fetch result:", res);
                 if (res.success) {
                   const webhookBox = card.querySelector('.webhook-details');
                   const payIdEl = card.querySelector('.webhook-payid');
@@ -874,7 +874,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
                     webhookBox.style.display = 'block';
             
-                    console.log(`💰 Webhook updated - ${method} | PayID: ${res.pay_id}, Amount: ${res.amount}`);
+                    //console.log(`💰 Webhook updated - ${method} | PayID: ${res.pay_id}, Amount: ${res.amount}`);
                   }
                 } else {
                   console.warn("⚠️ Webhook fetch did not return success");
@@ -895,7 +895,7 @@ document.addEventListener('DOMContentLoaded', function() {
           if (progressBar && progressText) {
             progressBar.style.width = progress.toFixed(2) + '%';
             progressText.innerText = progress.toFixed(2) + '%';
-            console.log(`📊 Progress bar updated: ${progress.toFixed(2)}%`);
+            //console.log(`📊 Progress bar updated: ${progress.toFixed(2)}%`);
           } else {
             console.warn("⚠️ Progress elements not found in card");
           }
@@ -1066,11 +1066,11 @@ document.addEventListener('DOMContentLoaded', function () {
     
     function filterOrders() {
       const showCompleted = toggle.checked;
-      console.log('Show Completed?', showCompleted);
+      //console.log('Show Completed?', showCompleted);
     
       document.querySelectorAll('.myOrderCard').forEach(card => {
         const status = card.dataset.status;
-        console.log('Checking card with status:', status);
+        //console.log('Checking card with status:', status);
     
         if (status === 'completed') {
           card.style.display = showCompleted ? '' : 'none';
