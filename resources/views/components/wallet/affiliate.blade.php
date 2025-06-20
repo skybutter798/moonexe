@@ -2,19 +2,21 @@
 <table class="table table-sm table-bordered">
     <thead>
         <tr>
-            <th>Date</th>
-            <th>Type</th>
+            <th>ID</th>
+            <th>Txid</th>
+            <th>Order ID</th>
             <th>Amount</th>
-            <th>Source</th>
+            <th>Date</th>
         </tr>
     </thead>
     <tbody>
         @forelse($affiliate as $row)
             <tr>
-                <td>{{ \Carbon\Carbon::parse($row->created_at)->format('d M Y H:i') }}</td>
-                <td>{{ ucfirst($row->type) }}</td>
+                <th>{{ ucfirst($row->id) }}</th>
+                <td>{{ ucfirst($row->txid) }}</td>
+                <td>{{ ucfirst($row->order_id) }}</td>
                 <td class="text-success">+{{ number_format($row->actual, 2) }}</td>
-                <td>{{ $row->remark ?? '-' }}</td>
+                <td>{{ \Carbon\Carbon::parse($row->created_at)->format('d M Y H:i') }}</td>
             </tr>
         @empty
             <tr><td colspan="4" class="text-center">No affiliate payouts found.</td></tr>

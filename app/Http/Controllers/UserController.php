@@ -99,8 +99,31 @@ class UserController extends Controller
     public function walletBreakdown($id)
     {
         $data = \App\Services\WalletBreakdownService::generate($id);
+    
+        // Fetch topup transfers (no date filter)
+        $topups = \App\Models\Transfer::where('user_id', $id)
+            ->where('status', 'Completed')
+            ->where('remark', 'package')
+            ->orderBy('created_at', 'desc')
+            ->get();
+    
+        // Create a basic HTML table
+        $html = '<table class="table table-bordered table-sm">';
+        $html .= '<thead><tr><th>Date</th><th>Amount</th><th>TXID</th></tr></thead><tbody>';
+        foreach ($topups as $t) {
+            $html .= '<tr>';
+            $html .= '<td>' . $t->created_at->format('d M Y H:i') . '</td>';
+            $html .= '<td>' . number_format($t->amount, 4) . '</td>';
+            $html .= '<td>' . e($t->txid) . '</td>';
+            $html .= '</tr>';
+        }
+        $html .= '</tbody></table>';
+    
+        $data['topups'] = $html;
+    
         return response()->json($data);
     }
+
     
     public function disable($id)
     {

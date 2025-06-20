@@ -22,11 +22,11 @@ class WalletBreakdownService
         // 2. Trading Margin Transfers
         $downlineIds = self::getDownlines($userId);
         $trading = DB::table('transfers')
-            ->whereIn('user_id', $downlineIds)
-            ->where('from_wallet', 'cash_wallet')
+            ->where('user_id', $userId)
             ->where('to_wallet', 'trading_wallet')
             ->where('status', 'Completed')
             ->get();
+
 
         // 3. Earning ROI (payouts)
         $roi = DB::table('payouts')

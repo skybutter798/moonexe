@@ -1,6 +1,49 @@
 @extends('layouts.guest')
-
 @section('content')
+<style>
+    .modal {
+        display: none !important;
+    }
+
+    .modal.show {
+        display: block !important;
+    }
+
+    .modal-backdrop {
+        z-index: 1040;
+    }
+    
+    /* reduce space between each input group */
+    .form-group {
+      margin-bottom: 0.5rem;  /* default is around 1rem; adjust as you like */
+    }
+    
+    /* make the terms checkbox label and link text smaller */
+    label[for="terms"] {
+      font-size: 0.85rem;      /* shrink the text */
+      line-height: 1.2;        /* tighten up the line height */
+    }
+    
+    label[for="terms"] a {
+      font-size: inherit;      /* ensures the link matches the label size */
+    }
+    
+    /* add this inside your existing <style> block */
+    .form-group.terms-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;   /* space between box and text */
+      margin-top: 1rem; /* preserve your current top margin */
+    }
+    
+    .form-group.terms-group label {
+      margin: 0;     /* remove any extra default margins */
+      font-size: 0.85rem; /* already in place, just ensuring it's applied */
+    }
+
+
+</style>
+
 <!-- Container using flexbox to center both logo and form -->
 <div class="auth-wrapper" style="min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 1rem;">
     <!-- Logo Container -->
@@ -65,6 +108,16 @@
                     <div class="error-msg">{{ $message }}</div>
                 @enderror
             </div>
+            
+            <!-- Terms and Conditions Checkbox -->
+            <div class="form-group terms-group">
+              <input type="checkbox" id="terms" name="terms" required>
+              <label for="terms">
+                {!! __('I agree to the <a href="#termsModal" data-bs-toggle="modal">Terms and Conditions</a>') !!}
+              </label>
+              @error('terms') … @enderror
+            </div>
+
 
             <!-- Submit Button -->
             <button type="submit" class="btn-primary">
@@ -143,6 +196,27 @@
 </div>
 @endif
 
+
+<!-- Terms and Conditions Modal -->
+<div class="modal fade" id="termsModal" tabindex="-1" aria-labelledby="termsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="termsModalLabel">MoonExe Terms of Use</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" style="max-height: 70vh; overflow-y: auto; font-size: 0.9rem; padding: 20px;">
+        @include('user.partials.terms')
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="acceptTermsBtn" data-bs-dismiss="modal"> I Agree </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
 @endsection
 
 @section('scripts')
@@ -154,4 +228,11 @@
     });
 </script>
 @endif
+
+<script>
+  document.getElementById('acceptTermsBtn').addEventListener('click', function() {
+    document.getElementById('terms').checked = true;
+  });
+</script>
+
 @endsection

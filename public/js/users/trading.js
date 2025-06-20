@@ -774,12 +774,12 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     window.Echo.connector.pusher.connection.bind('connected', function() {
-        //console.log('Connected to Pusher');
+        console.log('Connected to Pusher');
     });
 
     window.Echo.channel('pair-updates')
       .listen('.OrderUpdated', (data) => {
-        //console.log("✅ OrderUpdated event received:", data);
+        console.log("✅ OrderUpdated event received:", data);
     
         const card = document.querySelector(`.gateRow[data-pair-id="${data.pairId}"]`);
         //console.log("🔍 Matching card found:", card);

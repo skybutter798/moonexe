@@ -64,7 +64,7 @@
               <div class="card-header bg-primary d-flex justify-content-between align-items-center">
                 <h5 class="mb-0 text-white">{{ $announcement->name }}</h5>
                 <small class="text-white-50">
-                  {{ $announcement->created_at->format('Y-m-d') }}
+                  {{ $announcement->created_at->format('Y-m-d H:i') }}
                 </small>
               </div>
 

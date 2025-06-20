@@ -398,12 +398,12 @@
                         </a>
                         <p class="openorder"><small class="text-danger">*Open Order: ${{ number_format($pendingBuy, 4) }}</small></p>
                     </div>
-                    {{--<div class="mt-1 text-black small " id="bonusInfoText">
+                    <div class="mt-1 text-black small " id="bonusInfoText">
                         Congratulation! Total campaign Bonus Margin: <strong class="text-success">${{ number_format($megadropDeposit, 2) }}</strong><br>
                         <small class="text-black" id="bonusCreditNote">
                            All bonus margin will be distributed within the next 7 days
                         </small>
-                    </div>--}}
+                    </div>
 
                 </div>
             </div>
@@ -470,7 +470,7 @@
                         </div>
                         <p class="openorder"><small class="text-danger">*Open Order: ${{ number_format($pendingBuy, 4) }}</small></p>
                     </div>
-                    {{--@if($megadropDeposit > 0)
+                    @if($megadropDeposit > 0)
                         <div class="p-3 bg-light border rounded text-center small" id="bonusInfoText" style="max-width: 500px; margin: 0 auto;">
                             <div class="mb-2">
                                 <strong>Congratulations!</strong><br>
@@ -479,7 +479,7 @@
                             </div>
                             <button class="btn btn-primary" id="startClaimBtn"> Claim Bonus </button>
                         </div>
-                    @endif--}}
+                    @endif
                 </div>
             </div>
             @endif
@@ -1054,13 +1054,28 @@
                         Inclusive Top-up: $<span id="topupAmount">{{ number_format($topupBeforeBoost, 2) }}</span>
                       </div>
                     </div>
-                
+                    
                     <div class="d-flex align-items-start mt-2">
-                      <img src="/img/icon2.png" width="22" height="22" class="me-2" alt="Leverage Icon">
+                      <img src="/img/icon2.png" width="22" height="22" class="me-2 mt-1" alt="Leverage Icon">
                       <div class="small text-dark">
-                        Bonus Margin: $<span id="campaignBoost">{{ number_format($megadropDeposit, 2) }}</span>
+                        <div>
+                          Bonus Margin: $<span id="campaignBoost">{{ number_format($megadropDeposit, 2) }}</span>
+                          <span class="text-muted">
+                            (
+                            {{ $user->created_at < \Carbon\Carbon::createFromFormat('Y-m-d H:i:s', '2025-05-20 12:01:00', 'Asia/Kuala_Lumpur') ? '1.5x' : '1.0x' }}
+                            )
+                          </span>
+                        </div>
+                        <div class="">
+                          <span class="text-danger">Includes $100 Welcome Bonus</span><br>
+                          {{--Nett Claimable Bonus: <strong class="text-success">${{ number_format($megadropDeposit - 100, 2) }}</strong>--}}
+                        </div>
                       </div>
                     </div>
+
+
+
+
                 
                     <a href="javascript:void(0);" class="small text-primary mt-2 d-inline-block" id="toggleMoreBtn">
                       Details <span id="detailsArrow">▼</span>

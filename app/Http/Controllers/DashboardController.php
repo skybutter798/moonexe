@@ -86,7 +86,7 @@ class DashboardController extends Controller
                        
         // Set the MEGADROP campaign time (converted from New York to Malaysia time)
         $startMY = Carbon::createFromFormat('Y-m-d H:i:s', '2025-05-20 12:01:00', 'Asia/Kuala_Lumpur');
-        $endMY   = Carbon::createFromFormat('Y-m-d H:i:s', '2025-06-30 18:20:59', 'Asia/Kuala_Lumpur');
+        $endMY   = Carbon::createFromFormat('Y-m-d H:i:s', '2025-06-11 18:20:59', 'Asia/Kuala_Lumpur');
         
         // Get the user
         $user = \App\Models\User::find($userId);
@@ -109,8 +109,8 @@ class DashboardController extends Controller
         // Apply logic based on user registration date
         if ($user && $user->created_at < $startMY) {
             $megadropDeposit = ($megadropDeposit * 1.5) - $campaignTradingBonus;
-            //$megadropDeposit = ($megadropDeposit * 1.5);
         } elseif ($user && $user->created_at >= $startMY) {
+            $megadropDeposit = ($megadropDeposit * 1.0) - $campaignTradingBonus;
             if ($megadropDeposit >= 100) {
                 // Don't add anything
             } else {
@@ -118,8 +118,14 @@ class DashboardController extends Controller
             }
         }
         
+        $baseTopup = \App\Models\Transfer::where('user_id', $userId)
+            ->where('status', 'Completed')
+            ->where('remark', 'package')
+            ->whereBetween('created_at', [$startMY, $endMY])
+            ->sum('amount');
+        
         if ($user->created_at < $startMY) {
-            $topupBeforeBoost = $megadropDeposit / 1.5;
+            $topupBeforeBoost = $baseTopup;
         } else {
             $topupBeforeBoost = $megadropDeposit;
         }

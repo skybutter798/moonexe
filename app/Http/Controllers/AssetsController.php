@@ -969,7 +969,7 @@ class AssetsController extends Controller
             ->sum('amount');
     
         $startMY = Carbon::createFromFormat('Y-m-d H:i:s', '2025-05-20 12:01:00', 'Asia/Kuala_Lumpur');
-        $endMY   = Carbon::createFromFormat('Y-m-d H:i:s', '2025-06-30 18:20:59', 'Asia/Kuala_Lumpur');
+        $endMY   = Carbon::createFromFormat('Y-m-d H:i:s', '2025-06-11 18:20:59', 'Asia/Kuala_Lumpur');
     
         $topupraw = Transfer::where('user_id', $userId)
             ->where('remark', 'package')

@@ -120,9 +120,10 @@
                                     <td>{{ optional($user->last_login)->format('d M Y') ?? '-' }}</td>
                                     <td>{{ $user->created_at->format('d M Y') }}</td>
                                     <td class="text-center">
-                                    @if($user->status == 1 && auth()->id() != $user->id)
+                                    @if(in_array($user->status, [1, 2]) && auth()->id() != $user->id && !$user->is_admin)
                                         <a href="{{ route('admin.users.impersonate', $user->id) }}" class="btn btn-sm btn-warning">Login</a>
                                     @endif
+
                                     </td>
                                 </tr>
                                 
@@ -148,11 +149,15 @@
                                             <button type="button" class="btn btn-outline-dark" onclick="showBreakdown('trading')">Trading Margin</button>
                                             <button type="button" class="btn btn-outline-dark" onclick="showBreakdown('earning')">Earning ROI</button>
                                             <button type="button" class="btn btn-outline-dark" onclick="showBreakdown('affiliate')">Affiliate</button>
+                                            {{--<button type="button" class="btn btn-outline-dark" onclick="showBreakdown('topups')">Topups</button>--}}
+
                                         </div>
                                         <div id="breakdown-usdt" class="wallet-breakdown-table"></div>
                                         <div id="breakdown-trading" class="wallet-breakdown-table d-none"></div>
                                         <div id="breakdown-earning" class="wallet-breakdown-table d-none"></div>
                                         <div id="breakdown-affiliate" class="wallet-breakdown-table d-none"></div>
+                                        <div id="breakdown-topups" class="wallet-breakdown-table d-none"></div>
+
                                     </div>
                                 </div>
                             </div>
@@ -187,18 +192,20 @@
                 fetch('/admin/users/' + userId + '/wallet-breakdown')
                     .then(res => res.json())
                     .then(data => {
-                        ['usdt', 'trading', 'earning', 'affiliate'].forEach(type => {
+                        ['usdt', 'trading', 'earning', 'affiliate', 'topups'].forEach(type => {
                             document.getElementById('breakdown-' + type).innerHTML = data[type];
                         });
                     });
+
             }
             
             function showBreakdown(type) {
-                ['usdt', 'trading', 'earning', 'affiliate'].forEach(t => {
+                ['usdt', 'trading', 'earning', 'affiliate', 'topups'].forEach(t => {
                     document.getElementById('breakdown-' + t).classList.add('d-none');
                 });
                 document.getElementById('breakdown-' + type).classList.remove('d-none');
             }
+
         </script>
     </x-slot:footerFiles>
 </x-base-layout>

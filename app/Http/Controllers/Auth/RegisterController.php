@@ -25,6 +25,7 @@ class RegisterController extends Controller
     {
         $this->middleware('guest');
     }
+
     
     protected function validator(array $data)
     {
@@ -34,6 +35,7 @@ class RegisterController extends Controller
             'password'      => ['required', 'string', 'min:8', 'confirmed'],
             'referral_code' => ['required', 'string', 'exists:users,referral_code'],
             'promotion_code'=> ['nullable', 'string', 'exists:promotions,code'],
+            'terms'         => ['accepted'],
         ]);
     }
     
@@ -122,4 +124,10 @@ class RegisterController extends Controller
 
         return $code;
     }
+    
+    public function showRegistrationForm()
+    {
+        return view('auth.register');
+    }
+
 }

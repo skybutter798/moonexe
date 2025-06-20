@@ -120,10 +120,10 @@ class SeedAdminOrdersCron extends Command
             $buyInUSD = 0;
             if (in_array($currency->c_name, $reverseCurrencies)) {
                 // USD / Local (e.g. 1 USD = 24,000 VND → 1/24000)
-                $buyInUSD = round($randomVolume / $marketData->price, 2);
+                $buyInUSD = round($randomVolume / $marketData->mid, 2);
             } else {
                 // Local / USD (e.g. 1 TWD = 0.031 USD → 1 * 0.031)
-                $buyInUSD = round($randomVolume * $marketData->price, 2);
+                $buyInUSD = round($randomVolume * $marketData->mid, 2);
             }
             
             $estimatedReceive = round($randomVolume, 2); // This is still in local currency
