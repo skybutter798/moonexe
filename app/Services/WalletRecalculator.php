@@ -21,7 +21,7 @@ class WalletRecalculator
 
         // -------- CASH WALLET --------
         $cash = DB::table('deposits')->where('user_id', $userId)->where('status', 'Completed')->sum('amount')
-            - DB::table('withdrawals')->where('user_id', $userId)->where('status', '!=', 'Rejected')->sum('amount')
+            - DB::table('withdrawals') ->where('user_id', $userId) ->where('status', '!=', 'Rejected') ->select(DB::raw('SUM(amount + fee) as gross')) ->value('gross');
             + DB::table('transfers')->where('user_id', $userId)->where('status', 'Completed')
                 ->whereIn('from_wallet', ['affiliates_wallet', 'earning_wallet'])
                 ->where('to_wallet', 'cash_wallet')->sum('amount')
@@ -120,9 +120,9 @@ class WalletRecalculator
 
 
         
-            DB::table('wallets')->where('user_id', $userId)->update($updateData);
+            //DB::table('wallets')->where('user_id', $userId)->update($updateData);
         
-            Log::channel('cronjob')->info("🔄 User ID {$userId} wallet updated.", $diff);
+            //Log::channel('cronjob')->info("🔄 User ID {$userId} wallet updated.", $diff);
         } else {
             Log::channel('cronjob')->info("✅ User ID {$userId} wallet unchanged.");
         }

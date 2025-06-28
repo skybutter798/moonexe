@@ -93,7 +93,9 @@ class BackfillAssetsRecords extends Command
                     ->where('user_id', $user->id)
                     ->where('status', 'Completed')
                     ->whereDate('updated_at', '<=', $currentDate)
-                    ->sum('amount');
+                    ->select(DB::raw('SUM(amount + fee) as total'))
+                    ->value('total');
+
 
                 $cashWallet = (float)$cashDeposits - (float)$cashWithdrawals;
 

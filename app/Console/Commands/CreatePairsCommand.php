@@ -23,7 +23,7 @@ class CreatePairsCommand extends Command
 
     public function handle()
     {
-        ini_set('memory_limit', '256M'); // 或更大，如 '512M'
+        ini_set('memory_limit', '512M'); // 或更大，如 '512M'
         
         // 临时测试用：php artisan pairs:create --test=1579
         if ($pairId = $this->option('test')) {

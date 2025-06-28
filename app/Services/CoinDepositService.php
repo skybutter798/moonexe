@@ -59,7 +59,7 @@ class CoinDepositService
         try {
             $user = User::find($userId);
             
-            $chatId = $walletName === 'MoonExe20' ? '-1002561840571' : '-4840431863';
+            $chatId = $walletName === 'MoonExe20' ? '-1002643026089' : '-4840431863';
     
             // 1. Get direct referral
             $referralUser = User::find($user->referral);
@@ -75,7 +75,6 @@ class CoinDepositService
                 $prev1 = User::find($current->referral);
                 $current = $prev1;
             
-                // Stop if we�ve reached ID 2 now
                 if ($current && $current->id == 2) {
                     break;
                 }

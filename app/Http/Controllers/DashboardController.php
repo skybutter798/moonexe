@@ -26,7 +26,7 @@ class DashboardController extends Controller
     public function index()
     {
         $userId = auth()->id();
-        $this->walletRecalculator->recalculate($userId);
+        //$this->walletRecalculator->recalculate($userId);
         $wallets = Wallet::where('user_id', $userId)->first();
         
         if (!$wallets) {

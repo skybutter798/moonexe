@@ -25,12 +25,16 @@ class RecalculateWallets extends Command
         $users = User::whereIn('id', $userIds)->get();
 
         foreach ($users as $user) {
+            if ($user->status == 2) {
+                $this->info("⏭️  Skipping user ID: {$user->id} (status = 2)");
+                continue;
+            }
             $this->info("Recalculating wallets for user ID: {$user->id}");
 
             // CASH breakdown
             $cashParts = [
                 'Deposits' => DB::table('deposits')->where('user_id', $user->id)->where('status', 'Completed')->sum('amount'),
-                'Withdrawals' => -DB::table('withdrawals')->where('user_id', $user->id)->where('status', '!=', 'Rejected')->sum('amount'),
+                'Withdrawals' => -DB::table('withdrawals') ->where('user_id', $user->id) ->where('status', '!=', 'Rejected') ->select(DB::raw('SUM(amount + fee) as total')) ->value('total'),
                 'Aff/Earn to Cash' => DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->whereIn('from_wallet', ['affiliates_wallet', 'earning_wallet'])->where('to_wallet', 'cash_wallet')->sum('amount'),
                 'Trading to Cash (remark)' => DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->where('from_wallet', 'trading_wallet')->where('to_wallet', 'cash_wallet')->sum(DB::raw('CAST(remark AS DECIMAL(20,8))')),
                 'Trading to Cash (amount)' => DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->where('from_wallet', 'trading_wallet')->where('to_wallet', 'cash_wallet')->sum('amount'),
@@ -97,10 +101,26 @@ class RecalculateWallets extends Command
             ];
             if ($cash >= 0) {
                 $updateData['cash_wallet'] = $cash;
+                
                 DB::table('wallets')->where('user_id', $user->id)->update($updateData);
             } else {
                 $this->warn("⚠️  Skipped updating cash_wallet for user ID {$user->id} (value: $cash)");
+                
+                Log::channel('cronjob')->warning("Negative cash_wallet detected", [
+                    'user_id' => $user->id,
+                    'calculated_cash_wallet' => $cash,
+                    'cash_parts' => $cashParts,
+                    'trading_wallet' => $trading,
+                    'trading_parts' => $tradingParts,
+                    'earning_wallet' => $earning,
+                    'earning_parts' => $earningParts,
+                    'affiliates_wallet' => $affiliates,
+                    'affiliates_parts' => $affiliatesParts,
+                    'bonus_wallet' => $bonus,
+                    'bonus_parts' => $bonusParts,
+                ]);
             }
+
 
             $this->printBreakdown($user->id, $cash, $cashParts, $trading, $tradingParts, $earning, $earningParts, $affiliates, $affiliatesParts, $bonus, $bonusParts);
         }

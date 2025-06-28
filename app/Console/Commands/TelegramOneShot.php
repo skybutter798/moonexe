@@ -12,16 +12,16 @@ class TelegramOneShot extends Command
     public function handle()
     {
         $message = "<b>Deposit Completed 💰</b>\n"
-                 . "User ID: 366\n"
-                 . "Name: ailian\n"
-                 . "Email: ailianchow@hotmail.com\n"
-                 . "Credited: 100 USDT\n"
-                 . "Address: TTYeGevcZxsNGQsPB2qyBCG1knrutgR1ez\n"
-                 . "Referral: bhsoh\n"
+                 . "User ID: 616\n"
+                 . "Name: Carol\n"
+                 . "Email: carolphong18@gmail.com\n"
+                 . "Credited: 100.00 USDT\n"
+                 . "Address: TNyJb5zh32tkhtED3GmShV1SjyUJRDgFg2\n"
+                 . "Referral: Ng Siew Cheng\n"
                  . "Top Referral: Ronald\n"
-                 . "TXID: d_38135763";
+                 . "TXID: d_16916616";
 
-        $chatId = '-1002561840571';
+        $chatId = '-1002643026089';
 
         $telegram = new TelegramService();
         $result = $telegram->sendMessage($message, $chatId);

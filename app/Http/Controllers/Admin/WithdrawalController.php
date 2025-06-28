@@ -65,7 +65,7 @@ class WithdrawalController extends Controller
         $withdrawal->save();
     
         $user = User::find($withdrawal->user_id);
-        $chatId = '-1002302154321';
+        $chatId = '-1002643026089';
     
         // Get direct referral
         $referralUser = User::find($user->referral);
@@ -118,7 +118,7 @@ class WithdrawalController extends Controller
         $withdrawal->save();
     
         $user = User::find($withdrawal->user_id);
-        $chatId = '-1002302154321';
+        $chatId = '-1002643026089';
     
         // Get direct referral
         $referralUser = User::find($user->referral);

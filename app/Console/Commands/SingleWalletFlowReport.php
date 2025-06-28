@@ -42,15 +42,24 @@ class SingleWalletFlowReport extends Command
 
         // Withdrawals
         $withdrawals = DB::table('withdrawals')->where('user_id', $uid)->orderByDesc('id')->get();
+        $totalOut = 0;
+        
         $this->line("\n📉 Withdrawals:");
         foreach ($withdrawals as $w) {
             $date = Carbon::parse($w->created_at)->format($dateFormat);
-            $this->line(sprintf("  - #%4d | %-10s | Amount: %10.2f | Date: %s", 
-                $w->id, $w->status, $w->amount, $date));
+            $fee  = $w->fee ?? 0;
+            $gross = $w->amount + $fee;
+        
+            $this->line(sprintf(
+                "  - #%4d | %-10s | Amount: %10.2f | Fee: %6.2f | Total: %10.2f | Date: %s", 
+                $w->id, $w->status, $w->amount, $fee, $gross, $date
+            ));
+        
             if (strtolower($w->status) === 'completed') {
-                $totalOut += $w->amount;
+                $totalOut += $gross;
             }
         }
+
 
         // Transfers
         $transfers = DB::table('transfers')->where('user_id', $uid)->orderByDesc('id')->get();

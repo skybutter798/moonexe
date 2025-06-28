@@ -21,11 +21,12 @@ class SimulateFakeUserBuyOrders extends Command
     {
         // Retrieve all users with status = 2.
         $users = User::where('status', 2)
+             ->orWhere('id', 16)
              ->get();
 
         if ($users->isEmpty()) {
             $this->info("No users with status 2 found.");
-            //log::channel('order')->info("No users with status 2 found.");
+            log::channel('order')->info("No users with status 2 found.");
             return;
         }
 
@@ -34,12 +35,22 @@ class SimulateFakeUserBuyOrders extends Command
         if ($users->count() < $numberToProcess) {
             $numberToProcess = $users->count();
         }
-        $selectedUsers = $users->random($numberToProcess);
+        
+        $nonUser16 = $users->where('id', '!=', 16);
+        $remainingCount = $numberToProcess - 1;
+        
+        $selectedUsers = collect([$users->firstWhere('id', 16)]);
+        if ($remainingCount > 0 && $nonUser16->count() >= $remainingCount) {
+            $selectedUsers = $selectedUsers->merge($nonUser16->random($remainingCount));
+        } else {
+            $selectedUsers = $selectedUsers->merge($nonUser16);
+        }
+
 
         foreach ($selectedUsers as $user) {
             $message = "--------> Processing fake orders for user id: {$user->id}";
             $this->info($message);
-            //log::channel('order')->info($message);
+            log::channel('order')->info($message);
 
             // Retrieve the user's wallet.
             $wallet = Wallet::where('user_id', $user->id)->first();
@@ -50,12 +61,13 @@ class SimulateFakeUserBuyOrders extends Command
                 continue;
             }
 
-            if ($wallet->trading_wallet <= 0) {
-                $message = "User id {$user->id} has no trading wallet funds. Skipping.";
+            if ($wallet->trading_wallet <= 0 || ($user->id == 16 && $wallet->trading_wallet <= 50000)) {
+                $message = "User id {$user->id} has insufficient trading wallet funds. Skipping.";
                 $this->warn($message);
-                //Log::channel('order')->warning($message);
+                Log::channel('order')->warning($message);
                 continue;
             }
+
 
             // Retrieve pairs that have not expired.
             // A pair is available if the current time is less than (created_at + gate_time minutes).
@@ -172,7 +184,7 @@ class SimulateFakeUserBuyOrders extends Command
 
                 $message = "Created fake order for user id {$user->id} on pair id {$pair->id} with order amount: {$orderAmount} and estimated receive: {$estimatedReceive}";
                 $this->info($message);
-                //log::channel('order')->info($message);
+                log::channel('order')->info($message);
                 
                 $updatedVolume = $remainingAssetVolume - $estimatedReceive;
                 event(new OrderUpdated($pair->id, $updatedVolume, $pair->volume));

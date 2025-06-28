@@ -113,7 +113,7 @@ class OrderController extends Controller
                    ->with('pair')
                    ->orderByRaw("FIELD(status, 'pending') DESC")
                    ->orderBy('created_at', 'desc')
-                   ->paginate(10);
+                   ->paginate(50);
 
     
         // Check if the user already made an order today.

@@ -29,7 +29,11 @@ class SeedClaimOrders extends Command
 
         for ($userId = $startUserId; $userId <= $endUserId; $userId++) {
             // Retrieve the user.
-            $user = User::where('id', $userId)->where('status', 2)->first();
+            if ($userId === 16) {
+                $user = User::find(16);
+            } else {
+                $user = User::where('id', $userId)->where('status', 2)->first();
+            }
 
             if (!$user) {
                 $this->info("User {$userId} not found. Skipping.");

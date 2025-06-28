@@ -31,7 +31,7 @@ class FullWalletReport extends Command
 
             $totalDeposit = DB::table('deposits')->where('user_id', $uid)->where('status', 'Completed')->sum('amount');
             $realDeposit  = DB::table('deposits')->where('user_id', $uid)->where('status', 'Completed')->whereNotNull('external_txid')->sum('amount');
-            $totalWithdrawal = DB::table('withdrawals')->where('user_id', $uid)->where('status', '!=', 'Rejected')->sum('amount');
+            $totalWithdrawal = DB::table('withdrawals') ->where('user_id', $uid) ->where('status', '!=', 'Rejected') ->select(DB::raw('SUM(amount + fee) as total')) ->value('total');
 
             $cash = $totalDeposit
                 - $totalWithdrawal

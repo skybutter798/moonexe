@@ -156,10 +156,10 @@ class WebhookController extends Controller
             \Artisan::call('pairs:update');
             return response()->json(['message' => 'Volume updated live'], 200);
         } catch (\Exception $e) {
-            Log::channel('admin')->error('[Webhook] ❌ Insert failed', [
+            /*Log::channel('admin')->error('[Webhook] ❌ Insert failed', [
                 'message' => $e->getMessage(),
                 'trace'   => $e->getTraceAsString(),
-            ]);
+            ]);*/
             return response()->json(['error' => 'Insert failed'], 500);
         }
     

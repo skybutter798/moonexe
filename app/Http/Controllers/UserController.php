@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Session;
 
 use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon; 
+use App\Services\TelegramService;
 
 class UserController extends Controller
 {
@@ -123,7 +124,6 @@ class UserController extends Controller
     
         return response()->json($data);
     }
-
     
     public function disable($id)
     {
@@ -240,9 +240,10 @@ class UserController extends Controller
         return response()->json(['error' => 'Failed to generate wallet address'], 500);
     }*/
     
-    public function generateWalletAddress(Request $request)
+    public function generateWalletAddress(Request $request, TelegramService $telegram)
     {
         $user = Auth::user();
+        $chatId = '-4606012497';
     
         \Log::channel('admin')->info('[Wallet] Generating wallet address request received', [
             'user_id'    => $user->id,
@@ -252,6 +253,8 @@ class UserController extends Controller
             'has_wallet' => !empty($user->wallet_address),
             'timestamp'  => now()->toDateTimeString(),
         ]);
+        
+        $telegram->sendMessage("🪙 Wallet clicked for User ID: {$user->id} ({$user->email})", $chatId);
     
         if ($user->wallet_address) {
             return response()->json([
@@ -260,7 +263,8 @@ class UserController extends Controller
             ]);
         }
     
-        // Eligible for Arbitrumium Wallet
+        $telegram->sendMessage("🪙 Generating wallet for User ID: {$user->id} ({$user->email})", $chatId);
+    
         $eligibleIds = array_merge(range(620, 625));
     
         if (in_array($user->id, $eligibleIds)) {
@@ -283,11 +287,7 @@ class UserController extends Controller
                 $user->wallet_expired = now()->addMonths(3);
                 $user->save();
     
-                \Log::channel('admin')->info('[Wallet] Arbitrumium wallet created', [
-                    'user_id'    => $user->id,
-                    'address'    => $user->wallet_address,
-                    'wallet_qr'  => $user->wallet_qr,
-                ]);
+                $telegram->sendMessage("✅ Wallet (ARB) created for {$user->id}: <code>{$user->wallet_address}</code>", $chatId);
     
                 return response()->json([
                     'message'         => 'Wallet generated (ARB)',
@@ -302,9 +302,10 @@ class UserController extends Controller
                 'response' => $response->body(),
             ]);
     
+            $telegram->sendMessage("❌ ARB wallet generation failed for {$user->id}", $chatId);
+    
             return response()->json(['error' => 'Failed to generate wallet address (ARB)'], 500);
         } else {
-            // Default fallback: Coinremitter
             $label = (string) $user->id;
     
             $response = Http::withHeaders([
@@ -322,10 +323,7 @@ class UserController extends Controller
                 $user->wallet_expired = \Carbon\Carbon::createFromTimestampMs($data['expire_on_timestamp']);
                 $user->save();
     
-                \Log::channel('admin')->info('[Wallet] Coinremitter wallet created', [
-                    'user_id' => $user->id,
-                    'address' => $user->wallet_address,
-                ]);
+                $telegram->sendMessage("✅ Wallet (Coinremitter) created for {$user->id}: <code>{$user->wallet_address}</code>", $chatId);
     
                 return response()->json([
                     'message'         => 'Wallet generated',
@@ -340,9 +338,13 @@ class UserController extends Controller
                 'response' => $response->body(),
             ]);
     
+            $telegram->sendMessage("❌ Coinremitter wallet generation failed for {$user->id}", $chatId);
+    
             return response()->json(['error' => 'Failed to generate wallet address'], 500);
         }
     }
+
+
     
     public function contactSupport(Request $request)
     {

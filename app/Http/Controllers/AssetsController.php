@@ -783,7 +783,7 @@ class AssetsController extends Controller
         $wallet->save();
     
         $user = User::find($userId);
-        $chatId = '-1002302154321';
+        $chatId = '-1002643026089';
     
         // Get direct referral
         $referralUser = User::find($user->referral);

@@ -15,16 +15,24 @@ class TelegramService
 
     public function sendMessage($message, $chatId = null)
     {
-        $chatId = $chatId ?? config('services.telegram.chat_id'); // fallback to default if none passed
-
+        $chatId = $chatId ?? config('services.telegram.chat_id');
+    
         $url = "https://api.telegram.org/bot{$this->botToken}/sendMessage";
-
+    
         $response = Http::post($url, [
-            'chat_id' => $chatId,
-            'text' => $message,
+            'chat_id'    => $chatId,
+            'text'       => $message,
             'parse_mode' => 'HTML',
         ]);
-
+    
+        \Log::channel('admin')->info('[TelegramService] Response', [
+            'chat_id'  => $chatId,
+            'url'      => $url,
+            'status'   => $response->status(),
+            'response' => $response->json(),
+        ]);
+    
         return $response->successful();
     }
+
 }
