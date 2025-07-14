@@ -377,6 +377,7 @@
                   <th>Remark</th>
                   <th>Amount</th>
                   <th>Type</th>
+                  <th>Remark</th>
                   <th>Date</th>
                 </tr>
               </thead>
@@ -401,6 +402,7 @@
                         <span class="badge bg-secondary">N/A</span>
                       @endif
                     </td>
+                    <td>{{ $transaction->remark }}</td>
                     <td>{{ $transaction->created_at->format('Y-m-d H:i') }}</td>
                   </tr>
                 @empty

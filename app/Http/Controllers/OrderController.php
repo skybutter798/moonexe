@@ -45,7 +45,8 @@ class OrderController extends Controller
     
         // Eager load orders with each pair and filter pairs created in the last 24 hours.
         $pairs = Pair::with(['orders', 'currency', 'pairCurrency', 'latestWebhookPayment'])
-                     ->where('created_at', '>=', now()->subDay())
+                     //->where('created_at', '>=', now()->subDay())
+                     ->where('created_at', '>=', now()->startOfDay())
                      ->get();
                     
         $package = $user->package ? Directrange::find($user->package) : null;
@@ -281,15 +282,32 @@ class OrderController extends Controller
         }
     
         // Calculate the remaining volume for the pair.
-        $sumOrdersReceive = Order::where('pair_id', $pair->id)->sum('receive');
-        $remainingVolume = $pair->volume - $sumOrdersReceive;
-    
-        // Trigger any post-order event and log the event trigger.
-        event(new OrderUpdated($pair->id, $remainingVolume, $pair->volume));
+        $sumReceive = Order::where('pair_id', $pair->id)->sum('receive');
+
+        $reversedSymbols = ['LKR', 'VND', 'IDR', 'COP'];
+        $base = strtoupper($pair->currency->c_name ?? '');
+        $isReversed = in_array($base, $reversedSymbols);
+        
+        // Convert volume to USDT for frontend
+        if ($isReversed) {
+            $totalUSDT = $pair->volume / $pair->rate;
+            $usedUSDT = $sumReceive / $pair->rate;
+        } else {
+            $totalUSDT = $pair->volume * $pair->rate;
+            $usedUSDT = $sumReceive * $pair->rate;
+        }
+        
+        $remainingUSDT = max($totalUSDT - $usedUSDT, 0);
+        
+        event(new OrderUpdated($pair->id, $remainingUSDT, $totalUSDT));
+        
         Log::channel('order')->info('OrderUpdated event triggered.', [
-            'pair_id'         => $pair->id,
-            'remaining_volume'=> $remainingVolume,
-            'total_volume'    => $pair->volume,
+            'pair_id'            => $pair->id,
+            'remaining_usdt'     => $remainingUSDT,
+            'total_usdt_volume'  => $totalUSDT,
+            'base_currency'      => $base,
+            'is_reversed'        => $isReversed,
+            'pair_rate'          => $pair->rate,
         ]);
     
         return response()->json([
@@ -333,10 +351,7 @@ class OrderController extends Controller
         }
 
         // Step 2: Calculate user's total and percentages using the UserRangeCalculator.
-        $rangeCalculator = new \App\Services\UserRangeCalculator();
-        $userRange = $rangeCalculator->calculate($user);
-        Log::info("User {$user->id} - Total: {$userRange['total']}, Direct Percentage: {$userRange['direct_percentage']}, Matching Percentage: {$userRange['matching_percentage']}");
-        
+
         // Check if user belongs to the "campaign-only" group
         $isCampaignUser = \DB::table('users')
             ->join('wallets', 'wallets.user_id', '=', 'users.id')
@@ -427,6 +442,28 @@ class OrderController extends Controller
             'percentage' => $percentage,
             'wallet_balance' => $wallet->trading_wallet ?? 0,
         ]);
+    }
+    
+    public function volumes($pairId)
+    {
+        $pair = Pair::find($pairId);
+        if (!$pair) {
+            return response()->json(['success' => false, 'error' => 'Pair not found.'], 404);
+        }
+    
+        $orders = Order::where('pair_id', $pairId)->sum('receive');
+    
+        $remaining = max($pair->volume - $orders, 0);
+    
+        return response()->json([
+            'success' => true,
+            'pair_id' => $pair->id,
+            'symbol' => optional($pair->currency)->c_name ?? 'USD', // or fallback
+            'rate' => $pair->rate,
+            'total_volume' => $pair->volume,
+            'remaining_volume' => $remaining,
+        ]);
+
     }
 
 }

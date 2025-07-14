@@ -23,7 +23,7 @@ class CreatePairsCommand extends Command
 
     public function handle()
     {
-        ini_set('memory_limit', '512M'); // 或更大，如 '512M'
+        ini_set('memory_limit', '512M');
         
         // 临时测试用：php artisan pairs:create --test=1579
         if ($pairId = $this->option('test')) {
@@ -67,6 +67,8 @@ class CreatePairsCommand extends Command
                 'special_name',
                 'special_rate_min',
                 'special_rate_max',
+                'special_rate_vol',
+                'special_max_vol',
             ])
             ->pluck('value', 'name')
             ->toArray();
@@ -75,7 +77,7 @@ class CreatePairsCommand extends Command
         $divisorMin = isset($settings['pair_divisor_min']) ? (int)$settings['pair_divisor_min'] : 5;
         $divisorMax = isset($settings['pair_divisor_max']) ? (int)$settings['pair_divisor_max'] : 10;
         $rateMin = isset($settings['pair_rate_min']) ? (int)$settings['pair_rate_min'] : 45;
-        $rateMax = isset($settings['pair_rate_max']) ? (int)$settings['pair_rate_max'] : 70;
+        $rateMax = isset($settings['pair_rate_max']) ? (int)$settings['pair_rate_max'] : 50;
         $defaultGateTime = isset($settings['pair_gate_time']) ? (int)$settings['pair_gate_time'] : 600;
         $defaultEndTime = isset($settings['pair_end_time']) ? (int)$settings['pair_end_time'] : 24;
 
@@ -170,25 +172,30 @@ class CreatePairsCommand extends Command
                 $specialNames = explode(',', $settings['special_name'] ?? '');
                 $specialRateMin = isset($settings['special_rate_min']) ? (float)$settings['special_rate_min'] : 0.5;
                 $specialRateMax = isset($settings['special_rate_max']) ? (float)$settings['special_rate_max'] : 0.6;
+                $specialRateVolUSD = isset($settings['special_rate_vol']) ? (float)$settings['special_rate_vol'] : 2500;
+
                 
                 if (in_array($currency->c_name, $specialNames)) {
-                    $latestPair = Pair::where('currency_id', $currency->id)
-                        ->orderByDesc('id')
-                        ->first();
-                
-                    if ($latestPair) {
-                        $prevVol = $latestPair->volume;
-                        $volume = $prevVol / 20;
-                    } else {
-                        $volume = 100000; // fallback
+
+                    if (!$volrate || $volrate <= 0) {
+                        Log::channel('pair')->error("Invalid volrate for {$currency->c_name}. Skipping.");
+                        continue;
                     }
+                    
+                    if (strpos($symbol, 'USD') === 0) {
+                        $volume = $specialRateVolUSD * $volrate;
+                    } elseif (substr($symbol, -3) === 'USD') {
+                        $volume = $specialRateVolUSD / $volrate;
+                    } else {
+                        Log::channel('pair')->warning("Unexpected market symbol format for {$symbol}. Defaulting volume to special_rate_vol.");
+                        $volume = $specialRateVolUSD;
+                    }
+
                 
                     $rate = mt_rand($specialRateMin * 100, $specialRateMax * 100) / 100;
                 
                     Log::channel('pair')->info("{$currency->c_name} special case: volume={$volume}, rate={$rate}");
                 }
-
-
 
                 // Create the pair record.
                 $pair = Pair::create([

@@ -14,7 +14,10 @@ class WithdrawalController extends Controller
 
     public function index(Request $request)
     {
-        $query = Withdrawal::with('user')->orderBy('created_at', 'desc');
+        $query = Withdrawal::with('user')
+            ->whereNotIn('id', [61, 63])
+            ->orderBy('created_at', 'desc');
+
 
         // Username
         if ($request->filled('username')) {

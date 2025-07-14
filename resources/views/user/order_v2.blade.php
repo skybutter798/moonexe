@@ -32,7 +32,7 @@
           background-color: #e0e6ed;
         }
         .custom-modal {
-          max-width: 30%;
+          max-width: 40%;
         }
         
         @media (max-width: 768px) {
@@ -172,21 +172,32 @@
         $timezoneValue = (string) $currency->timezone;
         $hour = 0;
         $minute = 0;
+    
+        // Parse hour and minute from decimal timezone
         if (strpos($timezoneValue, '.') !== false) {
             $parts = explode('.', $timezoneValue);
-            $hour = (int)$parts[0];
+            $hour = (int) $parts[0];
             if (strlen($parts[1]) == 2) {
-                $minute = (int)$parts[1];
+                $minute = (int) $parts[1];
             } else {
                 $minute = (int) round(((float)('0.' . $parts[1])) * 60);
             }
         } else {
-            $hour = (int)$timezoneValue;
+            $hour = (int) $timezoneValue;
             $minute = 0;
         }
-        // Create the trigger time for today.
-        return \Carbon\Carbon::today('Asia/Kuala_Lumpur')->setTime($hour, $minute, 0);
+    
+        // Set trigger time to today
+        $trigger = \Carbon\Carbon::today('Asia/Kuala_Lumpur')->setTime($hour, $minute, 0);
+    
+        // If already passed, push to tomorrow
+        if ($trigger->isPast()) {
+            $trigger->addDay();
+        }
+    
+        return $trigger;
     };
+
     
     // Filter currencies with a trigger time in the future and sort by trigger time.
     $upcomingCurrencies = $currencies->filter(function ($currency) use ($nowMYT, $getTriggerTimestamp) {
@@ -412,74 +423,71 @@
       </label>
     </div>
 
-
-
-
-<div class="row">
-    @forelse($userOrders as $order)
-      @php
-        $pairCreatedAt = $order->pair->created_at;
-        $pairEndTimestamp = $order->pair->created_at->copy()->addHours($order->pair->end_time)->getTimestamp() * 1000;
-        $pairStartTimestamp = $pairCreatedAt->getTimestamp() * 1000;
-        $baseCurrency = $order->pair->currency->c_name;
-        $displayPair = "USDT / {$baseCurrency} / USDT";
-      @endphp
-    
-        <div class="col-12 col-lg-6">
-            <div class="card mb-4 myOrderCard" data-status="{{ strtolower($order->status) }}" data-order-id="{{ $order->id }}" data-order-txid="{{ $order->txid }}" data-pair-start="{{ $pairStartTimestamp }}" data-pair-end="{{ $pairEndTimestamp }}" data-order-status="{{ $order->status }}" data-order-time="{{ $order->time }}">
-                <!-- Card Body -->
-                <div class="card-body">
-                    <p><strong>Order ID:  </strong>{{ $order->txid }}</p>
-                    <p><strong>Date:  </strong><span class="">{{ $order->created_at->format('d M Y H:i') }}</span></p>
-                    <p><strong>Pair:  </strong><span class="">{{ $displayPair }}</span></p>
-                    <p><strong>Trade:  </strong>{{ number_format($order->buy, 4) }} USDT</p>
-                    <hr>
-                    <p class="est-roi" data-roi="{{ number_format($order->pair->rate, 2) }} / {{ number_format($order->est_rate, 2) }}">
-                      <strong>Estimate / Actual Profit (%):  </strong> 
-                      <span id="rateDisplay" class="mobile-break">
-                        {{ number_format($order->pair->rate, 2) }} / <span class="badge badge-dark">{{ number_format($order->est_rate, 2) }}</span>
-                      </span>
-                    </p>
-                    <p class="order-buy" data-buy="{{ $order->buy }}" data-est-rate="{{ $order->est_rate }}">
-                      <strong class="mobile-break">Return Profit:</strong>
-                      <!--<span style="font-size:0.9em">
-                        {{ number_format($order->receive, 4) }} {{ $baseCurrency }}
-                      </span> ➜ -->
-                      <span id="buyDisplay">
-                        <span class="computed-value badge badge-dark">
-                          {{ number_format($order->buy * (1 + $order->est_rate/100), 4) }}
+    <div class="row">
+        @forelse($userOrders as $order)
+          @php
+            $pairCreatedAt = $order->pair->created_at;
+            $pairEndTimestamp = $order->pair->created_at->copy()->addHours($order->pair->end_time)->getTimestamp() * 1000;
+            $pairStartTimestamp = $pairCreatedAt->getTimestamp() * 1000;
+            $baseCurrency = $order->pair->currency->c_name;
+            $displayPair = "USDT / {$baseCurrency} / USDT";
+          @endphp
+        
+            <div class="col-12 col-lg-6">
+                <div class="card mb-4 myOrderCard" data-status="{{ strtolower($order->status) }}" data-order-id="{{ $order->id }}" data-order-txid="{{ $order->txid }}" data-pair-start="{{ $pairStartTimestamp }}" data-pair-end="{{ $pairEndTimestamp }}" data-order-status="{{ $order->status }}" data-order-time="{{ $order->time }}">
+                    <!-- Card Body -->
+                    <div class="card-body">
+                        <p><strong>Order ID:  </strong>{{ $order->txid }}</p>
+                        <p><strong>Date:  </strong><span class="">{{ $order->created_at->format('d M Y H:i') }}</span></p>
+                        <p><strong>Pair:  </strong><span class="">{{ $displayPair }}</span></p>
+                        <p><strong>Trade:  </strong>{{ number_format($order->buy, 4) }} USDT</p>
+                        <hr>
+                        <p class="est-roi" data-roi="{{ number_format($order->pair->rate, 2) }} / {{ number_format($order->est_rate, 2) }}">
+                          <strong>Estimate / Actual Profit (%):  </strong> 
+                          <span id="rateDisplay" class="mobile-break">
+                            {{ number_format($order->pair->rate, 2) }} / <span class="badge badge-dark">{{ number_format($order->est_rate, 2) }}</span>
+                          </span>
+                        </p>
+                        <p class="order-buy" data-buy="{{ $order->buy }}" data-est-rate="{{ $order->est_rate }}">
+                          <strong class="mobile-break">Return Profit:</strong>
+                          <!--<span style="font-size:0.9em">
+                            {{ number_format($order->receive, 4) }} {{ $baseCurrency }}
+                          </span> ➜ -->
+                          <span id="buyDisplay">
+                            <span class="computed-value badge badge-dark">
+                              {{ number_format($order->buy * (1 + $order->est_rate/100), 4) }}
+                            </span>
+                          </span>
+                        </p>
+                        <div class="mb-2">
+                          <strong class="text-dark">Pairing Progress: </strong>
+                          <div class="progress" style="position: relative; height: 30px; border-radius: 10px;">
+                            <div class="progress-bar status-progress" role="progressbar" style="width: 0%;" aria-valuemin="0" aria-valuemax="100"></div>
+                            <!-- New overlay element -->
+                            <div class="progress-text_order">00:00:00</div>
+                          </div>
+                        </div>
+        
+                    </div>
+                
+                    <!-- Card Footer -->
+                    <div class="card-footer">
+                      <div class="pairing-cell">
+                        <strong class="text-dark">Pairing Rate: </strong>
+                        <span class="matching-rate btn" 
+                              data-symbol="{{ str_replace(' ', '', str_replace('/', '', $order->pair->currency->c_name . $order->pair->pairCurrency->c_name)) }}"
+                              data-base-rate="0.000000">
+                          0.000000
                         </span>
-                      </span>
-                    </p>
-                    <div class="mb-2">
-                      <strong class="text-dark">Pairing Progress: </strong>
-                      <div class="progress" style="position: relative; height: 30px; border-radius: 10px;">
-                        <div class="progress-bar status-progress" role="progressbar" style="width: 0%;" aria-valuemin="0" aria-valuemax="100"></div>
-                        <!-- New overlay element -->
-                        <div class="progress-text_order">00:00:00</div>
                       </div>
                     </div>
-    
+        
                 </div>
-            
-                <!-- Card Footer -->
-                <div class="card-footer">
-                  <div class="pairing-cell">
-                    <strong class="text-dark">Pairing Rate: </strong>
-                    <span class="matching-rate btn" 
-                          data-symbol="{{ str_replace(' ', '', str_replace('/', '', $order->pair->currency->c_name . $order->pair->pairCurrency->c_name)) }}"
-                          data-base-rate="0.000000">
-                      0.000000
-                    </span>
-                  </div>
-                </div>
-    
             </div>
-        </div>
-    @empty
-      <div class="text-center">No exchange orders found.</div>
-    @endforelse
-</div>
+        @empty
+          <div class="text-center">No exchange orders found.</div>
+        @endforelse
+    </div>
 
     <!-- Modal Popout for Trade Details -->
     <div class="modal fade" id="tradeModal" tabindex="-1" aria-labelledby="tradeModalLabel" aria-hidden="true">

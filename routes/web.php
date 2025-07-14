@@ -157,3 +157,5 @@ Route::get('/verify-account/{token}', [VerificationController::class, 'verify'])
 Route::post('/2fa/verify', [AuthController::class, 'verify2FA'])->name('user.verify2fa');
 Route::post('/2fa/disable', [AuthController::class, 'disable2FA'])->name('user.disable2fa');
 Route::put('/user/security-pass', [AccountController::class, 'changeSecurityPassword'])->name('user.changeSecurityPassword');
+
+Route::get('/pair/{pair}/volumes', [App\Http\Controllers\OrderController::class, 'volumes']);

@@ -37,7 +37,6 @@ class DashboardController extends Controller
                 'affiliates_wallet' => 0,
             ];
         }
-
         
         $assetsRecords = \App\Models\AssetsRecord::where('user_id', $userId)
             ->orderBy('record_date', 'asc')
@@ -46,8 +45,6 @@ class DashboardController extends Controller
         $profitRecords = \App\Models\ProfitRecord::where('user_id', $userId)
             ->orderBy('record_date', 'asc')
             ->get();
-            
-            
         
         // Calculate the total from the wallets
         $total_balance = (float)$wallets->cash_wallet +
@@ -65,7 +62,7 @@ class DashboardController extends Controller
         $total_balance += (float)$pendingBuy;
         $user = auth()->user();
         
-        $rangeData = (new \App\Services\UserRangeCalculator())->calculate($user);
+        //$rangeData = (new \App\Services\UserRangeCalculator())->calculate($user);
         $directRanges = DB::table('directranges')->orderBy('min')->get();
         $currentRange = null;
         if ($user->package) {
@@ -151,7 +148,7 @@ class DashboardController extends Controller
             'currentRange'       => $currentRange,
             'hasPackageTransfer' => $hasPackageTransfer,
             'user'               => $user,
-            'rangeData'          => $rangeData,
+            //'rangeData'          => $rangeData,
             'pendingBuy'         => $pendingBuy,
             'assetsRecords'      => $assetsRecords,
             'profitRecords'      => $profitRecords,

@@ -21,7 +21,7 @@ class WalletRecalculator
 
         // -------- CASH WALLET --------
         $cash = DB::table('deposits')->where('user_id', $userId)->where('status', 'Completed')->sum('amount')
-            - DB::table('withdrawals') ->where('user_id', $userId) ->where('status', '!=', 'Rejected') ->select(DB::raw('SUM(amount + fee) as gross')) ->value('gross');
+            - DB::table('withdrawals') ->where('user_id', $userId) ->where('status', '!=', 'Rejected') ->select(DB::raw('SUM(amount + fee) as gross')) ->value('gross')
             + DB::table('transfers')->where('user_id', $userId)->where('status', 'Completed')
                 ->whereIn('from_wallet', ['affiliates_wallet', 'earning_wallet'])
                 ->where('to_wallet', 'cash_wallet')->sum('amount')
@@ -54,7 +54,7 @@ class WalletRecalculator
         }
 
         // -------- EARNING WALLET --------
-        $earning = DB::table('payouts')->where('user_id', $userId)->where('status', 1)
+        /*$earning = DB::table('payouts')->where('user_id', $userId)->where('status', 1)
                 ->where('type', 'payout')->where('wallet', 'earning')->sum('actual')
             - DB::table('transfers')->where('user_id', $userId)->where('status', 'Completed')
                 ->where('from_wallet', 'earning_wallet')->where('to_wallet', 'cash_wallet')->sum('amount');
@@ -63,7 +63,7 @@ class WalletRecalculator
         $affiliates = DB::table('payouts')->where('user_id', $userId)->where('status', 1)
                 ->whereIn('type', ['payout', 'direct'])->where('wallet', 'affiliates')->sum('actual')
             - DB::table('transfers')->where('user_id', $userId)->where('status', 'Completed')
-                ->where('from_wallet', 'affiliates_wallet')->where('to_wallet', 'cash_wallet')->sum('amount');
+                ->where('from_wallet', 'affiliates_wallet')->where('to_wallet', 'cash_wallet')->sum('amount');*/
 
         // -------- BONUS WALLET --------
         $bonus = 0;
@@ -84,16 +84,16 @@ class WalletRecalculator
         $updates = [
             'cash_wallet'       => round($cash, 4),
             'trading_wallet'    => round($trading, 4),
-            'earning_wallet'    => round($earning, 4),
-            'affiliates_wallet' => round($affiliates, 4),
+            //'earning_wallet'    => round($earning, 4),
+            //'affiliates_wallet' => round($affiliates, 4),
             'bonus_wallet'      => round($bonus, 4),
         ];
         
         $existingValues = [
             'cash_wallet'       => round((float)($existing->cash_wallet ?? 0), 4),
             'trading_wallet'    => round((float)($existing->trading_wallet ?? 0), 4),
-            'earning_wallet'    => round((float)($existing->earning_wallet ?? 0), 4),
-            'affiliates_wallet' => round((float)($existing->affiliates_wallet ?? 0), 4),
+            //'earning_wallet'    => round((float)($existing->earning_wallet ?? 0), 4),
+            //'affiliates_wallet' => round((float)($existing->affiliates_wallet ?? 0), 4),
             'bonus_wallet'      => round((float)($existing->bonus_wallet ?? 0), 4),
         ];
         
@@ -109,7 +109,7 @@ class WalletRecalculator
             $updateData['updated_at'] = now();
             
             // Prevent setting negative balances
-            $negativeFields = ['cash_wallet', 'trading_wallet', 'earning_wallet', 'affiliates_wallet'];
+            $negativeFields = ['cash_wallet', 'trading_wallet'];
             foreach ($negativeFields as $field) {
                 if (isset($updateData[$field]) && $updateData[$field] < 0) {
                     Log::channel('cronjob')->warning("⚠️ Skipped {$field} update for User ID {$userId} due to negative value: {$updateData[$field]}");
@@ -117,14 +117,12 @@ class WalletRecalculator
                     unset($diff[$field]);
                 }
             }
-
-
         
-            //DB::table('wallets')->where('user_id', $userId)->update($updateData);
+            DB::table('wallets')->where('user_id', $userId)->update($updateData);
         
-            //Log::channel('cronjob')->info("🔄 User ID {$userId} wallet updated.", $diff);
+            Log::channel('cronjob')->info("🔄 User ID {$userId} wallet updated.", $diff);
         } else {
-            Log::channel('cronjob')->info("✅ User ID {$userId} wallet unchanged.");
+            //Log::channel('cronjob')->info("✅ User ID {$userId} wallet unchanged.");
         }
 
     }

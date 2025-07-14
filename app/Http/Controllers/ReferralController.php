@@ -6,37 +6,12 @@ use App\Models\Transfer;
 use App\Models\Order;
 use App\Models\Payout;
 use App\Models\MatchingRecord;
-use App\Services\UserRangeCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class ReferralController extends Controller
 {
-    // Recursive function updated with optional date filters
-    private function getAllDownlineIds($userId, $fromDate = null, $toDate = null)
-    {
-        $query = User::where('referral', $userId);
-        
-        // Apply date filters if provided
-        if ($fromDate) {
-            $query->whereDate('created_at', '>=', $fromDate);
-        }
-        if ($toDate) {
-            $query->whereDate('created_at', '<=', $toDate);
-        }
-        
-        $downlines = $query->get();
-        $ids = [];
-        
-        foreach ($downlines as $downline) {
-            $ids[] = $downline->id;
-            // Recursively merge the descendant IDs with the same date filters
-            $ids = array_merge($ids, $this->getAllDownlineIds($downline->id, $fromDate, $toDate));
-        }
-        
-        return $ids;
-    }
-    
+
     private function findTopReferral($userId, $mainUserId)
     {
         $user = User::find($userId);
@@ -92,8 +67,9 @@ class ReferralController extends Controller
         // ----------------------------------
         // Updated Calculation Using Service
         // ----------------------------------
-        $calculator = new UserRangeCalculator();
-        $userRange  = $calculator->calculate(auth()->user());
+        $calculator = new \App\Services\BatchUserRangeCalculator();
+        $userRange = $calculator->calculateForTree(auth()->user());
+
         $groupTradingMargin = $userRange['total'];
         $directPercentage   = $userRange['direct_percentage'];
         $matchingPercentage = $userRange['matching_percentage'];
@@ -101,7 +77,7 @@ class ReferralController extends Controller
         // ---------------------------
         // Cards (Community Summary) - date-filtered
         // ---------------------------
-        $allDownlineIds = $this->getAllDownlineIds(auth()->id(), $applyDateFilter ? $fromDate : null, $applyDateFilter ? $toDate : null);
+        $allDownlineIds = $calculator->getDownlineIds(auth()->id());
         $communityUserIds = array_merge($allDownlineIds, [auth()->id()]);
         
         $myEarningQuery = Payout::where('user_id', auth()->id())
@@ -226,7 +202,7 @@ class ReferralController extends Controller
                                    
         foreach ($firstLevelReferrals as $referral) {
             // Calculate metrics for each referral using date filters
-            $descendantIds = $this->getAllDownlineIds($referral->id, $applyDateFilter ? $fromDate : null, $applyDateFilter ? $toDate : null);
+            $descendantIds = $calculator->getDownlineIds($referral->id);
             $userIds = array_merge($descendantIds, [$referral->id]);
             
             // Community count: count of all downline referrals (plus self if needed)
@@ -310,7 +286,8 @@ class ReferralController extends Controller
                 ->sum('actual');
 
             // Calculate Trading Margin and Percentages using the UserRangeCalculator service
-            $referralCalculation = $calculator->calculate($referral);
+            $referralCalculation = $calculator->computeUserGroupTotal($referral->id);
+
             $referral->trading_margin = $referralCalculation['total'];
             $referral->direct_percentage = $referralCalculation['direct_percentage'];
             $referral->matching_percentage = $referralCalculation['matching_percentage'];

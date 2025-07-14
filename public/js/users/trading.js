@@ -492,10 +492,12 @@ document.addEventListener('DOMContentLoaded', function() {
       const tradePopup = document.getElementById('tradePopup');
       const tradePopupText = document.getElementById('tradePopupText');
       const tradeSpinner = document.getElementById('tradePopupSpinner');
+      const tradeButtons = document.getElementById('tradePopupButtons');
     
       tradePopup.classList.remove('d-none');
       tradeSpinner.classList.remove('d-none');
       tradePopupText.innerHTML = 'Pairing...';
+      tradeButtons.classList.add('d-none');
       
       // Generate a random delay between 1 and 4 seconds (1000 to 4000 ms)
       const randomDelay = Math.floor(Math.random() * 3000) + 1000;
@@ -779,131 +781,124 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.Echo.channel('pair-updates')
       .listen('.OrderUpdated', (data) => {
-        console.log("✅ OrderUpdated event received:", data);
+      console.log("📡 OrderUpdated received for Pair ID:", data.pairId);
     
-        const card = document.querySelector(`.gateRow[data-pair-id="${data.pairId}"]`);
-        //console.log("🔍 Matching card found:", card);
+      const pairId = data.pairId;
     
-        if (card) {
-          // Set data attributes
-          card.setAttribute('data-remaining-volume', data.remainingVolume);
-          card.setAttribute('data-total-volume', data.totalVolume);
-          //console.log("📌 Updated card data attributes");
+      fetch(`/pair/${pairId}/volumes`)
+        .then(res => res.json())
+        .then(data => {
+          if (!data.success) return console.warn("❌ Failed to fetch volume for pair", pairId);
+        
+          // ✅ Parse strings into floats
+          const total_volume = parseFloat(data.total_volume);
+          const remaining_volume = parseFloat(data.remaining_volume);
+          const rate = parseFloat(data.rate);
+          const symbol = data.symbol;
+          //console.log(`🔎 Volume fetched - Pair ${pairId} | Symbol: ${symbol}, Rate: ${rate}, Total: ${total_volume}, Remaining: ${remaining_volume}`);
+        
+          const card = document.querySelector(`.gateRow[data-pair-id="${pairId}"]`);
+          if (!card) return console.warn("🚫 No card found for pairId:", pairId);
     
-          // Update volume text
-            const usdtEl = card.querySelector('.volume-usdt');
-            const baseEl = card.querySelector('.volume-base');
-            const totalUsdtEl = card.querySelector('.total-usdt-volume');
-            const symbol = card.getAttribute('data-symbol');
-            const rate = parseFloat(card.getAttribute('data-rate')) || 1;
-            
-            //console.log(`🔢 Symbol: ${symbol}, Rate: ${rate}`);
-            //console.log(`📉 Remaining volume: ${data.remainingVolume}, Total volume: ${data.totalVolume}`);
-            
-            // ✅ Define once for both blocks
-            const reversedSymbols = ['LKR', 'VND', 'IDR', 'COP'];
-            const base = symbol?.slice(0, 3).toUpperCase();
-            const isReversed = reversedSymbols.includes(base);
-            
-            if (usdtEl && baseEl) {
-              const remBase = parseFloat(data.remainingVolume);
-              const totalBase = parseFloat(data.totalVolume);
-              const remUSDT = isReversed ? remBase / rate : remBase * rate;
-            
-              //console.log('🔢 Parsed remainingBase:', remBase);
-              //console.log(`🔁 isReversed: ${isReversed}, rate: ${rate}, calculated remUSDT: ${remUSDT}`);
-            
-              usdtEl.innerText = remUSDT.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' USDT';
-              baseEl.innerText = totalBase.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 });
-            
-              //console.log(`🆙 Volume updated to: ${remUSDT.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT / ${totalBase.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })} base`);
+          const reversedSymbols = ['LKR', 'VND', 'IDR', 'COP'];
+          const base = symbol.slice(0, 3).toUpperCase();
+          const isReversed = reversedSymbols.includes(base);
+    
+          const safeRemaining = Math.max(0, remaining_volume);
+          const safeTotal = Math.max(0, total_volume);
+        
+          const remUSDT = isReversed ? safeRemaining / rate : safeRemaining * rate;
+          const totalUSDT = isReversed ? safeTotal / rate : safeTotal * rate;
+          
+          // Update data attributes
+          card.setAttribute('data-remaining-volume', safeRemaining);
+          card.setAttribute('data-total-volume', safeTotal);
+
+          card.setAttribute('data-rate', rate);
+          card.setAttribute('data-symbol', symbol);
+
+          
+          // Update DOM
+          const usdtEl = card.querySelector('.volume-usdt');
+          const baseEl = card.querySelector('.volume-base');
+          const totalUsdtEl = card.querySelector('.total-usdt-volume');
+    
+          if (usdtEl) usdtEl.innerText = remUSDT.toFixed(2) + ' USDT';
+          if (baseEl) baseEl.innerText = total_volume.toFixed(4);
+          if (totalUsdtEl) totalUsdtEl.innerText = totalUSDT.toFixed(2) + ' USDT';
+    
+          // Progress bar
+          const progressBar = card.querySelector('.progress-bar');
+          const progressText = card.querySelector('.progress-text');
+          const progress = safeTotal > 0
+              ? ((safeTotal - safeRemaining) / safeTotal) * 100
+              : 0;
+            const clampedProgress = Math.min(Math.max(progress, 0), 100);
+
+    
+          if (progressBar) {
+              progressBar.style.width = clampedProgress.toFixed(2) + '%';
+              progressBar.setAttribute('aria-valuenow', clampedProgress.toFixed(2));
             }
-
-
-            
-            if (totalUsdtEl) {
-              const totalBase = parseFloat(data.totalVolume);
-              const totalUSDT = isReversed ? totalBase / rate : totalBase * rate;
-            
-              totalUsdtEl.innerText = totalUSDT.toFixed(2) + ' USDT';
-              //console.log(`📦 Total volume updated: ${totalUSDT.toFixed(2)} USDT`);
+            if (progressText) {
+              progressText.innerText = clampedProgress.toFixed(2) + '%';
             }
-
 
     
           // Fetch latest webhook info
-          fetch(`/api/pair/${data.pairId}/latest-payment`)
-              .then(res => res.json())
-              .then(res => {
-                //console.log("🌐 Webhook fetch result:", res);
-                if (res.success) {
-                  const webhookBox = card.querySelector('.webhook-details');
-                  const payIdEl = card.querySelector('.webhook-payid');
-                  const amountEl = card.querySelector('.webhook-amount');
-                  const logoEl = card.querySelector('.webhook-logo');
-            
-                  if (webhookBox && payIdEl && amountEl && logoEl) {
-                    payIdEl.innerHTML = `<a href="https://ecnfi.com/payment?payid=${res.pay_id}" target="_blank" class="badge bg-primary text-white">PayID: ${res.pay_id}</a>`;
-                    amountEl.innerText = '+' + parseFloat(res.amount).toFixed(4) + ' USDT';
-            
-                    const method = (res.method || '').toLowerCase();
-                    let logoSrc = '';
-                    switch (method) {
-                      case 'stripe':
-                        logoSrc = 'https://ecnfi.com/img/stripe.svg';
-                        break;
-                      case 'paypal':
-                        logoSrc = 'https://ecnfi.com/img/paypal.svg';
-                        break;
-                      case 'mastercard':
-                        logoSrc = 'https://ecnfi.com/img/mastercard.svg';
-                        break;
-                      case 'visa':
-                        logoSrc = 'https://ecnfi.com/img/visa.svg';
-                        break;
-                      case 'amex':
-                      case 'american express':
-                        logoSrc = 'https://ecnfi.com/img/amex.svg';
-                        break;
-                      default:
-                        logoSrc = ''; // Or fallback logo
-                    }
-            
-                    logoEl.src = logoSrc;
-                    logoEl.alt = method;
-            
-                    webhookBox.style.display = 'block';
-            
-                    //console.log(`💰 Webhook updated - ${method} | PayID: ${res.pay_id}, Amount: ${res.amount}`);
-                  }
-                } else {
-                  console.warn("⚠️ Webhook fetch did not return success");
-                }
-              })
-              .catch(err => {
-                console.error("❌ Webhook fetch error:", err);
-              });
-
+          fetch(`/api/pair/${pairId}/latest-payment`)
+            .then(res => res.json())
+            .then(res => {
+              if (res.success) {
+                const webhookBox = card.querySelector('.webhook-details');
+                const payIdEl = card.querySelector('.webhook-payid');
+                const amountEl = card.querySelector('.webhook-amount');
+                const logoEl = card.querySelector('.webhook-logo');
     
-          // Update progress bar
-          const progressBar = card.querySelector('.progress-bar');
-          const progressText = card.querySelector('.progress-text');
-          let progress = 0;
-          if (data.totalVolume > 0) {
-            progress = ((data.totalVolume - data.remainingVolume) / data.totalVolume) * 100;
-          }
-          if (progressBar && progressText) {
-            progressBar.style.width = progress.toFixed(2) + '%';
-            progressText.innerText = progress.toFixed(2) + '%';
-            //console.log(`📊 Progress bar updated: ${progress.toFixed(2)}%`);
-          } else {
-            console.warn("⚠️ Progress elements not found in card");
-          }
-        } else {
-          console.warn(`⚠️ No card found for pairId=${data.pairId}`);
-        }
-      });
-
+                if (webhookBox && payIdEl && amountEl && logoEl) {
+                  payIdEl.innerHTML = `<a href="https://ecnfi.com/payment?payid=${res.pay_id}" target="_blank" class="badge bg-primary text-white">PayID: ${res.pay_id}</a>`;
+                  amountEl.innerText = '+' + parseFloat(res.amount).toFixed(4) + ' USDT';
+    
+                  const method = (res.method || '').toLowerCase();
+                  let logoSrc = '';
+                  switch (method) {
+                    case 'stripe':
+                      logoSrc = 'https://ecnfi.com/img/stripe.svg';
+                      break;
+                    case 'paypal':
+                      logoSrc = 'https://ecnfi.com/img/paypal.svg';
+                      break;
+                    case 'mastercard':
+                      logoSrc = 'https://ecnfi.com/img/mastercard.svg';
+                      break;
+                    case 'visa':
+                      logoSrc = 'https://ecnfi.com/img/visa.svg';
+                      break;
+                    case 'amex':
+                    case 'american express':
+                      logoSrc = 'https://ecnfi.com/img/amex.svg';
+                      break;
+                    default:
+                      logoSrc = ''; // Optional fallback
+                  }
+    
+                  logoEl.src = logoSrc;
+                  logoEl.alt = method;
+                  webhookBox.style.display = 'block';
+                }
+              } else {
+                console.warn("⚠️ Webhook fetch did not return success");
+              }
+            })
+            .catch(err => {
+              console.error("❌ Webhook fetch error:", err);
+            });
+    
+        })
+        .catch(err => {
+          console.error("❌ Error fetching volume data:", err);
+        });
+    });
       
     const toggle = document.getElementById('showAllOrdersToggle');
     function filterGateCards() {

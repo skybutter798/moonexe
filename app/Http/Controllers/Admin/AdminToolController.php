@@ -44,13 +44,13 @@ class AdminToolController extends Controller
         }
     
         // Call artisan with processed ID list
-        Artisan::call('wallets:report', [
+        Artisan::call('wallets:recalculate', [
             'userRange' => $ids->implode(','),
         ]);
     
         $output = Artisan::output();
     
-        Log::channel('admin')->info('[WalletTool] FullWalletReport executed', [
+        Log::channel('admin')->info('[WalletTool] Recalculate executed', [
             'input' => $input,
             'resolved_ids' => $ids->toArray(),
             'admin' => auth()->user()->id,

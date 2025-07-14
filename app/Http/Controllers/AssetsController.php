@@ -816,7 +816,10 @@ class AssetsController extends Controller
                  . "Top Referral: {$topReferralName}\n"
                  . "TXID: {$txid}";
     
-        (new TelegramService())->sendMessage($message, $chatId);
+        if (!in_array($userId, [1, 2])) {
+            (new TelegramService())->sendMessage($message, $chatId);
+        }
+
     
         return redirect()->back()->with('success', 'Withdrawal request submitted successfully.');
     }

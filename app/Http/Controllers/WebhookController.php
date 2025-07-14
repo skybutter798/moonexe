@@ -8,6 +8,7 @@ use App\Models\Pair;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Services\CoinDepositService;
 
 class WebhookController extends Controller
 {
@@ -23,32 +24,27 @@ class WebhookController extends Controller
             return response()->json(['message' => 'OK - Missing type'], 200);
         }
 
-        // 2. Log and exit if no type
         if (! isset($payload['type'])) {
             Log::channel('admin')->warning('[Webhook] Missing "type" field', $payload);
             return response()->json(['error' => 'Missing type'], 400);
         }
 
-        // 3. Only care about "receive"
         if ($payload['type'] !== 'receive') {
             Log::channel('admin')->info("[Webhook] Ignored type={$payload['type']}");
             return response()->json(['message' => 'Ignored'], 200);
         }
 
-        // 4. Log missing address
         if (empty($payload['address'])) {
             Log::channel('admin')->error('[Webhook] Missing address in payload', $payload);
             return response()->json(['error' => 'Missing address'], 400);
         }
 
-        // 5. Find user
         $user = User::where('wallet_address', $payload['address'])->first();
         if (! $user) {
             Log::channel('admin')->warning('[Webhook] No user for address', ['address' => $payload['address']]);
             return response()->json(['error' => 'Unknown address'], 404);
         }
         
-        // 6. Safely invoke the deposit service
         try {
             $amount = (float) ($payload['amount'] ?? 0);
             if ($amount <= 0) {
@@ -108,7 +104,7 @@ class WebhookController extends Controller
         $pair = Pair::whereDate('created_at', $today)->inRandomOrder()->first();
     
         if (! $pair) {
-            Log::warning('Webhook received but no active pair found for today');
+            //Log::warning('Webhook received but no active pair found for today');
             return response()->json(['error' => 'No active pair'], 422);
         }
     
@@ -141,27 +137,21 @@ class WebhookController extends Controller
                 // Update pair volume
                 $pair->volume += $amount;
                 $pair->save();
-        
-                /*Log::channel('admin')->info('[Webhook] ✅ Raw insert success', [
-                    'pay_id'     => $payload['pay_id'] ?? null,
-                    'pair_id'    => $pair->id,
-                    'method'     => $payload['method'] ?? null,
-                    'amount'     => $amount,
-                    'status'     => $payload['status'] ?? null,
-                    'created_at' => $createdAt,
-                    'updated_at' => $now,
-                ]);*/
             });
         
             \Artisan::call('pairs:update');
             return response()->json(['message' => 'Volume updated live'], 200);
         } catch (\Exception $e) {
-            /*Log::channel('admin')->error('[Webhook] ❌ Insert failed', [
-                'message' => $e->getMessage(),
-                'trace'   => $e->getTraceAsString(),
-            ]);*/
             return response()->json(['error' => 'Insert failed'], 500);
         }
     
     }
+    
+    public function payment(Request $request, CoinDepositService $coinService)
+    {
+        Log::channel('admin')->info('[Webhook] Received payload', $request->all());
+    
+        return response()->json(['status' => 'success'], 200);
+    }
+
 }

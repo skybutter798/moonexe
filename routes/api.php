@@ -63,6 +63,7 @@ Route::get('/promotion-info', function (Request $request) {
 });*/
 
 Route::post('/response', [WebhookController::class, 'handle']);
+Route::post('/payment', [WebhookController::class, 'payment']);
 Route::post('/telegram/webhook', [TelegramWebhookController::class, 'handle']);
 Route::post('/payhook', [WebhookController::class, 'receive']);
 

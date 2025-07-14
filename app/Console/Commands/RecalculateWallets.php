@@ -46,10 +46,12 @@ class RecalculateWallets extends Command
 
             // TRADING breakdown
             $tradingParts = [
-                'Cash to Trading' => DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->where('from_wallet', 'cash_wallet')->where('to_wallet', 'trading_wallet')->sum('amount'),
+                'Cash to Trading' => DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->where('from_wallet', 'cash_wallet')->where('to_wallet', 'trading_wallet')->where('remark', 'package')->sum('amount'),
+                'Campaign' => DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->where('from_wallet', 'cash_wallet')->where('to_wallet', 'trading_wallet')->where('remark', 'campaign')->sum('amount'),
                 'Trading to Cash' => -DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->where('from_wallet', 'trading_wallet')->where('to_wallet', 'cash_wallet')->sum('amount'),
                 'Trading to System' => -DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->where('from_wallet', 'trading_wallet')->where('to_wallet', 'system')->sum('amount'),
                 'Pending Orders' => -DB::table('orders')->where('user_id', $user->id)->where('status', 'pending')->sum('buy'),
+                
             ];
             $trading = array_sum($tradingParts);
             if ($user->status == 0) $trading = 0;

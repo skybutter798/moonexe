@@ -209,7 +209,7 @@
           </div>
         </div>
         
-        @foreach($announcements as $index => $announcement)
+        {{--@foreach($announcements as $index => $announcement)
           <div class="modal fade" id="announcementModal{{ $announcement->id }}" tabindex="-1" aria-labelledby="announcementModalLabel{{ $announcement->id }}" aria-hidden="true" style="z-index: 9999;">
             <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
               <div class="modal-content bg-white shadow-lg rounded-3 border-0">
@@ -226,7 +226,7 @@
               </div>
             </div>
           </div>
-        @endforeach
+        @endforeach--}}
 
         
         <!-- announcement -->
@@ -1596,66 +1596,62 @@
             const submitBtn      = depositModalEl.querySelector('.modal-footer button[type="submit"]');
             
             depositBtn.addEventListener('click', async function () {
+
+                // ✅ Disable button and show loading
+                depositBtn.disabled = true;
+                depositBtn.textContent = 'Loading...';
+            
                 const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
                 let data;
             
                 try {
-                  const res = await fetch("{{ route('user.generateWalletAddress') }}", {
-                    method:      "POST",
-                    credentials: "same-origin",
-                    headers: {
-                      "X-CSRF-TOKEN": token,
-                      "Accept":       "application/json",
-                      "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({})
-                  });
+                    const res = await fetch("{{ route('user.generateWalletAddress') }}", {
+                        method: "POST",
+                        credentials: "same-origin",
+                        headers: {
+                            "X-CSRF-TOKEN": token,
+                            "Accept": "application/json",
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({})
+                    });
             
-                  // If the user is not permitted (403), treat it as "no new address" rather than an error
-                  if (res.status === 403) {
-                    data = {
-                      wallet_address: null,
-                      wallet_qr:      null
-                    };
-                  }
-                  // Any other non-OK response should fall back silently
-                  else if (!res.ok) {
-                    throw new Error('Network response was not ok');
-                  }
-                  // On success, parse JSON
-                  else {
-                    data = await res.json();
-                  }
+                    if (res.status === 403) {
+                        data = { wallet_address: null, wallet_qr: null };
+                    } else if (!res.ok) {
+                        throw new Error('Network response was not ok');
+                    } else {
+                        data = await res.json();
+                    }
                 } catch (err) {
-                  console.error(err);
-                  // On unexpected errors, fall back to defaults
-                  data = {
-                    wallet_address: null,
-                    wallet_qr:      null
-                  };
+                    console.error(err);
+                    data = { wallet_address: null, wallet_qr: null };
+                } finally {
+                    // ✅ Re-enable the button
+                    depositBtn.disabled = false;
+                    depositBtn.textContent = 'Deposit';
+                    depositInProgress = false;
                 }
             
-                // Populate address & QR if provided; otherwise leave the defaults
                 if (data.wallet_address) {
-                  document.getElementById('depositTRC20').value = data.wallet_address;
+                    document.getElementById('depositTRC20').value = data.wallet_address;
                 }
                 if (data.wallet_qr) {
-                  document.getElementById('walletQR').src = data.wallet_qr;
+                    document.getElementById('walletQR').src = data.wallet_qr;
                 }
             
-                // Show or hide amount input & submit button based on whether a wallet_address exists
+                // Show or hide amount & submit depending on wallet presence
                 if (data.wallet_address) {
-                  amountGroup.style.display = 'none';
-                  submitBtn.style.display   = 'none';
+                    amountGroup.style.display = 'none';
+                    submitBtn.style.display = 'none';
                 } else {
-                  amountGroup.style.display = '';
-                  submitBtn.style.display   = '';
+                    amountGroup.style.display = '';
+                    submitBtn.style.display = '';
                 }
             
-                // Finally, display the modal
                 bsDepositModal.show();
-              });
-          
+            });
+
             const announcements = @json($announcements);
             let index = 0;
             

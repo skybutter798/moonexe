@@ -195,8 +195,31 @@ class SeedAdminOrdersCron extends Command
             $this->info($message);
             Log::channel('order')->info($message);
             
-            $updatedRemain = $remainingVolume-$estimatedReceive;
-            event(new OrderUpdated($pair->id, $updatedRemain, $pair->volume));
+            // Determine if reversed
+            $reversedSymbols = ['LKR', 'VND', 'IDR', 'COP'];
+            $isReversed = in_array($currency->c_name, $reversedSymbols);
+            
+            // Convert to USDT
+            if ($isReversed) {
+                $totalUSDT    = $pair->volume / $marketData->mid;
+                $usedUSDT     = Order::where('pair_id', $pair->id)->sum('receive') / $marketData->mid;
+            } else {
+                $totalUSDT    = $pair->volume * $marketData->mid;
+                $usedUSDT     = Order::where('pair_id', $pair->id)->sum('receive') * $marketData->mid;
+            }
+            
+            $remainingUSDT = max($totalUSDT - $usedUSDT, 0);
+            
+            // Fire event with USDT values
+            event(new OrderUpdated($pair->id, $remainingUSDT, $totalUSDT));
+            Log::channel('order')->info("✅ OrderUpdated dispatched with USDT", [
+                'pair_id'        => $pair->id,
+                'is_reversed'    => $isReversed,
+                'rate'           => $marketData->mid,
+                'remaining_usdt' => $remainingUSDT,
+                'total_usdt'     => $totalUSDT,
+            ]);
+
         }
     }
 }

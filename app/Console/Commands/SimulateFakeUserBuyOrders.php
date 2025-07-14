@@ -164,6 +164,8 @@ class SimulateFakeUserBuyOrders extends Command
                 // Generate a unique transaction id.
                 $txid = 'o_' . str_pad(random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
 
+                sleep(20);
+                
                 // Create the fake buy order.
                 $order = Order::create([
                     'user_id' => $user->id,
@@ -186,8 +188,26 @@ class SimulateFakeUserBuyOrders extends Command
                 $this->info($message);
                 log::channel('order')->info($message);
                 
-                $updatedVolume = $remainingAssetVolume - $estimatedReceive;
-                event(new OrderUpdated($pair->id, $updatedVolume, $pair->volume));
+                $isReversed = strpos($marketData->symbol, 'USD') === 0;
+                $rate = $marketData->mid;
+                
+                $totalUSDT = $isReversed
+                    ? $pair->volume / $rate
+                    : $pair->volume * $rate;
+                
+                $usedLocal = Order::where('pair_id', $pair->id)->sum('receive');
+                
+                $usedUSDT = $isReversed
+                    ? $usedLocal / $rate
+                    : $usedLocal * $rate;
+                
+                $remainingUSDT = max($totalUSDT - $usedUSDT, 0);
+                
+                // ✅ Fire OrderUpdated event in USDT terms
+                event(new OrderUpdated($pair->id, $remainingUSDT, $totalUSDT));
+                Log::channel('order')->info("📢 Broadcasted OrderUpdated → Pair #{$pair->id}, Remaining USDT: {$remainingUSDT}, Total USDT: {$totalUSDT}");
+
+
             }
         }
     }
