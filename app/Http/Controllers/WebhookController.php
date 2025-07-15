@@ -93,19 +93,24 @@ class WebhookController extends Controller
         }
     
         $payload = $request->all();
-        //Log::info('[Webhook] Received JSON:', $payload);
+        Log::info('[Webhook] Received JSON:', $payload);
     
         if (($payload['status'] ?? null) !== 'Paid') {
             return response()->json(['status' => 'ignored'], 200);
         }
     
-        // Step 1: Find random pair created today
-        $today = now('Asia/Kuala_Lumpur')->toDateString();
-        $pair = Pair::whereDate('created_at', $today)->inRandomOrder()->first();
+        $currencyCode = strtoupper(trim($payload['currency'] ?? 'USD'));
+    
+        // ✅ Find the latest matching pair by currency (no date filter)
+        $pair = \App\Models\Pair::whereHas('currency', function ($q) use ($currencyCode) {
+                $q->whereRaw('LOWER(c_name) = ?', [strtolower($currencyCode)]);
+            })
+            ->latest('created_at')
+            ->first();
     
         if (! $pair) {
-            //Log::warning('Webhook received but no active pair found for today');
-            return response()->json(['error' => 'No active pair'], 422);
+            Log::warning("Webhook received but no pair found for currency: {$currencyCode}");
+            return response()->json(['error' => 'No pair found for currency'], 422);
         }
     
         try {
@@ -113,11 +118,11 @@ class WebhookController extends Controller
                 $createdAt = isset($payload['created'])
                     ? Carbon::parse($payload['created'])->format('Y-m-d H:i:s')
                     : now()->format('Y-m-d H:i:s');
-        
+    
                 $now = now()->format('Y-m-d H:i:s');
                 $amount = (float) ($payload['amount'] ?? 0);
-        
-                // Insert payment
+    
+                // ✅ Insert payment with correct pair ID
                 DB::insert("
                     INSERT INTO webhook_payments
                         (pay_id, pair_id, method, amount, status, currency, created_at, updated_at)
@@ -128,24 +133,24 @@ class WebhookController extends Controller
                     $payload['method'] ?? null,
                     $amount,
                     $payload['status'] ?? null,
-                    $payload['currency'] ?? 'USD', // default fallback
+                    $payload['currency'] ?? 'USD',
                     $createdAt,
                     $now
                 ]);
-
-        
-                // Update pair volume
+    
+                // Optional: add amount directly to pair here
                 $pair->volume += $amount;
                 $pair->save();
             });
-        
+    
             \Artisan::call('pairs:update');
             return response()->json(['message' => 'Volume updated live'], 200);
         } catch (\Exception $e) {
+            Log::error('Webhook insert failed', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'Insert failed'], 500);
         }
-    
     }
+
     
     public function payment(Request $request, CoinDepositService $coinService)
     {

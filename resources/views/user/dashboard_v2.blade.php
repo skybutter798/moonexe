@@ -806,7 +806,7 @@
         
                     <form id="tradingTransferForm" action="{{ route('user.tradingTransfer') }}" method="POST">
                         @csrf
-                        <!-- 🔐 Hidden 2FA value will be added here -->
+                        <!-- ✅ Hidden field used for real OTP submission -->
                         <input type="hidden" name="otp" id="hiddenOtp">
         
                         <div class="modal-body">
@@ -842,8 +842,8 @@
                         @php $user = auth()->user(); @endphp
                         <div id="2faWrapper" class="mt-3">
                             @if ($user->two_fa_enabled && $user->google2fa_secret)
-                                <label for="otp" class="form-label">2FA Code</label>
-                                <input type="text" id="otp" class="form-control" placeholder="Enter 6-digit 2FA code" required>
+                                <label for="otpInputField" class="form-label">2FA Code</label>
+                                <input type="text" id="otpInputField" class="form-control" placeholder="Enter 6-digit 2FA code" required>
                             @else
                                 <div class="alert alert-danger small">
                                     2FA is required to proceed. Please <a href="{{ route('user.account') }}" class="text-decoration-underline">enable it in your profile</a>.
@@ -854,12 +854,13 @@
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                         @if ($user->two_fa_enabled && $user->google2fa_secret)
-                            <button type="submit" class="btn btn-primary" id="finalizeTerminateBtn">Yes, Confirm</button>
+                            <button type="button" class="btn btn-primary" id="finalizeTerminateBtn">Yes, Confirm</button>
                         @endif
                     </div>
                 </div>
             </div>
         </div>
+
 
         <!-- Top-up Modal -->
         <div class="modal fade" id="packageModal" tabindex="-1" aria-labelledby="packageModalLabel" aria-hidden="true">
@@ -1462,7 +1463,6 @@
         // Update fee info when the user types in a value.
         withdrawalAmountInput.addEventListener('input', updateFeeInfo);
         
-        // Show confirmation modal with dynamic values
         document.getElementById('confirmTerminateBtn').addEventListener('click', function () {
             const tradingBalance = {{ $realTradingBalance ?? 0 }};
             const fee = tradingBalance * 0.20;
@@ -1486,21 +1486,19 @@
         
                 <p class="alert alert-danger">Do you wish to proceed?</p>
             `;
-
         
             document.getElementById('transferConfirmationDetails').innerHTML = confirmationHTML;
-
+        
             const confirmModal = new bootstrap.Modal(document.getElementById('tradingTransferConfirmModal'));
             confirmModal.show();
         });
         
-        // Final submission with 2FA
         document.getElementById('finalizeTerminateBtn').addEventListener('click', function () {
             const confirmModalEl = document.getElementById('tradingTransferConfirmModal');
             const confirmModal = bootstrap.Modal.getInstance(confirmModalEl);
             confirmModal.hide();
         
-            const otpInput = document.getElementById('otp');
+            const otpInput = document.getElementById('otpInputField');
             const hiddenOtp = document.getElementById('hiddenOtp');
         
             if (otpInput && hiddenOtp) {
@@ -1510,7 +1508,6 @@
             document.getElementById('tradingTransferForm').submit();
         });
 
-        
         document.querySelector('form.package-form').addEventListener('submit', function(e) {
             var topupInput = document.querySelector('input[name="topup_amount"]');
             var value = parseInt(topupInput.value, 10);

@@ -237,6 +237,12 @@ class AssetsController extends Controller
         $wallet = Wallet::where('user_id', $userId)->first();
         
         if ($user->two_fa_enabled && $user->google2fa_secret) {
+            
+            Log::channel('admin')->info("OTP received", [
+                'user_id' => $userId,
+                'otp_input' => $request->otp,
+            ]);
+            
             $request->validate([
                 'otp' => 'required|digits:6'
             ]);
@@ -257,8 +263,8 @@ class AssetsController extends Controller
             return redirect()->back()->withErrors('Account or wallet not found.');
         }
     
-        if ($userId <= 202) {
-            Log::channel('admin')->warning("Transfer attempt by ineligible user", ['user_id' => $userId]);
+        if ($user && $user->status == 2) {
+            Log::channel('admin')->warning("Transfer attempt by ineligible user (status = 2)", ['user_id' => $userId]);
             return redirect()->back()->withErrors('Your account is not eligible to transfer any bonus. Please contact support for more information.');
         }
     

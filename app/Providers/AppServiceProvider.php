@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Config;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -29,5 +30,14 @@ class AppServiceProvider extends ServiceProvider
         View::composer('*', function ($view) {
             $view->with('user', Auth::user());
         });
+        
+        $stage = env('APP_STAGE', 'STAGING');
+
+        $ecfniUrl = $stage === 'LIVE'
+            ? 'https://app.ecnfi.com'
+            : 'https://demo.ecnfi.com';
+    
+        // Set it in config
+        Config::set('services.ecnfi.url', $ecfniUrl);
     }
 }

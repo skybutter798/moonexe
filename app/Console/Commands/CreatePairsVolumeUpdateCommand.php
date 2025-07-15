@@ -35,18 +35,12 @@ class CreatePairsVolumeUpdateCommand extends Command
         foreach ($webhookPayments as $payment) {
             $currency = strtoupper(trim($payment->currency ?? ''));
 
-            if ($currency === 'USD') {
-                $pair = Pair::whereDate('created_at', $today)
-                    ->inRandomOrder()
-                    ->first();
-            } else {
-                $pair = Pair::whereDate('created_at', $today)
-                    ->whereHas('currency', function ($q) use ($currency) {
-                        $q->whereRaw('LOWER(c_name) = ?', [strtolower($currency)]);
-                    })
-                    ->inRandomOrder()
-                    ->first();
-            }
+            $pair = Pair::whereHas('currency', function ($q) use ($currency) {
+                $q->whereRaw('LOWER(c_name) = ?', [strtolower($currency)]);
+            })
+            ->latest('created_at')
+            ->first();
+
 
             if (! $pair) {
                 Log::channel('pair')->warning("⚠️ No pair found for currency {$currency} (PayID: {$payment->pay_id})");

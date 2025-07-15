@@ -36,7 +36,6 @@ class RecalculateWallets extends Command
                 'Deposits' => DB::table('deposits')->where('user_id', $user->id)->where('status', 'Completed')->sum('amount'),
                 'Withdrawals' => -DB::table('withdrawals') ->where('user_id', $user->id) ->where('status', '!=', 'Rejected') ->select(DB::raw('SUM(amount + fee) as total')) ->value('total'),
                 'Aff/Earn to Cash' => DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->whereIn('from_wallet', ['affiliates_wallet', 'earning_wallet'])->where('to_wallet', 'cash_wallet')->sum('amount'),
-                'Trading to Cash (remark)' => DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->where('from_wallet', 'trading_wallet')->where('to_wallet', 'cash_wallet')->sum(DB::raw('CAST(remark AS DECIMAL(20,8))')),
                 'Trading to Cash (amount)' => DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->where('from_wallet', 'trading_wallet')->where('to_wallet', 'cash_wallet')->sum('amount'),
                 'Cash to Trading (package)' => -DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->where('from_wallet', 'cash_wallet')->where('to_wallet', 'trading_wallet')->where('remark', 'package')->sum('amount'),
                 'Downline Sent' => DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->where('from_wallet', 'cash_wallet')->where('to_wallet', 'cash_wallet')->where('remark', 'downline')->where('amount', '<', 0)->sum('amount'),
@@ -49,6 +48,7 @@ class RecalculateWallets extends Command
                 'Cash to Trading' => DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->where('from_wallet', 'cash_wallet')->where('to_wallet', 'trading_wallet')->where('remark', 'package')->sum('amount'),
                 'Campaign' => DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->where('from_wallet', 'cash_wallet')->where('to_wallet', 'trading_wallet')->where('remark', 'campaign')->sum('amount'),
                 'Trading to Cash' => -DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->where('from_wallet', 'trading_wallet')->where('to_wallet', 'cash_wallet')->sum('amount'),
+                'Trading to Cash (remark)' => -DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->where('from_wallet', 'trading_wallet')->where('to_wallet', 'cash_wallet')->sum(DB::raw('CAST(remark AS DECIMAL(20,8))')),
                 'Trading to System' => -DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->where('from_wallet', 'trading_wallet')->where('to_wallet', 'system')->sum('amount'),
                 'Pending Orders' => -DB::table('orders')->where('user_id', $user->id)->where('status', 'pending')->sum('buy'),
                 

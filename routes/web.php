@@ -14,7 +14,8 @@ use App\Http\Controllers\ToolController;
 use App\Http\Controllers\FaqController;
 use App\Http\Controllers\VerificationController;
 use App\Http\Controllers\AuthController;
-
+use App\Http\Controllers\Admin\TicketController;
+use App\Http\Controllers\UserTicketController;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -107,6 +108,16 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::post('/walletflow', [AdminToolController::class, 'walletFlowReport'])->name('admin.tools.walletFlowReport');
     
     Route::get('/impersonate/{id}', [UserController::class, 'impersonate'])->name('admin.users.impersonate');
+    
+    Route::prefix('tickets')->name('admin.tickets.')->group(function () {
+        Route::get('/', [TicketController::class, 'index'])->name('index');
+        Route::get('/create', [TicketController::class, 'create'])->name('create');
+        Route::post('/', [TicketController::class, 'store'])->name('store');
+        Route::get('/{id}', [TicketController::class, 'show'])->name('show');
+        Route::post('/{id}/reply', [TicketController::class, 'reply'])->name('reply');
+        Route::post('/{id}/close', [TicketController::class, 'close'])->name('close');
+    });
+
 });
 
 Route::get('/admin/impersonate-leave', [UserController::class, 'leaveImpersonation'])->name('admin.users.leave');
@@ -141,7 +152,15 @@ Route::prefix('user-dashboard')->middleware(['auth', 'user.only'])->group(functi
     Route::get('/annoucement', [UserDashboardController::class, 'showAnnouncements']) ->name('user.annoucement');
     Route::get('/faq', [FaqController::class, 'faq']) ->name('user.faq');
     Route::post('/contact-support', [UserController::class, 'contactSupport'])->name('user.contact.support');
-
+    
+    Route::prefix('tickets')->name('user.tickets.')->group(function () {
+        Route::get('/', [UserTicketController::class, 'index'])->name('index');
+        Route::get('/create', [UserTicketController::class, 'create'])->name('create');
+        Route::post('/', [UserTicketController::class, 'store'])->name('store');
+        Route::get('/{id}', [UserTicketController::class, 'show'])->name('show');
+        Route::post('/{id}/reply', [UserTicketController::class, 'reply'])->name('reply');
+        Route::post('/{id}/close', [UserTicketController::class, 'close'])->name('close');
+    });
 
 });
 
