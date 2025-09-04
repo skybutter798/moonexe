@@ -157,7 +157,6 @@ class CheckRealWalletBalance extends Command
             $tradingOut = DB::table('transfers')
                 ->whereIn('user_id', $validDownlineIds)
                 ->where('from_wallet', 'trading_wallet')
-                ->where('to_wallet', 'cash_wallet')
                 ->where('status', 'Completed')
                 ->get()
                 ->reduce(function ($carry, $transfer) {

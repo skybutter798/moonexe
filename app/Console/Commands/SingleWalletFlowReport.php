@@ -34,7 +34,7 @@ class SingleWalletFlowReport extends Command
         foreach ($deposits as $d) {
             $date = Carbon::parse($d->created_at)->format($dateFormat);
             $this->line(sprintf("  - #%4d | %-10s | Amount: %10.2f | TXID: %s | Date: %s", 
-                $d->id, $d->status, $d->amount, $d->external_txid, $date));
+                $d->id, $d->status, $d->amount, $d->external_txid ?? '-', $date));
             if (strtolower($d->status) === 'completed') {
                 $totalIn += $d->amount;
             }
@@ -42,24 +42,21 @@ class SingleWalletFlowReport extends Command
 
         // Withdrawals
         $withdrawals = DB::table('withdrawals')->where('user_id', $uid)->orderByDesc('id')->get();
-        $totalOut = 0;
-        
         $this->line("\n📉 Withdrawals:");
         foreach ($withdrawals as $w) {
             $date = Carbon::parse($w->created_at)->format($dateFormat);
             $fee  = $w->fee ?? 0;
             $gross = $w->amount + $fee;
-        
+
             $this->line(sprintf(
                 "  - #%4d | %-10s | Amount: %10.2f | Fee: %6.2f | Total: %10.2f | Date: %s", 
                 $w->id, $w->status, $w->amount, $fee, $gross, $date
             ));
-        
+
             if (strtolower($w->status) === 'completed') {
                 $totalOut += $gross;
             }
         }
-
 
         // Transfers
         $transfers = DB::table('transfers')->where('user_id', $uid)->orderByDesc('id')->get();
@@ -80,6 +77,9 @@ class SingleWalletFlowReport extends Command
                 else $totalIn += $t->amount;
             } elseif ($t->from_wallet === 'cash_wallet' && $t->to_wallet === 'trading_wallet') {
                 $desc = 'Trading Margin';
+                $totalOut += $t->amount;
+            } elseif ($t->from_wallet === 'trading_wallet' && $t->to_wallet === 'staking_wallet') {
+                $desc = 'Staking Lock';
                 $totalOut += $t->amount;
             }
 
@@ -112,6 +112,18 @@ class SingleWalletFlowReport extends Command
             $date = Carbon::parse($o->created_at)->format($dateFormat);
             $this->line(sprintf("  - #%4d | Buy: %-10s | Sell: %-10s | Symbol: %-10s | Date: %s", 
                 $o->id, $o->buy_amount, $o->sell_amount, $o->symbol, $date));
+        }
+
+        // Wallet Balance Snapshot
+        $wallet = DB::table('wallets')->where('user_id', $uid)->first();
+        if ($wallet) {
+            $this->line("\n📦 Wallet Balances Snapshot:");
+            $this->line("  - Cash Wallet:       " . number_format($wallet->cash_wallet, 2));
+            $this->line("  - Trading Wallet:    " . number_format($wallet->trading_wallet, 2));
+            $this->line("  - Earning Wallet:    " . number_format($wallet->earning_wallet, 2));
+            $this->line("  - Affiliates Wallet: " . number_format($wallet->affiliates_wallet, 2));
+            $this->line("  - Bonus Wallet:      " . number_format($wallet->bonus_wallet, 2));
+            $this->line("  - Staking Wallet:    " . number_format($wallet->staking_wallet ?? 0, 2));
         }
 
         // Summary

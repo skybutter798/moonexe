@@ -12,6 +12,8 @@ use App\Models\Transfer;
 use App\Models\DirectRange;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+
 
 use App\Services\ClaimService;
 use App\Services\UserRangeCalculator;
@@ -452,18 +454,34 @@ class OrderController extends Controller
         }
     
         $orders = Order::where('pair_id', $pairId)->sum('receive');
-    
         $remaining = max($pair->volume - $orders, 0);
+    
+        $symbol = optional($pair->currency)->c_name ?? 'USD';
+    
+        // Determine if it's a reversed currency
+        $reversedSymbols = ['LKR', 'VND', 'IDR', 'COP'];
+        $isReversed = in_array(strtoupper($symbol), $reversedSymbols);
+    
+        // Compose pair symbol for market_data lookup
+        $marketSymbol = $isReversed ? 'USD' . strtoupper($symbol) : strtoupper($symbol) . 'USD';
+    
+        // Fetch from market_data table
+        $marketRate = DB::table('market_data')
+            ->where('symbol', $marketSymbol)
+            ->value('mid');
+    
+        if (!$marketRate) {
+            return response()->json(['success' => false, 'error' => 'Market rate not found.'], 404);
+        }
     
         return response()->json([
             'success' => true,
             'pair_id' => $pair->id,
-            'symbol' => optional($pair->currency)->c_name ?? 'USD', // or fallback
-            'rate' => $pair->rate,
+            'symbol' => $symbol,
+            'rate' => $marketRate,
             'total_volume' => $pair->volume,
             'remaining_volume' => $remaining,
         ]);
-
     }
 
 }

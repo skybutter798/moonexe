@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Main function to fetch API data and update both parts independently.
     function fetchExchangeRates() {
-      fetch('https://app.moonexe.com/api/market-data')
+      fetch('https://demo.moonexe.com/api/market-data')
         .then(response => response.json())
         .then(apiData => {
           updateTradingCardRates(apiData);
@@ -795,7 +795,7 @@ document.addEventListener('DOMContentLoaded', function() {
           const remaining_volume = parseFloat(data.remaining_volume);
           const rate = parseFloat(data.rate);
           const symbol = data.symbol;
-          //console.log(`🔎 Volume fetched - Pair ${pairId} | Symbol: ${symbol}, Rate: ${rate}, Total: ${total_volume}, Remaining: ${remaining_volume}`);
+          console.log(`🔎 Volume fetched - Pair ${pairId} | Symbol: ${symbol}, Rate: ${rate}, Total: ${total_volume}, Remaining: ${remaining_volume}`);
         
           const card = document.querySelector(`.gateRow[data-pair-id="${pairId}"]`);
           if (!card) return console.warn("🚫 No card found for pairId:", pairId);
@@ -856,27 +856,37 @@ document.addEventListener('DOMContentLoaded', function() {
                 const logoEl = card.querySelector('.webhook-logo');
     
                 if (webhookBox && payIdEl && amountEl && logoEl) {
-                  payIdEl.innerHTML = `<a href="https://ecnfi.com/payment?payid=${res.pay_id}" target="_blank" class="badge bg-primary text-white">PayID: ${res.pay_id}</a>`;
+                    const fullPayId = res.pay_id;
+                    const shortPayId = fullPayId.length > 12 
+                      ? fullPayId.slice(0, 6) + '...' + fullPayId.slice(-4) 
+                      : fullPayId;
+                    
+                    payIdEl.innerHTML = `
+                      <a href="https://demo.ecnfi.com/payment?payid=${fullPayId}" 
+                         target="_blank" 
+                         class="badge bg-primary text-white">
+                        PayID: ${shortPayId}
+                      </a>`;
                   amountEl.innerText = '+' + parseFloat(res.amount).toFixed(4) + ' USDT';
     
                   const method = (res.method || '').toLowerCase();
                   let logoSrc = '';
                   switch (method) {
                     case 'stripe':
-                      logoSrc = 'https://ecnfi.com/img/stripe.svg';
+                      logoSrc = 'https://demo.ecnfi.com/img/stripe.svg';
                       break;
                     case 'paypal':
-                      logoSrc = 'https://ecnfi.com/img/paypal.svg';
+                      logoSrc = 'https://demo.ecnfi.com/img/paypal.svg';
                       break;
                     case 'mastercard':
-                      logoSrc = 'https://ecnfi.com/img/mastercard.svg';
+                      logoSrc = 'https://demo.ecnfi.com/img/mastercard.svg';
                       break;
                     case 'visa':
-                      logoSrc = 'https://ecnfi.com/img/visa.svg';
+                      logoSrc = 'https://demo.ecnfi.com/img/visa.svg';
                       break;
                     case 'amex':
                     case 'american express':
-                      logoSrc = 'https://ecnfi.com/img/amex.svg';
+                      logoSrc = 'https://demo.ecnfi.com/img/amex.svg';
                       break;
                     default:
                       logoSrc = ''; // Optional fallback

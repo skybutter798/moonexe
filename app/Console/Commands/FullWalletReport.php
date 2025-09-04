@@ -42,10 +42,18 @@ class FullWalletReport extends Command
                 + DB::table('transfers')->where('user_id', $uid)->where('status', 'Completed')->where('from_wallet', 'cash_wallet')->where('to_wallet', 'cash_wallet')->where('remark', 'downline')->where('amount', '<', 0)->sum('amount')
                 + DB::table('transfers')->where('user_id', $uid)->where('status', 'Completed')->where('from_wallet', 'cash_wallet')->where('to_wallet', 'cash_wallet')->where('remark', 'downline')->where('amount', '>', 0)->sum('amount');
 
-            $trading = DB::table('transfers')->where('user_id', $uid)->where('status', 'Completed')->where('from_wallet', 'cash_wallet')->where('to_wallet', 'trading_wallet')->sum('amount')
-                - DB::table('transfers')->where('user_id', $uid)->where('status', 'Completed')->where('from_wallet', 'trading_wallet')->where('to_wallet', 'cash_wallet')->sum('amount')
-                - DB::table('orders')->where('user_id', $uid)->where('status', 'pending')->sum('buy');
-
+            $trading = 
+                // inflows into trading
+                DB::table('transfers')->where('user_id', $uid)->where('status', 'Completed')->where('from_wallet', 'cash_wallet')    ->where('to_wallet', 'trading_wallet')->sum('amount')
+              + DB::table('transfers')->where('user_id', $uid)->where('status', 'Completed')->where('from_wallet', 'staking_wallet') ->where('to_wallet', 'trading_wallet')->sum('amount') // ← add unstake
+            
+                // outflows from trading
+              - DB::table('transfers')->where('user_id', $uid)->where('status', 'Completed')->where('from_wallet', 'trading_wallet')->where('to_wallet', 'cash_wallet')->sum('amount')
+              - DB::table('transfers')->where('user_id', $uid)->where('status', 'Completed')->where('from_wallet', 'trading_wallet')->where('to_wallet', 'staking_wallet')->sum('amount')
+            
+                // reserved in open orders (optional, if you treat pending orders as not in free trading wallet)
+              - DB::table('orders')->where('user_id', $uid)->where('status', 'pending')->sum('buy');
+            
             if ($user->status == 0) $trading = 0;
 
             $earning = DB::table('payouts')->where('user_id', $uid)->where('status', 1)->where('type', 'payout')->where('wallet', 'earning')->sum('actual')
@@ -126,25 +134,55 @@ class FullWalletReport extends Command
 
             $marginIn = DB::table('transfers')->whereIn('user_id', $validDownlines)->where('from_wallet', 'cash_wallet')->where('to_wallet', 'trading_wallet')->where('status', 'Completed')->whereRaw("LOWER(remark) = 'package'")->sum('amount');
 
-            $marginOut = DB::table('transfers')->whereIn('user_id', $validDownlines)->where('from_wallet', 'trading_wallet')->where('to_wallet', 'cash_wallet')->where('status', 'Completed')->get()->reduce(function ($carry, $t) {
-                $fee = 0;
-                if (preg_match('/[\d\.]+/', $t->remark, $m)) $fee = floatval($m[0]);
-                return $carry + $t->amount + $fee;
-            }, 0);
+            $marginOutCash = DB::table('transfers')
+                ->whereIn('user_id', $validDownlines)
+                ->where('from_wallet', 'trading_wallet')
+                ->where('to_wallet', 'cash_wallet')
+                ->where('status', 'Completed')
+                ->get()
+                ->reduce(function ($carry, $t) {
+                    $fee = 0;
+                    if (preg_match('/[\d\.]+/', $t->remark, $m)) $fee = floatval($m[0]);
+                    return $carry + $t->amount + $fee;
+                }, 0);
+            
+            $marginOutStake = DB::table('transfers')
+                ->whereIn('user_id', $validDownlines)
+                ->where('from_wallet', 'trading_wallet')
+                ->where('to_wallet', 'staking_wallet')
+                ->where('status', 'Completed')
+                ->sum('amount');
+            
+            $marginOut = $marginOutCash + $marginOutStake;
+
 
             $netMargin = $marginIn - $marginOut;
+            
+            // Current Staking Balance: latest ledger row balance (running total)
+            $latestStakeRow = DB::table('stakings')
+                ->where('user_id', $uid)
+                ->where('status', 'active')
+                ->orderByDesc('id')
+                ->first();
+            
+            $stakingBalance = $latestStakeRow ? (float)$latestStakeRow->balance : 0.0;
+            
+            // Combined capital view
+            $tradingPlusStaking = $trading + $stakingBalance;
 
-            $this->line("
+$this->line("
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 👤 User ID: $uid
 💳 Total Deposit:       $totalDeposit
-✅ Real Deposit:       $realDeposit
+✅ Real Deposit:        $realDeposit
 📈 ROI Earning:         $roiEarning
-🧑 Affiliates:    $affiliatePayout + $affiliateDirect
+🧑 Affiliates:          $affiliatePayout + $affiliateDirect
 📦 Downline Margin:     $netMargin
 
 💰 Cash Wallet:         $cash
 📊 Trading Wallet:      $trading
+🪙 Staking Balance:     $stakingBalance
+Σ  Trading+Staking:     $tradingPlusStaking
 🏆 Earning Wallet:      $earning
 🤝 Affiliates Wallet:   $affiliates
 🎁 Bonus Wallet:        $bonus

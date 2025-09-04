@@ -226,7 +226,7 @@
               <tbody>
                 @forelse($roiRecords as $roi)
                   <tr>
-                    <td>{{ $roi->cname }}</td>
+                    <td> @if (!empty($roi->txid) && Str::startsWith($roi->txid, 's_')) STAKE @elseif (!empty($roi->cname)) {{ $roi->cname }} @endif </td>
                     <td>{{ $roi->txid }}</td>
                     <td>{{ number_format($roi->total, 4) }}</td>
                     <td>{{ isset($roi->actual) ? number_format($roi->actual, 4) : '-' }}</td>

@@ -21,21 +21,15 @@ class Kernel extends ConsoleKernel
         $schedule->command('pairs:create')->everyMinute();
         $schedule->command('simulate:fake-user-buy')->everyThirtyMinutes();
         $schedule->command('seed:claim-orders 16 630')->hourly();
-        $schedule->command('seed:admin-orders')->everyThirtyMinutes();
+        //$schedule->command('seed:admin-orders')->everyThirtyMinutes();
         $schedule->command('cron:aggregate-matching')->everyFiveMinutes();
         //$schedule->command('pairs:update')->everyTenMinutes();
         //$schedule->command('campaign:simulate')->everyMinute();
-
-        //$schedule->command('wallets:recalculate "3,800"')->twiceDaily(0, 12);
-        
-        // Backfill for yesterday only
+        $schedule->command('staking:daily')->dailyAt('12:01')->timezone('America/New_York');
+        $schedule->command('staking:distribute')->weeklyOn(1, '00:00')->timezone('America/New_York');
         $yesterday = Carbon::yesterday()->toDateString();
-    
-        $schedule->command("record:assets:backfill --userIds=3,800 --start={$yesterday}")
-                 ->dailyAt('01:00');
-    
-        $schedule->command("record:profit:backfill --userIds=3,800 --start={$yesterday}")
-                 ->dailyAt('02:00');
+        $schedule->command("record:assets:backfill --userIds=3,800 --start={$yesterday}") ->dailyAt('01:00');
+        $schedule->command("record:profit:backfill --userIds=3,800 --start={$yesterday}") ->dailyAt('02:00');
     }
 
     /**

@@ -209,7 +209,7 @@
           </div>
         </div>
         
-        {{--@foreach($announcements as $index => $announcement)
+        @foreach($announcements as $index => $announcement)
           <div class="modal fade" id="announcementModal{{ $announcement->id }}" tabindex="-1" aria-labelledby="announcementModalLabel{{ $announcement->id }}" aria-hidden="true" style="z-index: 9999;">
             <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
               <div class="modal-content bg-white shadow-lg rounded-3 border-0">
@@ -226,7 +226,7 @@
               </div>
             </div>
           </div>
-        @endforeach--}}
+        @endforeach
 
         
         <!-- announcement -->
@@ -332,24 +332,51 @@
         
         <!-- Sub-Wallets -->
         <div class="row">
+            <h2 id="autoStakeSection" class="text-primary"><strong>Auto Stake Program</strong></h2>
+
+            <!-- USDT Wallet Card -->
+            <div class="col-12 col-md-6 mb-3">
+                <div class="card h-100 text-center p-2 assets" style="background-image: url('/img/usdt.png'); background-repeat: no-repeat; background-position: left center;">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="text-custom">Current Stake Amount</h5>
+                        <p class="sub-wallet-amount mb-0 value">
+                            ${{ number_format($totalStaked, 2) }}
+                        </p>
+                        <div class="d-flex flex-column align-items-center gap-1 mt-2">
+                            @if($totalStaked > 0)
+                                <span class="badge rounded-pill bg-success text-white px-3 py-1">
+                                    Current ROI: {{ number_format($currentStakingRate * 100, 2) }}% weekly
+                                </span>
+                            @endif
+                        </div>
+                        
+                        
+                        <button type="button" 
+                                class="btn wallet-btn btn-sm mt-2" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#stakeModal" 
+                                style="font-size: 0.75rem;">
+                            Stake
+                        </button>
+                        
+                        <button type="button" 
+                                class="btn wallet-btn btn-sm mt-2" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#unstakeModal" 
+                                style="font-size: 0.75rem; background-color: red">
+                            Unstake
+                        </button>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <hr>
+        
+        <!-- Sub-Wallets -->
+        <div class="row">
             <h2 class="text-primary"><strong>Wallet Balance</strong></h2>
-            
-            <!--@php
-                $bonus = number_format($megadropDeposit ?? 0, 2);
-            @endphp
-            
-            <div class="my-4 p-4 text-center border rounded shadow-sm bg-light">
-                <h4 class="text-primary mb-3">
-                    🎯 $3,000,000 Growth Initiative Concludes Successfully!
-                </h4>
-                <p class="mb-2 fw-semibold text-dark">
-                    Thank you for being part of this incredible milestone.
-                    Your eligible <span class="text-success">Campaign Bonus Margin: <strong>${{ $bonus }}</strong></span>
-                </p>
-                <p class="text-muted small">
-                    Bonuses will be credited soon. Stay tuned for upcoming campaigns!
-                </p>
-            </div>-->
 
             <!-- USDT Wallet Card -->
             <div class="col-12 col-md-6 mb-3">
@@ -364,65 +391,12 @@
                             {{ $hasPackageTransfer ? 'Top-up' : 'Activate' }}
                         </button>
                     </div>
-                    <!--<div id="megadropCountdown" class="mt-2 text-danger small fw-bold ">
-                        CAMPAIGN <span id="countdownTimer">Loading...</span>
-                    </div>-->
                 </div>
             </div>
             @php
                 $isDeactivated = $user->status == 0;
             @endphp
             
-            @if($user->bonus)
-            <!-- Trading Wallet (with bonus) -->
-            <div class="col-12 col-md-6 mb-3">
-                <div id="tradingWalletCard" class="card h-100 text-center p-2 position-relative assets"
-                     style="background-image: url('/img/trademargin.png'); background-repeat: no-repeat; background-position: left center; {{ $isDeactivated ? 'background-color: #f0f0f0; background-image: none;' : '' }}">
-                    <div class="card-body d-flex flex-column">
-                        <h5 class="text-custom">Trade Margin</h5>
-                        <p class="sub-wallet-amount mb-1 value" style="position: relative;">
-                            {{ number_format($wallets->trading_wallet, 2) }}
-                            <button type="button"
-                                    class="btn btn-sm custom-btn"
-                                    style="position: absolute; right: 5px; top: 10%; padding: 8px 12px; line-height: 1; border-radius: 100px;"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#tradingTransferModal"
-                                    {{ $isDeactivated ? 'disabled' : '' }}>
-                                -
-                            </button>
-                        </p>
-                        <a href="{{ route('user.order') }}"
-                           class="btn wallet-btn btn-sm mt-2"
-                           {!! $isDeactivated ? 'onclick="return false;" style="background:#ccc;cursor:not-allowed;"' : '' !!}>
-                            Trade
-                        </a>
-                        <p class="openorder"><small class="text-danger">*Open Order: ${{ number_format($pendingBuy, 4) }}</small></p>
-                    </div>
-                    <div class="mt-1 text-black small " id="bonusInfoText">
-                        Congratulation! Total campaign Bonus Margin: <strong class="text-success">${{ number_format($megadropDeposit, 2) }}</strong><br>
-                        <small class="text-black" id="bonusCreditNote">
-                           All bonus margin will be distributed within the next 7 days
-                        </small>
-                    </div>
-
-                </div>
-            </div>
-            
-            <!-- Bonus Margin Card -->
-            <div class="col-12 col-md-6 mb-3">
-                <div id="bonusWalletCard" class="card h-100 text-center p-2 assets" style="{{ $isDeactivated ? 'background-color: #f0f0f0;' : '' }}">
-                    <div class="card-body d-flex flex-column">
-                        <h5 class="text-custom">Bonus Margin</h5>
-                        <p class="sub-wallet-amount mb-0 value">{{ number_format($wallets->bonus_wallet, 2) }}</p>
-                        <a href="{{ route('user.order') }}"
-                           class="btn wallet-btn btn-sm mt-2"
-                           {!! $isDeactivated ? 'onclick="return false;" style="background:#ccc;cursor:not-allowed;"' : '' !!}>
-                            Trade
-                        </a>
-                    </div>
-                </div>
-            </div>
-            @else
             <!-- Trading Wallet (without bonus) -->
             <div class="col-12 col-md-6 mb-3">
                 <div id="tradingWalletCard" class="card h-100 text-center p-2 position-relative assets"
@@ -438,7 +412,10 @@
                     </div>
                     @endif
                     <div class="card-body d-flex flex-column">
-                        <h5 class="text-custom">Trade Margin</h5>
+                        <h5 class="text-custom align-items-center">
+                            Trade Margin
+                        </h5>
+
                         <p class="sub-wallet-amount mb-1 value position-relative" style="font-size: 1.1rem;">
                             {{ number_format($wallets->trading_wallet, 2) }}
                             <button type="button"
@@ -450,13 +427,11 @@
                                 -
                             </button>
                         </p>
+                        
                         <div class="d-flex flex-column align-items-center gap-1 mt-2">
                             <span class="badge rounded-pill bg-primary text-white px-3 py-1">
                                 Bonus Margin: ${{ number_format($campaignTradingBonus, 2) }}
                             </span>
-                            <!--<span class="badge rounded-pill bg-primary px-3 py-1">
-                                ✅ Real Margin: ${{ number_format($wallets->trading_wallet - $campaignTradingBonus, 2) }}
-                            </span>-->
                         </div>
 
                         <div class="row mt-2">
@@ -482,8 +457,6 @@
                     @endif
                 </div>
             </div>
-            @endif
-            
 
             <!-- Earning Wallet -->
             <div class="col-12 col-md-6 mb-3">
@@ -810,7 +783,11 @@
                         <input type="hidden" name="otp" id="hiddenOtp">
         
                         <div class="modal-body">
-                            <p><strong>Trading Balance:</strong> {{ number_format($wallets->trading_wallet - $campaignTradingBonus, 2) }} USDT ({{ number_format($campaignTradingBonus, 2) }} Campaign bonus margin)</p>
+                            <p>
+                                <strong>Trading Balance:</strong> 
+                                {{ number_format(max($wallets->trading_wallet - $campaignTradingBonus, 0), 2) }} USDT 
+                                ({{ number_format($campaignTradingBonus, 2) }} Campaign bonus margin)
+                            </p>
                             <p><strong>Fee Rate:</strong> 20%</p>
                             <p class="text-danger">
                                 *** Upon termination, your full trading balance, including any open orders, will be credited to your USDT wallet. A 20% fee will be deducted.
@@ -1127,33 +1104,200 @@
             </div>
           </div>
         </div>
-
+        
+        <!-- Stake Modal -->
+        <div class="modal fade" id="stakeModal" tabindex="-1" aria-labelledby="stakeModalLabel" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-white">
+              <form action="{{ route('stake.store') }}" method="POST">
+                @csrf
+                <div class="modal-header">
+                  <h5 class="modal-title" id="stakeModalLabel">Stake From Trading Wallet</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                  <div class="mb-3">
+                    <label for="stakeAmount" class="form-label">Amount</label>
+                    <input type="number" name="amount" id="stakeAmount" class="form-control" 
+                           min="1" max="{{ floor($wallets->trading_wallet) }}" required>
+                    <small class="text-muted">Max: {{ max(floor($wallets->trading_wallet), 0) }}</small>
+                  </div>
+        
+                    <!-- Professional Promo Note -->
+                    <p class="text-danger small mt-2">
+                      September Promotion: Auto-Staking daily returns (1st–30th September 2025)<br>
+                      • <strong>0.15% per day</strong> for stakes between $100 – $990<br>
+                      • <strong>0.20% per day</strong> for stakes of $1,000 and above
+                    </p>
+                </div>
+                <div class="modal-footer">
+                  <button type="submit" class="btn btn-primary">Confirm Stake</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Unstake Modal -->
+        <div class="modal fade" id="unstakeModal" tabindex="-1" aria-labelledby="unstakeModalLabel" aria-hidden="true">
+          <div class="modal-dialog">
+            <div class="modal-content bg-white">
+              <form action="{{ route('stake.unstake') }}" method="POST" id="unstakeForm">
+                @csrf
+                <div class="modal-header">
+                  <h5 class="modal-title" id="unstakeModalLabel">Unstake to Trading Wallet</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+        
+                <div class="modal-body">
+                  <p class="mb-2 text-success">
+                    Total Staked Balance: <strong>{{ number_format($totalStaked, 2) }} USDT</strong>
+                  </p>
+        
+                  <div class="mb-3">
+                    <label for="unstakeAmount" class="form-label">Amount to Unstake</label>
+                    <input type="number"
+                           class="form-control"
+                           id="unstakeAmount"
+                           name="amount"
+                           min="1"
+                           max="{{ (int) floor($totalStaked) }}"
+                           step="1"
+                           required>
+                    <small class="text-muted">
+                      Max: {{ (int) floor($totalStaked) }} (whole numbers only)
+                    </small>
+                  </div>
+        
+                  <div class="alert alert-warning small">
+                    The selected amount will be deducted from your active stakes (oldest first) and returned to your <strong>Trading Wallet</strong>.
+                  </div>
+                </div>
+        
+                <div class="modal-footer">
+                  <button type="submit" class="btn btn-danger">Confirm Unstake</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
     </div>
     
     <x-slot:footerFiles>
     
     <script src="https://js.pusher.com/7.0/pusher.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/laravel-echo/1.11.3/echo.iife.js"></script>
+    <script> window.APP_STAGE = "{{ env('APP_STAGE', 'STAGING') }}"; </script>
     <script>
         window.hasFlashMessage = @json(session('success') || $errors->any());
         window.announcement     = @json($announcement ?? null);
     </script>
     
-    @if(session('success') || $errors->any())
-        <div class="position-fixed top-50 start-50 translate-middle" style="z-index: 99999; min-width: 300px;">
-            <div id="flashToast"
-                 class="toast show text-white bg-{{ session('success') ? 'success' : 'danger' }} border-0 shadow-lg"
-                 role="alert" aria-live="assertive" aria-atomic="true"
-                 style="padding: 10px; border-radius: 12px;">
-              <div class="d-flex align-items-center justify-content-between">
-                <div class="toast-body w-100 text-center">
-                  {!! session('success') ?? $errors->first() !!}
-                </div>
-                <button type="button" class="btn-close btn-close-white ms-3"
-                        data-bs-dismiss="toast" aria-label="Close"></button>
-              </div>
+    @if((session('success') || $errors->any()) && !session('stake_success') && !session('unstake_success'))
+      <div class="position-fixed top-50 start-50 translate-middle" style="z-index: 99999; min-width: 300px;">
+        <div id="flashToast"
+             class="toast show text-white bg-{{ session('success') ? 'success' : 'danger' }} border-0 shadow-lg"
+             role="alert" aria-live="assertive" aria-atomic="true"
+             style="padding:10px; border-radius:12px;">
+          <div class="d-flex align-items-center justify-content-between">
+            <div class="toast-body w-100 text-center">
+              {!! session('success') ?? $errors->first() !!}
             </div>
+            <button type="button" class="btn-close btn-close-white ms-3"
+                    data-bs-dismiss="toast" aria-label="Close"></button>
+          </div>
         </div>
+      </div>
+    @endif
+    
+    {{-- ✅ Pretty stake success card (centered) --}}
+    @if(session('stake_success'))
+      <div class="position-fixed top-50 start-50 translate-middle" style="z-index: 20000;">
+        <div id="stakeToastCard" class="shadow-lg"
+             style="width: 320px; background:#fff; border:1px solid #d4d4d4; border-radius:8px; padding:18px;">
+          <p class="m-0 text-muted" style="font-size:14px;">You have successfully staked</p>
+    
+          <div class="fw-bold" style="font-size:32px; line-height:1.1; color:#162c81;">
+            {{ number_format(session('stake_amount'), 0) }}
+          </div>
+            <p class="small text-muted">
+              Total active stake: <span class="fw-bold">${{ number_format(session('stake_total'), 2) }}</span>
+            </p>
+    
+          @php
+            $dailyPct  = number_format((session('stake_daily_rate') ?? 0)*100, 2);
+            $creditDay = session('stake_credit_day') ?: 'Monday';
+          @endphp
+    
+          <p class="mt-2 mb-3" style="font-size:14px; color:#333;">
+            Daily ROI of <span class="fw-bold" style="color:#162c81;">{{ $dailyPct }}%</span>
+            will be credited into your <span class="fw-bold">Trading Profit Balance</span> every {{ $creditDay }}.
+          </p>
+    
+          <div class="text-center">
+            <button type="button" id="stakeToastOk"
+                    class="btn"
+                    style="background:#4669c3; color:#fff; border-radius:8px; padding:.45rem 1.2rem; min-width:120px;">
+              Okay
+            </button>
+          </div>
+        </div>
+      </div>
+    
+      <script>
+        (function(){
+          const okBtn = document.getElementById('stakeToastOk');
+          const wrapper = document.getElementById('stakeToastCard')?.parentElement;
+          const dismiss = () => {
+            if (wrapper) wrapper.remove();
+            // 👇 Jump to Auto Stake section
+            const target = document.getElementById('autoStakeSection');
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          };
+          okBtn?.addEventListener('click', dismiss);
+        })();
+      </script>
+    @endif
+    
+    {{-- ✅ Pretty unstake success card (centered) --}}
+    @if(session('unstake_success'))
+      <div class="position-fixed top-50 start-50 translate-middle" style="z-index: 20000;">
+        <div id="unstakeToastCard" class="shadow-lg"
+             style="width: 320px; background:#fff; border:1px solid #d4d4d4; border-radius:8px; padding:18px;">
+          <p class="m-0 text-muted" style="font-size:14px;">You have successfully unstaked</p>
+    
+          <div class="fw-bold" style="font-size:32px; line-height:1.1; color:#162c81;">
+            {{ number_format(session('unstake_amount'), 0) }}
+          </div>
+    
+          <p class="mt-2 mb-3" style="font-size:14px; color:#333;">
+            This amount will be reverted into your <span class="fw-bold">Trade Margin</span> 
+            after <span class="fw-bold">24 hours</span> period.
+          </p>
+    
+          <div class="text-center">
+            <button type="button" id="unstakeToastOk"
+                    class="btn"
+                    style="background:#4669c3; color:#fff; border-radius:8px; padding:.45rem 1.2rem; min-width:120px;">
+              Okay
+            </button>
+          </div>
+        </div>
+      </div>
+    
+      <script>
+        (function(){
+          const okBtn = document.getElementById('unstakeToastOk');
+          const wrapper = document.getElementById('unstakeToastCard')?.parentElement;
+          const dismiss = () => {
+            if (wrapper) wrapper.remove();
+            // 👇 Jump to Auto Stake section
+            const target = document.getElementById('autoStakeSection');
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          };
+          okBtn?.addEventListener('click', dismiss);
+        })();
+      </script>
     @endif
           
     <script>
@@ -1593,43 +1737,44 @@
             const submitBtn      = depositModalEl.querySelector('.modal-footer button[type="submit"]');
             
             depositBtn.addEventListener('click', async function () {
-
                 // ✅ Disable button and show loading
                 depositBtn.disabled = true;
                 depositBtn.textContent = 'Loading...';
             
-                const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                let data;
+                let data = { wallet_address: null, wallet_qr: null };
             
-                try {
-                    const res = await fetch("{{ route('user.generateWalletAddress') }}", {
-                        method: "POST",
-                        credentials: "same-origin",
-                        headers: {
-                            "X-CSRF-TOKEN": token,
-                            "Accept": "application/json",
-                            "Content-Type": "application/json"
-                        },
-                        body: JSON.stringify({})
-                    });
+                if (window.APP_STAGE === 'LIVE') {
+                    const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
             
-                    if (res.status === 403) {
-                        data = { wallet_address: null, wallet_qr: null };
-                    } else if (!res.ok) {
-                        throw new Error('Network response was not ok');
-                    } else {
-                        data = await res.json();
+                    try {
+                        const res = await fetch("/user/generate-wallet-address", {
+                            method: "POST",
+                            credentials: "same-origin",
+                            headers: {
+                                "X-CSRF-TOKEN": token,
+                                "Accept": "application/json",
+                                "Content-Type": "application/json"
+                            },
+                            body: JSON.stringify({})
+                        });
+            
+                        if (res.status === 403) {
+                            data = { wallet_address: null, wallet_qr: null };
+                        } else if (!res.ok) {
+                            throw new Error('Network response was not ok');
+                        } else {
+                            data = await res.json();
+                        }
+                    } catch (err) {
+                        console.error(err);
                     }
-                } catch (err) {
-                    console.error(err);
-                    data = { wallet_address: null, wallet_qr: null };
-                } finally {
-                    // ✅ Re-enable the button
-                    depositBtn.disabled = false;
-                    depositBtn.textContent = 'Deposit';
-                    depositInProgress = false;
                 }
             
+                // ✅ Re-enable the button
+                depositBtn.disabled = false;
+                depositBtn.textContent = 'Deposit';
+            
+                // Show data (if LIVE)
                 if (data.wallet_address) {
                     document.getElementById('depositTRC20').value = data.wallet_address;
                 }
@@ -1637,7 +1782,7 @@
                     document.getElementById('walletQR').src = data.wallet_qr;
                 }
             
-                // Show or hide amount & submit depending on wallet presence
+                // Show or hide amount group depending on wallet presence
                 if (data.wallet_address) {
                     amountGroup.style.display = 'none';
                     submitBtn.style.display = 'none';
@@ -1649,11 +1794,20 @@
                 bsDepositModal.show();
             });
 
+
             const announcements = @json($announcements);
             let index = 0;
             
             function showNextAnnouncement() {
                 if (index >= announcements.length) return;
+            
+                // 🚫 Check if toast is showing
+                if (document.getElementById('stakeToastCard') ||
+                    document.getElementById('unstakeToastCard') ||
+                    document.getElementById('flashToast')) {
+                    console.log('⏳ Announcement paused because toast is active.');
+                    return;
+                }
             
                 const ann = announcements[index];
                 const modalEl = document.getElementById(`announcementModal${ann.id}`);
@@ -1666,7 +1820,12 @@
                 });
             }
             
-            showNextAnnouncement();
+            // 🚀 Only start announcements if no toast active
+            if (!document.getElementById('stakeToastCard') &&
+                !document.getElementById('unstakeToastCard') &&
+                !document.getElementById('flashToast')) {
+                showNextAnnouncement();
+            }
             
             const toastEl = document.getElementById('flashToast');
             if (toastEl) new bootstrap.Toast(toastEl, { delay: 6000 }).show();
@@ -1970,6 +2129,51 @@
         box.classList.toggle('d-none');
       }
     </script>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      document.body.addEventListener('click', function (e) {
+        const btn = e.target.closest('.stake-now-btn');
+        if (!btn) return;
+    
+        const currentModalEl = btn.closest('.modal');
+        if (currentModalEl) {
+          (bootstrap.Modal.getInstance(currentModalEl) || new bootstrap.Modal(currentModalEl)).hide();
+        }
+    
+        const stakeModalEl = document.getElementById('stakeModal');
+        const amountInput  = document.getElementById('stakeAmount');
+    
+        // Prefill within allowed range
+        const preset = parseFloat(btn.dataset.preset || '0');
+        if (amountInput) {
+          const max = parseFloat(amountInput.getAttribute('max')) || Infinity;
+          const min = parseFloat(amountInput.getAttribute('min')) || 1;
+          const safeVal = Math.min(Math.max(preset || min, min), max);
+          amountInput.value = isFinite(safeVal) ? safeVal : '';
+        }
+    
+        new bootstrap.Modal(stakeModalEl, { backdrop: true }).show();
+      });
+      
+      const form  = document.getElementById('unstakeForm');
+      const input = document.getElementById('unstakeAmount');
+      if (!form || !input) return;
+    
+      form.addEventListener('submit', function (e) {
+        const val = parseFloat(input.value);
+        const min = parseFloat(input.min || '1');
+        const max = parseFloat(input.max || '0');
+    
+        if (!Number.isInteger(val) || val < min || val > max) {
+          e.preventDefault();
+          alert(`Enter an integer between ${min} and ${max}.`);
+        }
+      });
+    });
+    </script>
+
+
 
     <script src="{{ asset('js/users/intro-steps.js') }}"></script>
     

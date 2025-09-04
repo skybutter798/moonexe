@@ -10,6 +10,7 @@ use App\Models\Promotion;
 use App\Models\Annoucement;
 use App\Models\Transfer;
 use App\Models\Setting;
+use App\Models\Staking;
 use Carbon\Carbon;
 use App\Services\WalletRecalculator;
 
@@ -133,8 +134,29 @@ class DashboardController extends Controller
             ->whereBetween('created_at', [$startMY, $endMY])
             ->orderBy('created_at')
             ->get();
-
+            
+        $totalStaked = Staking::where('user_id', $userId)
+            ->where('status', 'active')
+            ->orderByDesc('id')
+            ->value('balance') ?? 0;
         
+        // Load tier values from settings
+        $roi100     = (float) Setting::where('name', 'staking_roi_100')->value('value')     ?? 0.007;
+        $roi1000    = (float) Setting::where('name', 'staking_roi_1000')->value('value')    ?? 0.0105;
+        $roi10000   = (float) Setting::where('name', 'staking_roi_10000')->value('value')   ?? 0.014;
+        $roi100000  = (float) Setting::where('name', 'staking_roi_100000')->value('value')  ?? 0.02;
+        
+        if ($totalStaked >= 100000) {
+            $currentStakingRate = $roi100000;
+        } elseif ($totalStaked >= 10000) {
+            $currentStakingRate = $roi10000;
+        } elseif ($totalStaked >= 1000) {
+            $currentStakingRate = $roi1000;
+        } elseif ($totalStaked >= 100) {
+            $currentStakingRate = $roi100;
+        } else {
+            $currentStakingRate = 0;
+        }
         
         // Real trading balance = total - campaign bonus
         $realTradingBalance = max(0, $wallets->trading_wallet - $campaignTradingBonus);
@@ -159,6 +181,8 @@ class DashboardController extends Controller
             'campaignBalance'       => $campaignBalance,
             'campaignTopups' => $campaignTopups,
             'topupBeforeBoost' => $topupBeforeBoost,
+            'totalStaked' => $totalStaked,
+            'currentStakingRate' => $currentStakingRate,
         ];
         
         $data['tradermadeApiKey'] = config('services.tradermade.key');

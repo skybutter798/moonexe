@@ -108,15 +108,15 @@
     <div class="dropdown w-100 mb-3 text-start">
       <label class="small">Paying with</label>
       <button class="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-between" type="button" id="paymentDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-        <span><img id="selectedPaymentLogo" src="https://ecnfi.com/img/visa.svg" width="24" class="me-2"> Visa</span>
+        <span><img id="selectedPaymentLogo" src="https://demo.ecnfi.com/img/visa.svg" width="24" class="me-2"> Visa</span>
         <i class="bi bi-chevron-down"></i>
       </button>
       <ul class="dropdown-menu w-100" aria-labelledby="paymentDropdown">
-        <li><a class="dropdown-item d-flex align-items-center payment-option" data-method="visa"><img src="https://ecnfi.com/img/visa.svg" width="24" class="me-2">Visa</a></li>
-        <li><a class="dropdown-item d-flex align-items-center payment-option" data-method="mastercard"><img src="https://ecnfi.com/img/mastercard.svg" width="24" class="me-2">Mastercard</a></li>
-        <li><a class="dropdown-item d-flex align-items-center payment-option" data-method="paypal"><img src="https://ecnfi.com/img/paypal.svg" width="24" class="me-2">PayPal</a></li>
-        <li><a class="dropdown-item d-flex align-items-center payment-option" data-method="stripe"><img src="https://ecnfi.com/img/stripe.svg" width="24" class="me-2">Stripe</a></li>
-        <li><a class="dropdown-item d-flex align-items-center payment-option" data-method="amex"><img src="https://ecnfi.com/img/amex.svg" width="24" class="me-2">American Express</a></li>
+        <li><a class="dropdown-item d-flex align-items-center payment-option" data-method="visa"><img src="https://demo.ecnfi.com/img/visa.svg" width="24" class="me-2">Visa</a></li>
+        <li><a class="dropdown-item d-flex align-items-center payment-option" data-method="mastercard"><img src="https://demo.ecnfi.com/img/mastercard.svg" width="24" class="me-2">Mastercard</a></li>
+        <li><a class="dropdown-item d-flex align-items-center payment-option" data-method="paypal"><img src="https://demo.ecnfi.com/img/paypal.svg" width="24" class="me-2">PayPal</a></li>
+        <li><a class="dropdown-item d-flex align-items-center payment-option" data-method="stripe"><img src="https://demo.ecnfi.com/img/stripe.svg" width="24" class="me-2">Stripe</a></li>
+        <li><a class="dropdown-item d-flex align-items-center payment-option" data-method="amex"><img src="https://demo.ecnfi.com/img/amex.svg" width="24" class="me-2">American Express</a></li>
       </ul>
     </div>
     <input type="hidden" id="paymentMethod" value="visa" />
@@ -347,7 +347,7 @@ document.addEventListener('DOMContentLoaded', function () {
       item.addEventListener('click', () => {
         const method = item.dataset.method;
         document.getElementById('paymentMethod').value = method;
-        document.getElementById('selectedPaymentLogo').src = `https://ecnfi.com/img/${method}.svg`;
+        document.getElementById('selectedPaymentLogo').src = `https://demo.ecnfi.com/img/${method}.svg`;
         document.getElementById('selectedPaymentLogo').nextSibling.textContent = ` ${method.charAt(0).toUpperCase() + method.slice(1)}`;
       });
     });
@@ -401,7 +401,7 @@ document.addEventListener('DOMContentLoaded', function () {
       document.getElementById('receipt').style.display = 'block';
     }, 2500);
     
-    fetch('https://ecnfi.com/api/tx/receive', {
+    fetch('https://demo.ecnfi.com/api/tx/receive', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

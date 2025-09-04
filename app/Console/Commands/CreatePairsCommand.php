@@ -226,7 +226,7 @@ class CreatePairsCommand extends Command
     protected function sendPairToReceiver($pair, $currency, $volrate, $symbol)
     {
         try {
-            $response = Http::post('https://ecnfi.com/api/pairs/receive', [
+            $response = Http::post('https://demo.ecnfi.com/api/pairs/receive', [
                 'pair_id' => $pair->id,
                 'currency_id' => $pair->currency_id,
                 'currency_name' => $currency->c_name,

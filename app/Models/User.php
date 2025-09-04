@@ -144,5 +144,8 @@ class User extends Authenticatable
         return in_array($toId, self::getAllDownlineIds($fromId)) || in_array($toId, self::getUplineIds($fromId));
     }
 
-
+    public function stakings()
+    {
+        return $this->hasMany(\App\Models\Staking::class);
+    }
 }

@@ -36,6 +36,7 @@ class RecalculateWallets extends Command
                 'Deposits' => DB::table('deposits')->where('user_id', $user->id)->where('status', 'Completed')->sum('amount'),
                 'Withdrawals' => -DB::table('withdrawals') ->where('user_id', $user->id) ->where('status', '!=', 'Rejected') ->select(DB::raw('SUM(amount + fee) as total')) ->value('total'),
                 'Aff/Earn to Cash' => DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->whereIn('from_wallet', ['affiliates_wallet', 'earning_wallet'])->where('to_wallet', 'cash_wallet')->sum('amount'),
+                'Trading to Cash (remark)' => DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->where('from_wallet', 'trading_wallet')->where('to_wallet', 'cash_wallet')->sum(DB::raw('CAST(remark AS DECIMAL(20,8))')),
                 'Trading to Cash (amount)' => DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->where('from_wallet', 'trading_wallet')->where('to_wallet', 'cash_wallet')->sum('amount'),
                 'Cash to Trading (package)' => -DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->where('from_wallet', 'cash_wallet')->where('to_wallet', 'trading_wallet')->where('remark', 'package')->sum('amount'),
                 'Downline Sent' => DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->where('from_wallet', 'cash_wallet')->where('to_wallet', 'cash_wallet')->where('remark', 'downline')->where('amount', '<', 0)->sum('amount'),
@@ -45,14 +46,46 @@ class RecalculateWallets extends Command
 
             // TRADING breakdown
             $tradingParts = [
-                'Cash to Trading' => DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->where('from_wallet', 'cash_wallet')->where('to_wallet', 'trading_wallet')->where('remark', 'package')->sum('amount'),
-                'Campaign' => DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->where('from_wallet', 'cash_wallet')->where('to_wallet', 'trading_wallet')->where('remark', 'campaign')->sum('amount'),
-                'Trading to Cash' => -DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->where('from_wallet', 'trading_wallet')->where('to_wallet', 'cash_wallet')->sum('amount'),
-                'Trading to Cash (remark)' => -DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->where('from_wallet', 'trading_wallet')->where('to_wallet', 'cash_wallet')->sum(DB::raw('CAST(remark AS DECIMAL(20,8))')),
-                'Trading to System' => -DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->where('from_wallet', 'trading_wallet')->where('to_wallet', 'system')->sum('amount'),
-                'Pending Orders' => -DB::table('orders')->where('user_id', $user->id)->where('status', 'pending')->sum('buy'),
-                
+                // inflows to trading
+                'Cash to Trading'   => DB::table('transfers')
+                    ->where('user_id', $user->id)->where('status', 'Completed')
+                    ->where('from_wallet', 'cash_wallet')->where('to_wallet', 'trading_wallet')
+                    ->whereRaw("LOWER(COALESCE(remark,'')) = 'package'")
+                    ->sum('amount'),
+            
+                'Campaign'          => DB::table('transfers')
+                    ->where('user_id', $user->id)->where('status', 'Completed')
+                    ->where('from_wallet', 'cash_wallet')->where('to_wallet', 'trading_wallet')
+                    ->whereRaw("LOWER(COALESCE(remark,'')) = 'campaign'")
+                    ->sum('amount'),
+            
+                'Staking to Trading' => DB::table('transfers') // ← add UNSTAKE inflow
+                    ->where('user_id', $user->id)->where('status', 'Completed')
+                    ->where('from_wallet', 'staking_wallet')->where('to_wallet', 'trading_wallet')
+                    ->sum('amount'),
+            
+                // outflows from trading
+                'Trading to Cash'   => -DB::table('transfers')
+                    ->where('user_id', $user->id)->where('status', 'Completed')
+                    ->where('from_wallet', 'trading_wallet')->where('to_wallet', 'cash_wallet')
+                    ->sum('amount'),
+            
+                'Trading to System' => -DB::table('transfers')
+                    ->where('user_id', $user->id)->where('status', 'Completed')
+                    ->where('from_wallet', 'trading_wallet')->where('to_wallet', 'system')
+                    ->sum('amount'),
+            
+                'Trading to Staking' => -DB::table('transfers')
+                    ->where('user_id', $user->id)->where('status', 'Completed')
+                    ->where('from_wallet', 'trading_wallet')->where('to_wallet', 'staking_wallet')
+                    ->sum('amount'),
+            
+                // reserved in open orders (if you treat pending as not available)
+                'Pending Orders'    => -DB::table('orders')
+                    ->where('user_id', $user->id)->where('status', 'pending')
+                    ->sum('buy'),
             ];
+
             $trading = array_sum($tradingParts);
             if ($user->status == 0) $trading = 0;
 
@@ -122,9 +155,21 @@ class RecalculateWallets extends Command
                     'bonus_parts' => $bonusParts,
                 ]);
             }
+            
+            // Current staking balance from latest ledger row (running total)
+            $latestStakeRow = DB::table('stakings')
+                ->where('user_id', $user->id)
+                ->where('status', 'active')
+                ->orderByDesc('id')
+                ->first();
+            
+            $stakingBalance = $latestStakeRow ? (float)$latestStakeRow->balance : 0.0;
+            
+            // Combined view for quick reconciliation
+            $tradingPlusStaking = $trading + $stakingBalance;
 
 
-            $this->printBreakdown($user->id, $cash, $cashParts, $trading, $tradingParts, $earning, $earningParts, $affiliates, $affiliatesParts, $bonus, $bonusParts);
+            $this->printBreakdown($user->id, $cash, $cashParts, $trading, $tradingParts, $earning, $earningParts, $affiliates, $affiliatesParts, $bonus, $bonusParts, $stakingBalance, $tradingPlusStaking);
         }
 
         $this->info('Wallet recalculation completed.');
@@ -132,30 +177,42 @@ class RecalculateWallets extends Command
         return 0;
     }
 
-    private function printBreakdown($userId, $cash, $cashParts, $trading, $tradingParts, $earning, $earningParts, $affiliates, $affiliatesParts, $bonus, $bonusParts)
-    {
+    private function printBreakdown(
+        $userId,
+        $cash, $cashParts,
+        $trading, $tradingParts,
+        $earning, $earningParts,
+        $affiliates, $affiliatesParts,
+        $bonus, $bonusParts,
+        $stakingBalance = 0,       // NEW
+        $tradingPlusStaking = 0    // NEW
+    ) {
         $this->line("\n📊 Breakdown for User ID: $userId");
-
+    
         $this->line("🔹 Cash Wallet: $cash");
         foreach ($cashParts as $label => $val) {
             $this->line("   - $label: $val");
         }
-
+    
         $this->line("🔹 Trading Wallet: $trading");
         foreach ($tradingParts as $label => $val) {
             $this->line("   - $label: $val");
         }
-
+    
+        // NEW: staking + combined
+        $this->line("🔹 Staking Balance: $stakingBalance");
+        $this->line("Σ  Trading + Staking: $tradingPlusStaking");
+    
         $this->line("🔹 Earning Wallet: $earning");
         foreach ($earningParts as $label => $val) {
             $this->line("   - $label: $val");
         }
-
+    
         $this->line("🔹 Affiliates Wallet: $affiliates");
         foreach ($affiliatesParts as $label => $val) {
             $this->line("   - $label: $val");
         }
-
+    
         $this->line("🔹 Bonus Wallet: $bonus");
         foreach ($bonusParts as $label => $val) {
             $this->line("   - $label: $val");
