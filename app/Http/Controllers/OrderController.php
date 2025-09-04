@@ -13,7 +13,7 @@ use App\Models\DirectRange;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
-
+use Illuminate\Support\Facades\Artisan;
 
 use App\Services\ClaimService;
 use App\Services\UserRangeCalculator;
@@ -105,7 +105,11 @@ class OrderController extends Controller
 
     
         // Also retrieve the current user’s trading wallet balance.
-        $this->walletRecalculator->recalculate($user->id);
+        DB::afterCommit(function () use ($user) {
+                Artisan::call('wallets:recalculate', [
+                    'userRange' => $user->id,
+                ]);
+            });
 
         $wallet = Wallet::where('user_id', $user->id)->first();
         $tradingBalance = $wallet ? $wallet->trading_wallet : 0;

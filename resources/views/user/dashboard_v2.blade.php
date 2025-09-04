@@ -345,7 +345,12 @@
                         <div class="d-flex flex-column align-items-center gap-1 mt-2">
                             @if($totalStaked > 0)
                                 <span class="badge rounded-pill bg-success text-white px-3 py-1">
-                                    Current ROI: {{ number_format($currentStakingRate * 100, 2) }}% weekly
+                                    Current ROI: {{ number_format(($currentStakingRate * 100) / 7, 2) }}% daily
+                                </span>
+                            @endif
+                            @if($pendingUnstake > 0)
+                                <span class="badge rounded-pill bg-success text-white px-3 py-1">
+                                    Pending unstake: ${{ number_format($pendingUnstake, 2) }}
                                 </span>
                             @endif
                         </div>
@@ -1845,7 +1850,7 @@
                     const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
             
                     try {
-                        const res = await fetch("/user/generate-wallet-address", {
+                        const res = await fetch("/generate-wallet-address", {
                             method: "POST",
                             credentials: "same-origin",
                             headers: {

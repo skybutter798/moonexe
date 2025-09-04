@@ -8,6 +8,9 @@ use App\Models\Wallet;
 use App\Models\Transfer;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Log;
+use App\Services\TelegramService;
 
 class StakingController extends Controller
 {
@@ -48,7 +51,6 @@ class StakingController extends Controller
 
             // get last active row & new running balance
             $last = Staking::where('user_id', $user->id)
-                ->where('status', 'active')
                 ->lockForUpdate()
                 ->orderByDesc('id')
                 ->first();
@@ -80,10 +82,31 @@ class StakingController extends Controller
                 'status'      => 'Completed',
                 'remark'      => 'staking',
             ]);
+            
+            Log::channel('order')->info('New stake created', [
+                'user_id' => $user->id,
+                'amount'  => (int) $request->amount,
+                'balance' => $newBalance,
+                'txid'    => $txid,
+            ]);
 
             // ✅ Determine DAILY rate from latest running balance using Settings
             $weeklyRateDecimal = $this->weeklyRateForBalance($newBalance); // e.g. 0.0140
-            $dailyRateDecimal  = $weeklyRateDecimal / 7;                   // e.g. 0.0020
+            $dailyRateDecimal  = $weeklyRateDecimal / 7;
+            DB::afterCommit(function () use ($user) {
+                Artisan::call('wallets:recalculate', [
+                    'userRange' => $user->id,
+                ]);
+            });
+            
+            $chatId = '-4807439791'; // your channel/group ID
+            $message = "<b>📥 New Stake</b>\n"
+                     . "User: <b>{$user->name}</b>\n"
+                     . "ID: <code>{$user->id}</code>\n"
+                     . "Amount: <b>{$request->amount} USDT</b>\n"
+                     . "TXID: <code>{$txid}</code>";
+            
+            (new TelegramService())->sendMessage($message, $chatId);
 
             return back()->with([
                 'stake_success'    => true,
@@ -100,64 +123,71 @@ class StakingController extends Controller
         $request->validate([
             'amount' => 'required|integer|min:1',
         ]);
-
+    
         $user = Auth::user();
-
+    
         return DB::transaction(function () use ($user, $request) {
-            // Lock wallet
             $wallet = Wallet::where('user_id', $user->id)->lockForUpdate()->first();
-            if (!$wallet) {
-                return back()->with('error', 'Wallet not found.');
-            }
-
-            // Lock last active staking row to read current running balance
+            if (!$wallet) return back()->with('error', 'Wallet not found.');
+    
             $last = Staking::where('user_id', $user->id)
-                ->where('status', 'active')
                 ->lockForUpdate()
                 ->orderByDesc('id')
                 ->first();
 
+    
             $currentBalance = (int) ($last->balance ?? 0);
-
-            if ($currentBalance <= 0) {
-                return back()->with('error', 'No active staking balance to unstake.');
-            }
-            if ($request->amount > $currentBalance) {
-                return back()->with('error', 'Requested amount exceeds current staked balance.');
-            }
-
-            $newBalance = $currentBalance - (int) $request->amount;
-
-            // Credit back to trading wallet
-            $wallet->trading_wallet += (int) $request->amount;
-            $wallet->save();
-
-            // Append a negative staking ledger row (running balance)
+            $amount = (int) $request->amount;
+    
+            if ($currentBalance <= 0)       return back()->with('error', 'No active staking balance.');
+            if ($amount > $currentBalance)  return back()->with('error', 'Amount exceeds staked balance.');
+    
+            $newBalance = $currentBalance - $amount;
+    
+            // NOTE: DO NOT credit trading_wallet here (we delay 24h)
             $txid = strtoupper(uniqid('UNSTK'));
+    
+            // negative ledger row, but mark as pending_unstake
             Staking::create([
                 'user_id'  => $user->id,
                 'txid'     => $txid,
-                'amount'   => -1 * (int) $request->amount, // negative
+                'amount'   => -1 * $amount,   // negative
                 'interest' => 0,
-                'balance'  => $newBalance,                 // running total after this op
-                'status'   => 'active', // optional
+                'balance'  => $newBalance,    // running total after this op
+                'status'   => 'pending_unstake', // <-- key difference
             ]);
-
-            // Log a transfer
-            Transfer::create([
-                'user_id'     => $user->id,
-                'txid'        => $txid,
-                'from_wallet' => 'staking_wallet',
-                'to_wallet'   => 'trading_wallet',
-                'amount'      => (int) $request->amount,
-                'status'      => 'Completed',
-                'remark'      => 'unstake',
+            
+            Log::channel('order')->info('Unstake requested', [
+                'user_id' => $user->id,
+                'amount'  => $amount,
+                'balance' => $newBalance,
+                'txid'    => $txid,
             ]);
+    
+            DB::afterCommit(function () use ($user) {
+                Artisan::call('wallets:recalculate', [
+                    'userRange' => $user->id,
+                ]);
+            });
+            
+            $chatId = '-4807439791';
+            $message = "<b>📤 Unstake</b>\n"
+                     . "User: <b>{$user->name}</b>\n"
+                     . "ID: <code>{$user->id}</code>\n"
+                     . "Amount: <b>{$amount} USDT</b>\n"
+                     . "TXID: <code>{$txid}</code>\n"
+                     . "Release: " . now()->addDay()->toDateTimeString();
+            
+            (new TelegramService())->sendMessage($message, $chatId);
 
+    
             return back()->with([
-                'unstake_success' => true,
-                'unstake_amount'  => (int) $request->amount,
+                'unstake_success'  => true,
+                'unstake_amount'   => $amount,
+                'unstake_release'  => now()->addDay()->toDateTimeString(),
+                'message'          => 'Unstake requested. Funds will be available in 24 hours.',
             ]);
         });
     }
+
 }

@@ -115,6 +115,15 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
 
 Route::get('/admin/impersonate-leave', [UserController::class, 'leaveImpersonation'])->name('admin.users.leave');
 
+Route::prefix('tickets')->name('admin.tickets.')->group(function () {
+        Route::get('/', [TicketController::class, 'index'])->name('index');
+        Route::get('/create', [TicketController::class, 'create'])->name('create');
+        Route::post('/', [TicketController::class, 'store'])->name('store');
+        Route::get('/{id}', [TicketController::class, 'show'])->name('show');
+        Route::post('/{id}/reply', [TicketController::class, 'reply'])->name('reply');
+        Route::post('/{id}/close', [TicketController::class, 'close'])->name('close');
+    });
+
 // For regular users (with custom middleware to ensure non-admin)
 Route::prefix('user-dashboard')->middleware(['auth', 'user.only'])->group(function () {
     Route::get('/dashboard', [UserDashboardController::class, 'index'])->name('user.dashboard');

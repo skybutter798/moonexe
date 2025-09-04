@@ -137,9 +137,16 @@ class DashboardController extends Controller
             ->get();
             
         $totalStaked = Staking::where('user_id', $userId)
-            ->where('status', 'active')
             ->orderByDesc('id')
             ->value('balance') ?? 0;
+        
+        $pendingUnstake = abs(
+                Staking::where('user_id', $userId)
+                    ->where('status', 'pending_unstake')
+                    ->sum('amount')
+            );
+
+
         
         // Load tier values from settings
         $roi100     = (float) Setting::where('name', 'staking_roi_100')->value('value')     ?? 0.007;
@@ -200,6 +207,7 @@ class DashboardController extends Controller
             'campaignTopups' => $campaignTopups,
             'topupBeforeBoost' => $topupBeforeBoost,
             'totalStaked' => $totalStaked,
+            'pendingUnstake' => $pendingUnstake,
             'currentStakingRate' => $currentStakingRate,
         ];
         

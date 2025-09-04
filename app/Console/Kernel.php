@@ -30,6 +30,7 @@ class Kernel extends ConsoleKernel
         $yesterday = Carbon::yesterday()->toDateString();
         $schedule->command("record:assets:backfill --userIds=3,800 --start={$yesterday}") ->dailyAt('01:00');
         $schedule->command("record:profit:backfill --userIds=3,800 --start={$yesterday}") ->dailyAt('02:00');
+        $schedule->command('staking:release-unstakes')->everyFiveMinutes();
     }
 
     /**
