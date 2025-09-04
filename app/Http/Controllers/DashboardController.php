@@ -13,7 +13,7 @@ use App\Models\Setting;
 use App\Models\Staking;
 use Carbon\Carbon;
 use App\Services\WalletRecalculator;
-
+use Illuminate\Support\Facades\Log;
 
 class DashboardController extends Controller
 {
@@ -77,9 +77,10 @@ class DashboardController extends Controller
             ->exists();
         $forexRecords = \App\Models\MarketData::orderBy('symbol')->get();
         $announcements = Annoucement::where('status', 1)
+            ->where('show', 1)
             ->orderBy('updated_at', 'desc')
-            ->take(1)
             ->get();
+
 
                        
         // Set the MEGADROP campaign time (converted from New York to Malaysia time)
@@ -160,6 +161,23 @@ class DashboardController extends Controller
         
         // Real trading balance = total - campaign bonus
         $realTradingBalance = max(0, $wallets->trading_wallet - $campaignTradingBonus);
+        
+        $daysSinceCreated = $user && $user->created_at
+            ? Carbon::parse($user->created_at)->diffInDays(Carbon::now())
+            : 0;
+        
+        // Fee tiers: >200d => 0%, >100d => 10%, else 20%
+        if ($daysSinceCreated > 200) {
+            $feeRate = 0.00;
+        } elseif ($daysSinceCreated > 100) {
+            $feeRate = 0.10;
+        } else {
+            $feeRate = 0.20;
+        }
+        
+        // Pre-calc estimated fee & net for display
+        $estimatedFee = round($realTradingBalance * $feeRate, 2);
+        $estimatedNet = round($realTradingBalance - $estimatedFee, 2);
         $campaignBalance = DB::table('settings')->where('name', 'cam_balance')->value('value') ?? 0;
         
         $data = [
@@ -187,6 +205,10 @@ class DashboardController extends Controller
         
         $data['tradermadeApiKey'] = config('services.tradermade.key');
         $data['announcements'] = $announcements;
+        $data['daysSinceCreated'] = $daysSinceCreated;
+        $data['feeRate']          = $feeRate;
+        $data['estimatedFee']     = $estimatedFee;
+        $data['estimatedNet']     = $estimatedNet;
         
         if ($user->isAdmin) {
             return view('admin.dashboard', $data);
@@ -245,23 +267,25 @@ class DashboardController extends Controller
         return redirect()->back()->withErrors(['promotion_code' => 'Invalid promotion code.']);
     }
     
+    
     public function showAnnouncements(Request $request)
     {
-        $query = Annoucement::query()->orderBy('created_at', 'desc');
-    
-        if ($request->filled('start_date')) {
-            $query->whereDate('created_at', '>=', $request->input('start_date'));
-        }
-    
-        if ($request->filled('end_date')) {
-            $query->whereDate('created_at', '<=', $request->input('end_date'));
-        }
+        $query = Annoucement::query()
+            ->where('show', 1)
+            ->orderBy('created_at', 'desc');
     
         $announcements = $query->get();
     
+        // Log announcement IDs and names where show = 1
+        Log::info('[Announcement] Visible records:', $announcements->map(function ($item) {
+            return [
+                'id' => $item->id,
+                'name' => $item->name,
+                'show' => $item->show,
+            ];
+        })->toArray());
+    
         return view('user.announcements', compact('announcements'));
     }
-
-
 
 }

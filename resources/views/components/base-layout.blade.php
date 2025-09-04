@@ -117,7 +117,7 @@
     <script>
       window.gtranslateSettings = {
         default_language: "en",
-        languages: ["en","cs","zh-CN","fr","de","it","pt","ro","es","tr","ja","ko","vi","id","hi"],
+        languages: ["en","cs","fr","de","it","pt","ro","es","tr","ja","ko","vi","id","hi"],
         // ← we’ll override this per-wrapper below
       };
     </script>

@@ -18,7 +18,13 @@
 
             <div class="form-group">
                 <label for="email">{{ __('Email Address') }}</label>
-                <input id="email" type="email" name="email" value="{{ $email ?? old('email') }}" required autofocus>
+            
+                {{-- Show email as readonly --}}
+                <input id="email" type="email" name="email_display" value="{{ $email ?? old('email') }}" readonly class="form-control">
+            
+                {{-- Actual email input to be submitted (hidden) --}}
+                <input type="hidden" name="email" value="{{ $email ?? old('email') }}">
+            
                 @error('email')
                     <div class="error-msg">{{ $message }}</div>
                 @enderror

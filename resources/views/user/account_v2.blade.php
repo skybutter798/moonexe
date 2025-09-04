@@ -200,27 +200,47 @@
         </div>
       </div>
 
-      {{-- Security Password --}}
-      <h4 class="text-primary fw-bold mb-3">Set Security Password</h4>
-      <div class="card mb-4">
-        <div class="card-body">
-          <form action="{{ route('user.changeSecurityPassword') }}" method="POST" id="changeSecurityForm">
-            @csrf
-            @method('PUT')
-            <div class="mb-3">
-              <label class="form-label">New Security Password</label>
-              <input type="password" class="form-control form-control-sm" name="security_password" required>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Confirm Security Password</label>
-              <input type="password" class="form-control form-control-sm" name="security_password_confirmation" required>
-            </div>
-            <div class="text-center">
-              <button type="submit" class="btn btn-primary">Set Security Password</button>
-            </div>
-          </form>
+        {{-- Security Password --}}
+        <h4 class="text-primary fw-bold mb-3">Set Security Password</h4>
+        <div class="card mb-4">
+          <div class="card-body">
+            <form action="{{ route('user.changeSecurityPassword') }}" method="POST" id="changeSecurityForm">
+              @csrf
+              @method('PUT')
+        
+              {{-- NEW: Require current account login password --}}
+              <div class="mb-3">
+                <label class="form-label">Current Account Password</label>
+                <input
+                  type="password"
+                  class="form-control form-control-sm"
+                  name="current_account_password"
+                  required
+                >
+                @error('current_account_password')
+                  <small class="text-danger">{{ $message }}</small>
+                @enderror
+              </div>
+        
+              <div class="mb-3">
+                <label class="form-label">New Security Password</label>
+                <input type="password" class="form-control form-control-sm" name="security_password" required>
+                @error('security_password')
+                  <small class="text-danger">{{ $message }}</small>
+                @enderror
+              </div>
+        
+              <div class="mb-3">
+                <label class="form-label">Confirm Security Password</label>
+                <input type="password" class="form-control form-control-sm" name="security_password_confirmation" required>
+              </div>
+        
+              <div class="text-center">
+                <button type="submit" class="btn btn-primary">Set Security Password</button>
+              </div>
+            </form>
+          </div>
         </div>
-      </div>
     </div>
   </div>
 </div>

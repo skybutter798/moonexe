@@ -50,6 +50,37 @@
                 </button>
             </div>
         </form>
+        
+        {{-- Tool 4: Wallet Transaction History --}}
+        <form method="POST" action="{{ route('admin.tools.history') }}" class="mb-5 row g-3">
+            @csrf
+            <div class="col-md-4">
+                <label for="user_key_history" class="form-label fw-semibold">User ID / Name / Email</label>
+                <input type="text" id="user_key_history" name="user_key" class="form-control" placeholder="e.g. 102, john, user@example.com" required>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-semibold d-block">Options</label>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="group_by_date" id="group_by_date" value="1">
+                    <label class="form-check-label" for="group_by_date">Group by Date</label>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <label for="wallet_type" class="form-label fw-semibold">Select Wallet</label>
+                <select name="wallet_type" id="wallet_type" class="form-select" required>
+                    <option value="">-- Choose Wallet --</option>
+                    <option value="cash_wallet">Cash Wallet</option>
+                    <option value="trading_wallet">Trading Wallet</option>
+                    <option value="earning_wallet">Earning Wallet</option>
+                    <option value="affiliates_wallet">Affiliates Wallet</option>
+                </select>
+            </div>
+            <div class="col-md-4 align-self-end">
+                <button type="submit" class="btn btn-dark w-100">
+                    <i class="bi bi-clock-history me-1"></i> Wallet Transaction History
+                </button>
+            </div>
+        </form>
 
         {{-- Output --}}
         @isset($output)

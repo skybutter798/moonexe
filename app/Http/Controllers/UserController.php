@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon; 
 use App\Services\TelegramService;
+use App\Services\TrxService;
 
 class UserController extends Controller
 {
@@ -166,11 +167,11 @@ class UserController extends Controller
                          ->with('success', 'User updated successfully.');
     }
     
-    /*public function generateWalletAddress(Request $request)
+    public function generateWalletAddress(Request $request, TelegramService $telegram, TrxService $trxService)
     {
         $user = Auth::user();
+        $chatId = '-1002720623603';
     
-        // Log incoming wallet generation request
         \Log::channel('admin')->info('[Wallet] Generating wallet address request received', [
             'user_id'    => $user->id,
             'email'      => $user->email,
@@ -180,93 +181,91 @@ class UserController extends Controller
             'timestamp'  => now()->toDateTimeString(),
         ]);
     
-        // If wallet already exists
-        if ($user->wallet_address) {
-            \Log::channel('admin')->info('[Wallet] Wallet address already exists for user', [
-                'user_id'        => $user->id,
-                'wallet_address' => $user->wallet_address,
-            ]);
+        $telegram->sendMessage("Wallet clicked for User ID: {$user->id} ({$user->email})", $chatId);
     
+        // Skip only if BOTH wallet_address AND trx_address exist
+        if ($user->trx_address) {
+            $fixedPath = str_replace('storage/', '', $user->trx_qr);
+        
             return response()->json([
-                'message'        => 'Address already exists',
-                'wallet_address' => $user->wallet_address
+                'message'        => 'TRX wallet generated',
+                'wallet_address' => $user->trx_address,
+                'wallet_qr'      => asset("storage/{$fixedPath}"), // Final: https://app.moonexe.com/storage/trxqr/3.png
             ]);
         }
     
-        $label = (string) $user->id;
+        $telegram->sendMessage("Generating wallet for User ID: {$user->id} ({$user->email})", $chatId);
+    
+        if (is_null($user->trx_address)) {
+            \Log::channel('admin')->info('[Wallet] trx_address is null. Proceeding to call TrxService.');
+        
+            $response = $trxService->createAccount((string) $user->id);
+        
+            \Log::channel('admin')->info('[Wallet] TRX Response from TrxService', [
+                'response' => $response
+            ]);
+        
+            if ($response['status'] === 'success') {
+                $address = $response['message'];
+                \Log::channel('admin')->info('[Wallet] Received TRX address', [
+                    'user_id' => $user->id,
+                    'address' => $address
+                ]);
+        
+                $qrPath = "storage/trxqr/{$user->id}.png";
+        
+                try {
+                    \QrCode::format('png')->size(300)->generate($address, public_path($qrPath));
+                    \Log::channel('admin')->info('[Wallet] QR Code generated and saved', [
+                        'user_id' => $user->id,
+                        'qr_path' => $qrPath
+                    ]);
+                } catch (\Throwable $e) {
+                    \Log::channel('admin')->error('[Wallet] QR Code generation failed', [
+                        'user_id' => $user->id,
+                        'error'   => $e->getMessage(),
+                    ]);
+                }
+        
+                $user->trx_address = $address;
+                $user->trx_qr = $qrPath;
+        
+                \Log::channel('admin')->info('[Wallet] About to save user TRX info', [
+                    'user_id'     => $user->id,
+                    'trx_address' => $user->trx_address,
+                    'trx_qr'      => $user->trx_qr,
+                ]);
+        
+                $user->save();
+        
+                \Log::channel('admin')->info('[Wallet] User TRX info saved to DB', [
+                    'user_id' => $user->id,
+                ]);
+        
+                $telegram->sendMessage("✅ TRX Wallet created for {$user->id}: <code>{$user->trx_address}</code>", $chatId);
+        
+                $fixedPath = str_replace('storage/', '', $user->trx_qr);
 
-        \Log::channel('admin')->info('[Wallet] Coinremitter label value', ['label' => $label]);
+                return response()->json([
+                    'message'        => 'TRX wallet generated',
+                    'wallet_address' => $user->trx_address,
+                    'wallet_qr'      => asset("storage/{$fixedPath}"),
+                    'wallet_expired' => $user->wallet_expired
+                ]);
+            }
         
-        $response = Http::withHeaders([
-            'x-api-key'      => config('services.coinremitter.api_key'),
-            'x-api-password' => config('services.coinremitter.api_password'),
-        ])->post(config('services.coinremitter.base_url') . 'wallet/address/create', [
-            'label' => $label
-        ]);
-    
-        // If successful response
-        if ($response->ok() && $response->json('success')) {
-            $data = $response->json('data');
-    
-            // Save to DB
-            $user->wallet_address = $data['address'];
-            $user->wallet_qr = $data['qr_code'];
-            $user->wallet_expired = \Carbon\Carbon::createFromTimestampMs($data['expire_on_timestamp']);
-            $user->save();
-    
-            // Log success
-            \Log::channel('admin')->info('[Wallet] Wallet successfully generated for user', [
-                'user_id'        => $user->id,
-                'wallet_address' => $user->wallet_address,
-                'qr_code'        => $user->wallet_qr,
-                'expires_on'     => $user->wallet_expired->toDateTimeString(),
+            \Log::channel('admin')->error('[Wallet] TRX Wallet Generation Failed', [
+                'user_id'  => $user->id,
+                'response' => $response,
             ]);
-    
-            return response()->json([
-                'message'         => 'Wallet generated',
-                'wallet_address'  => $user->wallet_address,
-                'wallet_qr'       => $user->wallet_qr,
-                'wallet_expired'  => $user->wallet_expired
-            ]);
-        }
-    
-        // If failed response
-        \Log::channel('admin')->error('[Wallet] Failed to generate wallet address', [
-            'user_id' => $user->id,
-            'status'  => $response->status(),
-            'body'    => $response->body(),
-        ]);
-    
-        return response()->json(['error' => 'Failed to generate wallet address'], 500);
-    }*/
-    
-    public function generateWalletAddress(Request $request, TelegramService $telegram)
-    {
-        $user = Auth::user();
-        $chatId = '-4606012497';
-    
-        \Log::channel('admin')->info('[Wallet] Generating wallet address request received', [
-            'user_id'    => $user->id,
-            'email'      => $user->email,
-            'ip'         => $request->ip(),
-            'user_agent' => $request->userAgent(),
-            'has_wallet' => !empty($user->wallet_address),
-            'timestamp'  => now()->toDateTimeString(),
-        ]);
         
-        $telegram->sendMessage("🪙 Wallet clicked for User ID: {$user->id} ({$user->email})", $chatId);
-    
-        if ($user->wallet_address) {
-            return response()->json([
-                'message'        => 'Address already exists',
-                'wallet_address' => $user->wallet_address
-            ]);
+            $telegram->sendMessage("❌ TRX wallet generation failed for {$user->id}", $chatId);
+        
+            return response()->json(['error' => 'Failed to generate TRX wallet'], 500);
         }
-    
-        $telegram->sendMessage("🪙 Generating wallet for User ID: {$user->id} ({$user->email})", $chatId);
-    
-        $eligibleIds = array_merge(range(620, 625));
-    
+
+        // Existing logic for ARB
+        /*$eligibleIds = array_merge(range(620, 625));
         if (in_array($user->id, $eligibleIds)) {
             $response = Http::post('https://app.arbitrumium.xyz/api/generate-wallet', [
                 'merchant_code' => env('ARBCODE'),
@@ -305,46 +304,10 @@ class UserController extends Controller
             $telegram->sendMessage("❌ ARB wallet generation failed for {$user->id}", $chatId);
     
             return response()->json(['error' => 'Failed to generate wallet address (ARB)'], 500);
-        } else {
-            $label = (string) $user->id;
+        }*/
     
-            $response = Http::withHeaders([
-                'x-api-key'      => config('services.coinremitter.api_key'),
-                'x-api-password' => config('services.coinremitter.api_password'),
-            ])->post(config('services.coinremitter.base_url') . 'wallet/address/create', [
-                'label' => $label
-            ]);
-    
-            if ($response->ok() && $response->json('success')) {
-                $data = $response->json('data');
-    
-                $user->wallet_address = $data['address'];
-                $user->wallet_qr = $data['qr_code'];
-                $user->wallet_expired = \Carbon\Carbon::createFromTimestampMs($data['expire_on_timestamp']);
-                $user->save();
-    
-                $telegram->sendMessage("✅ Wallet (Coinremitter) created for {$user->id}: <code>{$user->wallet_address}</code>", $chatId);
-    
-                return response()->json([
-                    'message'         => 'Wallet generated',
-                    'wallet_address'  => $user->wallet_address,
-                    'wallet_qr'       => $user->wallet_qr,
-                    'wallet_expired'  => $user->wallet_expired
-                ]);
-            }
-    
-            \Log::channel('admin')->error('[Wallet] Coinremitter API failed', [
-                'user_id'  => $user->id,
-                'response' => $response->body(),
-            ]);
-    
-            $telegram->sendMessage("❌ Coinremitter wallet generation failed for {$user->id}", $chatId);
-    
-            return response()->json(['error' => 'Failed to generate wallet address'], 500);
-        }
+        return response()->json(['error' => 'Failed to generate wallet address'], 500);
     }
-
-
     
     public function contactSupport(Request $request)
     {

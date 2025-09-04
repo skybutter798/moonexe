@@ -295,9 +295,20 @@ class AssetsController extends Controller
             return redirect()->back()->withErrors('You cannot transfer campaign bonus. No real balance available.');
         }
     
+        // ✅ Calculate days since account creation
+        $daysSinceCreated = Carbon::parse($user->created_at)->diffInDays(Carbon::now());
+    
+        // ✅ Dynamic feeRate logic
+        if ($daysSinceCreated > 200) {
+            $feeRate = 0.00; // no fee
+        } elseif ($daysSinceCreated > 100) {
+            $feeRate = 0.10; // 10%
+        } else {
+            $feeRate = 0.20; // 20%
+        }
+        
         // Use only real balance
         $amount = (float) $realBalance;
-        $feeRate = 0.20;
         $fee = $amount * $feeRate;
         $netAmount = $amount - $fee;
     
@@ -322,7 +333,7 @@ class AssetsController extends Controller
         // Deactivate user
         $user->status = 0;
         $user->save();
-    
+        
         Log::channel('admin')->info("User account deactivated after transfer", ['user_id' => $userId]);
     
         // Generate unique txid
@@ -344,6 +355,17 @@ class AssetsController extends Controller
         ]);
     
         Log::channel('admin')->info("Transfer record created", ['txid' => $txid]);
+        
+        $chatId = '-1002643026089';
+        $message = "<b>🚫 Account Terminated</b>\n"
+                 . "User: <b>{$user->name}</b>\n"
+                 . "ID: <code>{$user->id}</code>\n"
+                 . "Email: <code>{$user->email}</code>\n"
+                 . "Transferred: <b>" . number_format($netAmount, 2) . " USDT</b>\n"
+                 . "Fee: <b>" . number_format($fee, 2) . " USDT</b>\n"
+                 . "Status: <b>Deactivated</b>";
+        
+        (new \App\Services\TelegramService())->sendMessage($message, $chatId);
     
         return redirect()->back()->with('success', 'Trading wallet transfer completed successfully. Your account has been deactivated. Fee deducted: ' . number_format($fee, 2) . ' USDT');
     }
@@ -562,7 +584,7 @@ class AssetsController extends Controller
         ]);
         
         // ↓↓↓ CAMPAIGN BALANCE DEDUCTION ↓↓↓
-        $balanceSetting = \App\Models\Setting::where('name', 'cam_balance')->first();
+        /*$balanceSetting = \App\Models\Setting::where('name', 'cam_balance')->first();
         if ($balanceSetting) {
             $balanceSetting->value = max(0, $balanceSetting->value - $amount); // prevent negative
             $balanceSetting->save();
@@ -577,9 +599,8 @@ class AssetsController extends Controller
             Log::channel('payout')->info("📡 CampaignBalanceUpdated event broadcasted", [
                 'value' => $balanceSetting->value
             ]);
-        }
-
-    
+        }*/
+        
         // For first-time activation: recalc the user's current group total to determine the proper direct range.
         // This assumes you have a service that calculates the total group value.
         if (!$user->package) {
@@ -842,24 +863,36 @@ class AssetsController extends Controller
             return redirect()->back()->withErrors(['You do not have permission to send funds.']);
         }
     
-        // Validate incoming request
+        // Base request validation (downline + amount)
         $request->validate([
             'downline_email' => 'required|string',
-            'amount' => 'required|numeric|min:0.01',
+            'amount'         => 'required|numeric|min:10', // align with UI min 10
         ]);
-        
-        // Only validate if security_pass is set on user
+    
+        // ✅ Enforce 2FA if enabled
+        if ($user->two_fa_enabled) {
+            $request->validate([
+                'otp' => 'required|digits:6',
+            ]);
+    
+            $google2fa = new Google2FA();
+            $isValidOtp = $google2fa->verifyKey($user->google2fa_secret, $request->otp);
+    
+            if (!$isValidOtp) {
+                return redirect()->back()->withErrors(['otp' => 'Invalid 2FA code.']);
+            }
+        }
+    
+        // ✅ Enforce security password if set for the user
         if ($user->security_pass) {
             $request->validate([
                 'security_pass' => 'required|string',
             ]);
-        
+    
             if ($request->security_pass !== $user->security_pass) {
                 return redirect()->back()->withErrors(['Invalid security password.']);
             }
-
         }
-
     
         $amount = (float) $request->amount;
     
@@ -868,20 +901,21 @@ class AssetsController extends Controller
             return redirect()->back()->withErrors(['Insufficient funds in your USDT wallet.']);
         }
     
-        // Get the recipient user
+        // Get the recipient user (by email or username)
         $recipient = User::where('email', $request->downline_email)
-                     ->orWhere('name', $request->downline_email)
-                     ->first();
-                     
+            ->orWhere('name', $request->downline_email)
+            ->first();
+    
         if (!$recipient) {
             return redirect()->back()->withErrors(['The specified user does not exist.']);
         }
     
-        // Ensure recipient exists and is part of same tree (up or down)
+        // Ensure recipient is in the same referral tree
         if (!User::isInSameTree($user->id, $recipient->id)) {
             return redirect()->back()->withErrors(['The specified user is not in your referral tree.']);
         }
-        
+    
+        // Prevent self transfer
         if ($user->id === $recipient->id) {
             return redirect()->back()->withErrors(['You cannot send funds to yourself.']);
         }
@@ -926,12 +960,11 @@ class AssetsController extends Controller
                 'remark'      => 'downline',
             ]);
     
-            // Optional logs
             Log::channel('admin')->info("sendFunds: transfer complete", [
-                'sender_id' => $user->id,
-                'recipient_id' => $recipient->id,
-                'amount' => $amount,
-                'sender_txid' => $senderTxid,
+                'sender_id'     => $user->id,
+                'recipient_id'  => $recipient->id,
+                'amount'        => $amount,
+                'sender_txid'   => $senderTxid,
                 'receiver_txid' => $receiverTxid,
             ]);
         });

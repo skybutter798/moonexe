@@ -14,5 +14,6 @@ class Annoucement extends Model
         'content',
         'status',
         'banner_image',
+        'show',
     ];
 }

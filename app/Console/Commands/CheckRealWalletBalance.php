@@ -169,28 +169,42 @@ class CheckRealWalletBalance extends Command
 
             $netMargin = $tradingIn - $tradingOut;
 
+            // 5. Total Withdrawal
+            $totalWithdrawal = DB::table('withdrawals')
+                ->where('user_id', $user->id)
+                ->where('status', 'Completed')
+                ->sum('amount');
+            
+            // Available Fund = Total Affiliates Earning - Total Withdrawal
+            $availableFund = $affiliatesEarning - $totalWithdrawal;
+            
             // Telegram Message
             $message = <<<EOL
-<b>REAL WALLET BREAKDOWN</b>
+            <b>REAL WALLET BREAKDOWN</b>
+            
+            💼 USER DETAILS
+            |—— <b>ID:</b> <code>{$user->id}</code>
+            |—— <b>Name:</b> {$user->name}
+            |—— <b>Email:</b> {$user->email}
+            |—— <b>Referred By:</b> {$referrerDisplay}
+            
+            💰 DEPOSIT & EARNINGS
+            |—— <b>Real Deposit:</b> {$totalDeposit}
+            |—— <b>ROI Earnings:</b> {$directEarning}
+            
+            🤝 AFFILIATE EARNINGS
+            |—— <b>Matching:</b> {$affiliatePayout}
+            |—— <b>Direct:</b> {$affiliateDirect}
+            |—— <b>Total:</b> {$affiliatesEarning}
 
-💼 USER DETAILS
-|—— <b>ID:</b> <code>{$user->id}</code>
-|—— <b>Name:</b> {$user->name}
-|—— <b>Email:</b> {$user->email}
-|—— <b>Referred By:</b> {$referrerDisplay}
+            💵 AVAILABLE FUND
+            |—— <b>Total Withdrawal:</b> {$totalWithdrawal}
+            |—— <b>Available Fund:</b> {$availableFund}
+            
+            📦 DOWNLINE MARGIN
+            |—— <b>Net Trading Margin:</b> {$netMargin}
+            EOL;
 
-💰 DEPOSIT & EARNINGS
-|—— <b>Real Deposit:</b> {$totalDeposit}
-|—— <b>ROI Earnings:</b> {$directEarning}
-
-🤝 AFFILIATE EARNINGS
-|—— <b>Matching:</b> {$affiliatePayout}
-|—— <b>Direct:</b> {$affiliateDirect}
-|—— <b>Total:</b> {$affiliatesEarning}
-
-📦 DOWNLINE MARGIN
-|—— <b>Net Trading Margin:</b> {$netMargin}
-EOL;
 
             // Print in terminal
             $this->line($message);

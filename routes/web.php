@@ -15,7 +15,9 @@ use App\Http\Controllers\FaqController;
 use App\Http\Controllers\VerificationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\StakingController;
-
+use App\Http\Controllers\Admin\TicketController;
+use App\Http\Controllers\UserTicketController;
+use App\Http\Controllers\WebhookController;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -106,6 +108,7 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::post('/walletreport', [AdminToolController::class, 'walletReport'])->name('admin.tools.walletReport');
     Route::post('/walletbreakdown', [AdminToolController::class, 'realWalletBreakdown'])->name('admin.tools.realWalletBreakdown');
     Route::post('/walletflow', [AdminToolController::class, 'walletFlowReport'])->name('admin.tools.walletFlowReport');
+    Route::post('/wallet-history', [AdminToolController::class, 'walletHistory'])->name('admin.tools.history');
     
     Route::get('/impersonate/{id}', [UserController::class, 'impersonate'])->name('admin.users.impersonate');
 });
@@ -162,3 +165,5 @@ Route::post('/2fa/disable', [AuthController::class, 'disable2FA'])->name('user.d
 Route::put('/user/security-pass', [AccountController::class, 'changeSecurityPassword'])->name('user.changeSecurityPassword');
 
 Route::get('/pair/{pair}/volumes', [App\Http\Controllers\OrderController::class, 'volumes']);
+
+Route::match(['get', 'post'], '/response', [WebhookController::class, 'trxPayment']);

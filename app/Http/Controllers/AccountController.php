@@ -109,10 +109,26 @@ class AccountController extends Controller
     public function changeSecurityPassword(Request $request)
     {
         $request->validate([
-            'security_password' => 'required|min:6|confirmed',
+            'current_account_password'      => 'required',              // NEW: must enter current login password
+            'security_password'             => 'required|min:6|confirmed',
         ]);
     
         $user = Auth::user();
+    
+        // Verify the current account login password
+        if (!\Illuminate\Support\Facades\Hash::check($request->current_account_password, $user->password)) {
+            return back()
+                ->withErrors(['current_account_password' => 'Current account password is incorrect.'])
+                ->withInput();
+        }
+    
+        // Prevent using the same string as account password
+        if (\Illuminate\Support\Facades\Hash::check($request->security_password, $user->password)) {
+            return back()
+            ->withErrors(['security_password' => 'Security password cannot be the same as your account login password.'])
+            ->withInput();
+        }
+    
         $user->security_pass = $request->security_password;
         $user->save();
     

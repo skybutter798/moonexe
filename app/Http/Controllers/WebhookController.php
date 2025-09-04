@@ -14,61 +14,64 @@ class WebhookController extends Controller
 {
     public function handle(Request $request, CoinDepositService $coinService)
     {
-        // 1. Log raw payload arrival
         Log::channel('admin')->info('[Webhook] Received payload', $request->all());
-
+    
         $payload = $request->all();
         
         if (!isset($payload['type'])) {
             Log::channel('admin')->warning('[Webhook] Missing "type" field', $payload);
             return response()->json(['message' => 'OK - Missing type'], 200);
         }
-
-        if (! isset($payload['type'])) {
-            Log::channel('admin')->warning('[Webhook] Missing "type" field', $payload);
-            return response()->json(['error' => 'Missing type'], 400);
-        }
-
+    
         if ($payload['type'] !== 'receive') {
             Log::channel('admin')->info("[Webhook] Ignored type={$payload['type']}");
             return response()->json(['message' => 'Ignored'], 200);
         }
-
+    
         if (empty($payload['address'])) {
             Log::channel('admin')->error('[Webhook] Missing address in payload', $payload);
             return response()->json(['error' => 'Missing address'], 400);
         }
-
+    
         $user = User::where('wallet_address', $payload['address'])->first();
         if (! $user) {
             Log::channel('admin')->warning('[Webhook] No user for address', ['address' => $payload['address']]);
             return response()->json(['error' => 'Unknown address'], 404);
         }
-        
+    
         try {
             $amount = (float) ($payload['amount'] ?? 0);
             if ($amount <= 0) {
                 Log::channel('admin')->warning('[Webhook] Invalid amount', ['amount' => $payload['amount']]);
                 return response()->json(['error' => 'Invalid amount'], 400);
             }
-
+    
             $externalTxid = $payload['txid'] ?? null;
-            $walletName = $payload['wallet_name'] ?? null;
-
-            $deposit = $coinService->depositToUser(
+            $walletName   = $payload['wallet_name'] ?? null;
+    
+            // ✅ SUPPORT THE NEW RETURN FORMAT
+            [$deposit, $isNew] = $coinService->depositToUser(
                 $user->id,
-                (float) $payload['amount'],
+                $amount,
                 $payload['address'],
                 $externalTxid,
                 $walletName
             );
-
+    
+            if (! $isNew) {
+                Log::channel('admin')->info('[Webhook] Duplicate TXID - already processed', [
+                    'txid' => $externalTxid,
+                    'user_id' => $user->id,
+                ]);
+                return response()->json(['message' => 'Duplicate TXID'], 200);
+            }
+    
             Log::channel('admin')->info('[Webhook] Deposit processed successfully', [
                 'deposit_id' => $deposit->id,
                 'user_id'    => $user->id,
                 'amount'     => $amount,
             ]);
-
+    
             return response()->json(['message' => 'Deposit processed'], 200);
         } catch (\Exception $e) {
             Log::channel('admin')->error('[Webhook] Exception in deposit processing', [
@@ -78,6 +81,7 @@ class WebhookController extends Controller
             return response()->json(['error' => 'Server error'], 500);
         }
     }
+
     
     public function receive(Request $request)
     {
@@ -93,7 +97,7 @@ class WebhookController extends Controller
         }
     
         $payload = $request->all();
-        Log::info('[Webhook] Received JSON:', $payload);
+        //Log::info('[Webhook] Received JSON:', $payload);
     
         if (($payload['status'] ?? null) !== 'Paid') {
             return response()->json(['status' => 'ignored'], 200);
@@ -150,13 +154,90 @@ class WebhookController extends Controller
             return response()->json(['error' => 'Insert failed'], 500);
         }
     }
-
     
     public function payment(Request $request, CoinDepositService $coinService)
     {
         Log::channel('admin')->info('[Webhook] Received payload', $request->all());
     
         return response()->json(['status' => 'success'], 200);
+    }
+    
+    public function trxPayment(Request $request, CoinDepositService $coinService)
+    {
+        Log::info('[TRX Webhook] Raw payload', [
+            'headers'   => $request->headers->all(),
+            'payload'   => $request->all(),
+            'raw'       => $request->getContent(),
+            'ip'        => $request->ip(),
+            'timestamp' => now()->toDateTimeString(),
+        ]);
+    
+        $payload = $request->all();
+    
+        if (
+            !isset($payload['status']) || $payload['status'] !== 'success' ||
+            !isset($payload['data']) || !is_array($payload['data']) || empty($payload['data'])
+        ) {
+            Log::warning('[TRX Webhook] Invalid or missing payload structure', $payload);
+            return response()->json(['error' => 'Invalid structure'], 400);
+        }
+    
+        foreach ($payload['data'] as $tx) {
+            $hash  = $tx['hash'] ?? null;
+            $from  = $tx['from'] ?? null;
+            $to    = $tx['to'] ?? null;
+            $value = $tx['value'] ?? null;
+            $token = $tx['tokenCode'] ?? null;
+    
+            if (!$to || !$value || !$token || !$hash) {
+                Log::warning('[TRX Webhook] Skipped TX due to missing fields', $tx);
+                continue;
+            }
+    
+            $user = User::where('trx_address', $to)->first();
+            if (!$user) {
+                Log::warning('[TRX Webhook] No user found for TRX address', ['address' => $to]);
+                continue;
+            }
+    
+            try {
+                $amount = (float) $value;
+                if ($amount <= 0) {
+                    Log::warning('[TRX Webhook] Invalid amount', ['amount' => $value]);
+                    continue;
+                }
+    
+                [$deposit, $isNew] = $coinService->depositToUser(
+                    $user->id,
+                    $amount,
+                    $to,
+                    $hash,
+                    'TRX-USDT'
+                );
+    
+                if (!$isNew) {
+                    Log::info('[TRX Webhook] Duplicate TXID ignored', [
+                        'user_id' => $user->id,
+                        'txid'    => $hash,
+                    ]);
+                } else {
+                    Log::info('[TRX Webhook] Deposit successful', [
+                        'user_id'    => $user->id,
+                        'amount'     => $amount,
+                        'hash'       => $hash,
+                        'deposit_id' => $deposit->id,
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                Log::error('[TRX Webhook] Exception during deposit', [
+                    'message' => $e->getMessage(),
+                    'trace'   => $e->getTraceAsString(),
+                    'txid'    => $hash,
+                ]);
+            }
+        }
+    
+        return response()->json(['status' => 'processed'], 200);
     }
 
 }

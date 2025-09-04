@@ -84,4 +84,20 @@ Route::get('/pair/{pair}/latest-payment', function ($pairId) {
     return response()->json(['success' => false]);
 });
 
+Route::post('/erc20response', function (Request $request) {
+    $ip = $request->ip();
+    Log::info('[ERC20 Response] IP: ' . $ip);
+    Log::info('[ERC20 Response] Payload:', $request->all());
+
+    return response()->json(['status' => 'ok']);
+});
+
+Route::post('/bep20response', function (Request $request) {
+    $ip = $request->ip();
+    Log::info('[BEP20 Response] IP: ' . $ip);
+    Log::info('[BEP20 Response] Payload:', $request->all());
+
+    return response()->json(['status' => 'ok']);
+});
+
 Route::post('/tx/receive', [TransactionWebhookController::class, 'receive']) ->middleware('restrict.ip');

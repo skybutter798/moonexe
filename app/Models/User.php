@@ -16,6 +16,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'trx_address',
+        'trx_qr',
         'last_login',
         'role',
         'status',
@@ -32,6 +34,7 @@ class User extends Authenticatable
         'security_pass',
         'google2fa_secret',
     ];
+
 
     
     protected $hidden = [

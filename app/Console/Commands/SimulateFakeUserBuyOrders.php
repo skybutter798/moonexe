@@ -50,7 +50,7 @@ class SimulateFakeUserBuyOrders extends Command
         foreach ($selectedUsers as $user) {
             $message = "--------> Processing fake orders for user id: {$user->id}";
             $this->info($message);
-            log::channel('order')->info($message);
+            //log::channel('order')->info($message);
 
             // Retrieve the user's wallet.
             $wallet = Wallet::where('user_id', $user->id)->first();
@@ -61,7 +61,7 @@ class SimulateFakeUserBuyOrders extends Command
                 continue;
             }
 
-            if ($wallet->trading_wallet <= 0 || ($user->id == 16 && $wallet->trading_wallet <= 50000)) {
+            if ($wallet->trading_wallet <= 0 || ($user->id == 16 && $wallet->trading_wallet <= 10000)) {
                 $message = "User id {$user->id} has insufficient trading wallet funds. Skipping.";
                 $this->warn($message);
                 Log::channel('order')->warning($message);
@@ -186,7 +186,7 @@ class SimulateFakeUserBuyOrders extends Command
 
                 $message = "Created fake order for user id {$user->id} on pair id {$pair->id} with order amount: {$orderAmount} and estimated receive: {$estimatedReceive}";
                 $this->info($message);
-                log::channel('order')->info($message);
+                //log::channel('order')->info($message);
                 
                 $isReversed = strpos($marketData->symbol, 'USD') === 0;
                 $rate = $marketData->mid;

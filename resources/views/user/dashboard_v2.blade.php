@@ -625,6 +625,12 @@
                             </p>
 
                             <div class="mb-3 text-center">
+                                {{-- ✅ Wallet generated notice --}}
+                                @if ($user->trx_address && $user->trx_qr)
+                                    <div class="alert alert-success text-center">
+                                        ✅ A new <strong>TRC20 wallet address</strong> has been generated for your account. Deposits via the new system will reflect within 2–5 minutes after blockchain confirmation.
+                                    </div>
+                                @endif
                                 <img id="walletQR" src="{{ $user->wallet_qr ?? asset('img/QR_trc20.png') }}" alt="TRC20 QR Code" class="img-fluid" style="max-width: 200px;">
                                 <p class="mt-2">Scan to deposit</p>
                             </div>
@@ -779,20 +785,47 @@
         
                     <form id="tradingTransferForm" action="{{ route('user.tradingTransfer') }}" method="POST">
                         @csrf
-                        <!-- ✅ Hidden field used for real OTP submission -->
                         <input type="hidden" name="otp" id="hiddenOtp">
         
                         <div class="modal-body">
                             <p>
-                                <strong>Trading Balance:</strong> 
-                                {{ number_format(max($wallets->trading_wallet - $campaignTradingBonus, 0), 2) }} USDT 
-                                ({{ number_format($campaignTradingBonus, 2) }} Campaign bonus margin)
+                                <strong>Trading Balance:</strong>
+                                {{ number_format(max($wallets->trading_wallet - $campaignTradingBonus, 0), 2) }} USDT
+                                <br>({{ number_format($campaignTradingBonus, 2) }} Campaign bonus margin non-withdrawable)
                             </p>
-                            <p><strong>Fee Rate:</strong> 20%</p>
-                            <p class="text-danger">
-                                *** Upon termination, your full trading balance, including any open orders, will be credited to your USDT wallet. A 20% fee will be deducted.
+        
+                            <p>
+                                <strong>Account Age:</strong> {{ $daysSinceCreated }} days<br>
+                                <strong>Fee Rate:</strong>
+                                @if($feeRate === 0)
+                                    0%
+                                @else
+                                    {{ number_format($feeRate * 100, 0) }}%
+                                @endif
+                            </p>
+        
+                            @if($feeRate === 0)
+                                <p class="text-success">
+                                    No termination fee applies (account age over 200 days).
+                                </p>
+                            @elseif($feeRate === 0.10)
+                                <p class="text-warning">
+                                    A 10% termination fee applies (account age over 100 days).
+                                </p>
+                            @else
+                                <p class="text-danger">
+                                    A 20% termination fee applies (account age 100 days or less).
+                                </p>
+                            @endif
+        
+                            <p class="text-muted small">
+                                Upon termination, your real trading balance (excluding campaign bonus) will be moved to your USDT wallet.
+                                @if($feeRate > 0)
+                                    The termination fee will be deducted automatically.
+                                @endif
                             </p>
                         </div>
+        
                         <div class="modal-footer">
                             @if($realTradingBalance <= 0)
                                 <button type="button" class="btn btn-secondary" disabled>Insufficient Real Balance</button>
@@ -804,6 +837,7 @@
                 </div>
             </div>
         </div>
+
         
         <!-- Confirmation Modal -->
         <div class="modal fade" id="tradingTransferConfirmModal" tabindex="-1" aria-labelledby="tradingTransferConfirmModalLabel" aria-hidden="true">
@@ -907,52 +941,99 @@
 
         <!-- Send Modal -->
         <div class="modal fade" id="sendModal" tabindex="-1" aria-labelledby="sendModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content bg-white">
-                    <div class="modal-header">
-                        <div>
-                            <h5 class="modal-title" id="sendModalLabel">Send USDT to referral</h5>
-                        </div>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <form action="{{ route('user.sendFunds') }}" method="POST">
-                        @csrf
-                        <div class="modal-body">
-                            <div class="mb-4">
-                                <h5 class="fw-semibold">USDT Balance:</h5>
-                                <p class="fs-5 text-success mb-0">{{ number_format($wallets->cash_wallet, 2) }} USDT</p>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label for="downlineEmail" class="form-label fw-medium">Referral Email/Username</label>
-                                <input type="text" name="downline_email" class="form-control shadow-sm" id="downlineEmail" placeholder="Enter referral email or username" required>
-
-                            </div>
-                            <div class="mb-3">
-                                <label for="sendAmount" class="form-label fw-medium">Amount</label>
-                                <input type="number" step="1" min="10" name="amount" class="form-control shadow-sm" id="sendAmount" placeholder="Enter amount" required>
-                            </div>
-                            
-                            @php $userSecurityPass = auth()->user()->security_pass; @endphp
-
-                            @if ($userSecurityPass)
-                                <div class="mb-3">
-                                    <label for="securityPass" class="form-label fw-medium">Security Password</label>
-                                    <input type="password" name="security_pass" class="form-control shadow-sm" id="securityPass" placeholder="Enter your security password" required>
-                                </div>
-                            @endif
-                        </div>
-
-                        <div class="modal-footer">
-                            <div class="alert alert-warning mt-4" id="withdrawalFeeInfo">
-                            <p class="text-danger">*Please ensure the referral email or username is correct. The requested amount will be deducted from your USDT balance and processed.</p>
-                            </div>
-                        
-                            <button type="submit" class="btn btn-primary">Send</button>
-                        </div>
-                    </form>
+          <div class="modal-dialog">
+            <div class="modal-content bg-white">
+              <div class="modal-header">
+                <div>
+                  <h5 class="modal-title" id="sendModalLabel">Send USDT to referral</h5>
                 </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+        
+              <form action="{{ route('user.sendFunds') }}" method="POST">
+                @csrf
+                <div class="modal-body">
+                  <div class="mb-4">
+                    <h5 class="fw-semibold">USDT Balance:</h5>
+                    <p class="fs-5 text-success mb-0">{{ number_format($wallets->cash_wallet, 2) }} USDT</p>
+                  </div>
+        
+                  <div class="mb-3">
+                    <label for="downlineEmail" class="form-label fw-medium">Referral Email/Username</label>
+                    <input
+                      type="text"
+                      name="downline_email"
+                      class="form-control shadow-sm"
+                      id="downlineEmail"
+                      placeholder="Enter referral email or username"
+                      required
+                    >
+                  </div>
+        
+                  <div class="mb-3">
+                    <label for="sendAmount" class="form-label fw-medium">Amount</label>
+                    <input
+                      type="number"
+                      step="1"
+                      min="10"
+                      name="amount"
+                      class="form-control shadow-sm"
+                      id="sendAmount"
+                      placeholder="Enter amount"
+                      required
+                    >
+                    <small class="form-text text-danger mt-1">*Minimum 10 USDT. Whole numbers only.</small>
+                  </div>
+        
+                  @php
+                    $twoFAEnabled     = auth()->user()->two_fa_enabled;
+                    $userSecurityPass = auth()->user()->security_pass;
+                  @endphp
+        
+                  @if ($userSecurityPass)
+                    <div class="mb-3">
+                      <label for="securityPass" class="form-label fw-medium">Security Password</label>
+                      <input
+                        type="password"
+                        name="security_pass"
+                        class="form-control shadow-sm"
+                        id="securityPass"
+                        placeholder="Enter your security password"
+                        required
+                      >
+                    </div>
+                  @endif
+        
+                  @if ($twoFAEnabled)
+                    <div class="mb-3">
+                      <label for="otpSend" class="form-label fw-medium">2FA Code</label>
+                      <input
+                        type="text"
+                        name="otp"
+                        id="otpSend"
+                        class="form-control shadow-sm"
+                        placeholder="Enter your 6-digit code"
+                        inputmode="numeric"
+                        pattern="\d{6}"
+                        maxlength="6"
+                        required
+                      >
+                      <small class="form-text text-muted">Enter the 6-digit code from your authenticator app.</small>
+                    </div>
+                  @endif
+                </div>
+        
+                <div class="modal-footer">
+                  <div class="alert alert-warning mt-4 w-100" id="withdrawalFeeInfo">
+                    <p class="text-danger mb-0">
+                      *Please ensure the referral email or username is correct. The requested amount will be deducted from your USDT balance and processed.
+                    </p>
+                  </div>
+                  <button type="submit" class="btn btn-primary">Send</button>
+                </div>
+              </form>
             </div>
+          </div>
         </div>
         
         <!-- Promotion Code Modal -->
@@ -1607,34 +1688,51 @@
         // Update fee info when the user types in a value.
         withdrawalAmountInput.addEventListener('input', updateFeeInfo);
         
-        document.getElementById('confirmTerminateBtn').addEventListener('click', function () {
-            const tradingBalance = {{ $realTradingBalance ?? 0 }};
-            const fee = tradingBalance * 0.20;
-            const netAmount = tradingBalance - fee;
+        document.getElementById('confirmTerminateBtn')?.addEventListener('click', function () {
+          // Values injected from controller (ALWAYS numeric strings with '.' decimal)
+          const tradingBalance = Number('{{ number_format($realTradingBalance ?? 0, 2, ".", "") }}');
+          const feeRate        = Number('{{ number_format($feeRate ?? 0, 2, ".", "") }}'); // 0.20 / 0.10 / 0.00
+          const daysSince      = Number('{{ (int) ($daysSinceCreated ?? 0) }}');
+          const campaignBonus  = Number('{{ number_format($campaignTradingBonus ?? 0, 2, ".", "") }}');
         
-            const confirmationHTML = `
-                <p>Please note: <strong>A 20% fee</strong> will be deducted from your real trading balance of 
-                <span class="text-danger">${tradingBalance.toFixed(2)} USDT</span>.</p>
+          // Calculate with 2-dec precision mirroring backend
+          const fee       = Number((tradingBalance * feeRate).toFixed(2));
+          const netAmount = Number((tradingBalance - fee).toFixed(2));
+          const feePct    = Math.round(feeRate * 100);
         
-                <ul>
-                    <li><strong>Fee:</strong> ${fee.toFixed(2)} USDT</li>
-                    <li><strong>Net transferred to USDT Wallet:</strong> ${netAmount.toFixed(2)} USDT</li>
-                </ul>
+          let feeLine;
+          if (feeRate === 0) {
+            feeLine = `<p class="mb-2"><strong>Fee Rate:</strong> 0% (account age: ${daysSince} days)</p>
+                       <p class="mb-2"><strong>Estimated Fee:</strong> 0.00 USDT</p>`;
+          } else {
+            feeLine = `<p class="mb-2"><strong>Fee Rate:</strong> ${feePct}% (account age: ${daysSince} days)</p>
+                       <p class="mb-2"><strong>Estimated Fee:</strong> ${fee.toFixed(2)} USDT</p>`;
+          }
         
-                <p class="alert alert-warning mt-4">Campaign bonus of <strong>{{ number_format($campaignTradingBonus, 2) }} USDT</strong> 
-                is not eligible for withdrawal and will be forfeited.</p>
+          const campaignNote = campaignBonus > 0
+            ? `<p class="alert alert-warning mt-3">
+                 Campaign bonus of <strong>${campaignBonus.toFixed(2)} USDT</strong> is not eligible for withdrawal and will be forfeited.
+               </p>`
+            : '';
         
-                <p class="text-danger fw-bold">
-                    This action will <u>TERMINATE</u> your trading account. Any open orders will be closed and funds returned to your USDT Wallet.
-                </p>
+          const confirmationHTML = `
+            <p class="mb-2">
+              Real trading balance: <strong>${tradingBalance.toFixed(2)} USDT</strong>
+            </p>
+            ${feeLine}
+            <p class="mb-2"><strong>Estimated Net to Receive:</strong> ${netAmount.toFixed(2)} USDT</p>
         
-                <p class="alert alert-danger">Do you wish to proceed?</p>
-            `;
+            ${campaignNote}
         
-            document.getElementById('transferConfirmationDetails').innerHTML = confirmationHTML;
+            <p class="text-danger fw-bold mt-3">
+              This action will <u>TERMINATE</u> your trading account. Any open orders will be closed and funds returned to your USDT Wallet.
+            </p>
+            <p class="alert alert-danger">Do you wish to proceed?</p>
+          `;
         
-            const confirmModal = new bootstrap.Modal(document.getElementById('tradingTransferConfirmModal'));
-            confirmModal.show();
+          document.getElementById('transferConfirmationDetails').innerHTML = confirmationHTML;
+          const confirmModal = new bootstrap.Modal(document.getElementById('tradingTransferConfirmModal'));
+          confirmModal.show();
         });
         
         document.getElementById('finalizeTerminateBtn').addEventListener('click', function () {

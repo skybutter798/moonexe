@@ -26,10 +26,9 @@ class CoinDepositService
         if ($externalTxid) {
             $existing = Deposit::where('external_txid', $externalTxid)->first();
             if ($existing) {
-                return $existing;
+                 return [$existing, false];
             }
         }
-    
         
         $fee = 0;
         $netAmount = max(0, $amount - $fee);
@@ -59,7 +58,7 @@ class CoinDepositService
         try {
             $user = User::find($userId);
             
-            $chatId = $walletName === 'MoonExe20' ? '-1002643026089' : '-4840431863';
+            $chatId = $walletName === 'MoonExe20' ? '-1002643026089' : '-1002643026089';
     
             // 1. Get direct referral
             $referralUser = User::find($user->referral);
@@ -102,7 +101,7 @@ class CoinDepositService
             ]);
         }
     
-        return $deposit;
+        return [$deposit, true];
     }
 
 }

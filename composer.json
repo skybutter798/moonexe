@@ -15,7 +15,8 @@
         "pragmarx/google2fa-laravel": "^2.3",
         "pusher/pusher-php-server": "^7.2",
         "ratchet/pawl": "^0.4.2",
-        "react/event-loop": "^1.5"
+        "react/event-loop": "^1.5",
+        "simplesoftwareio/simple-qrcode": "^4.2"
     },
     "require-dev": {
         "barryvdh/laravel-debugbar": "^3.15",

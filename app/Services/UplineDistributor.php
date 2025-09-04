@@ -19,7 +19,7 @@ class UplineDistributor
 
     public function distribute($order, $baseClaimAmount, $user)
     {
-        Log::channel('payout')->info("-------> Starting distribution for User {$user->id} with base claim amount: {$baseClaimAmount}");
+        Log::channel('payout')->info("-------> Start dist. order:{$order->id} user:{$user->id} base:{$baseClaimAmount}");
 
         $currentMatching = 0;
         $currentUser = $user;
@@ -78,7 +78,9 @@ class UplineDistributor
     
     public function distributeDirect($transfer, $newPackage, $user)
     {
-        Log::channel('payout')->info("-------> UplineDistributor (Direct): User {$user->id} with range: {$newPackage->min} - {$newPackage->max}");
+        Log::channel('payout')->info(
+            "Start direct dist. txid:{$transfer->txid} user:{$user->id} range:{$newPackage->min}-{$newPackage->max}"
+        );
     
         // Set your direct percentage to 0, as you are at the bottom.
         $currentDirect = 0;
