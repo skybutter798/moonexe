@@ -26,8 +26,6 @@ class Kernel extends ConsoleKernel
         //$schedule->command('staking:distribute') ->weeklyOn(1, '11:00') ->timezone('Asia/Kuala_Lumpur') ->withoutOverlapping();
 
         $schedule->command('staking:release-unstakes')->everyFiveMinutes();
-
-        // Backfill jobs
         $yesterday = Carbon::yesterday()->toDateString();
         $schedule->command("record:assets:backfill --userIds=3,800 --start={$yesterday}")
             ->dailyAt('01:00');
