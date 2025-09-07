@@ -9,34 +9,33 @@ use Carbon\Carbon;
 class DistributeWeeklyStaking extends Command
 {
     protected $signature = 'staking:distribute';
-    protected $description = 'Distribute weekly staking profit for the last completed NY week (Mon 00:00 → next Mon 00:00)';
+    protected $description = 'Distribute weekly staking profit for the last completed MYT week (Mon 00:00 MYT → Sun 23:59 MYT)';
 
     public function handle()
     {
-        $tz = 'America/New_York';
+        $tz = 'Asia/Kuala_Lumpur';
 
-        $nowNy       = Carbon::now($tz);
-        $weekEndNy   = $nowNy->copy()->startOfWeek(Carbon::MONDAY); // current Mon 00:00 NY
-        $weekStartNy = $weekEndNy->copy()->subWeek();                // previous Mon 00:00 NY
+        $nowMy      = Carbon::now($tz);                                  // e.g., Mon 11:00 MYT
+        $thisMonday = $nowMy->copy()->startOfWeek(Carbon::MONDAY);        // Mon 00:00 MYT
+        $lastMonday = $thisMonday->copy()->subWeek();                     // previous Mon 00:00 MYT
+        $lastSunday = $thisMonday->copy()->subDay();                      // previous Sun 00:00 MYT
 
-        $weekStartDate = $weekStartNy->toDateString(); // inclusive
-        $weekEndDate   = $weekEndNy->toDateString();   // exclusive
-        $weekKey       = $weekStartNy->isoFormat('GGGG-[W]WW');
+        $weekStart = $lastMonday->toDateString(); // inclusive
+        $weekEnd   = $lastSunday->toDateString(); // inclusive
+        $weekKey   = $lastMonday->isoFormat('GGGG-[W]WW');
 
-        $this->info("Distributing logs for NY week {$weekKey} :: {$weekStartDate} → {$weekEndDate} (exclusive).");
+        $this->info("Distributing MYT week {$weekKey} :: {$weekStart} → {$weekEnd} (inclusive).");
 
-        \App\Models\User::query()->chunkById(500, function ($users) use ($weekStartDate, $weekEndDate, $weekKey) {
+        \App\Models\User::query()->chunkById(500, function ($users) use ($weekStart, $weekEnd, $weekKey) {
             foreach ($users as $user) {
-                DB::transaction(function () use ($user, $weekStartDate, $weekEndDate, $weekKey) {
+                DB::transaction(function () use ($user, $weekStart, $weekEnd, $weekKey) {
                     $totalProfit = (float) \App\Models\StakingLog::where('user_id', $user->id)
-                        ->where('stake_date', '>=', $weekStartDate)
-                        ->where('stake_date', '<',  $weekEndDate)
+                        ->whereBetween('stake_date', [$weekStart, $weekEnd])
                         ->sum('daily_profit');
 
                     if ($totalProfit <= 0) return;
 
-                    $txid = "weekly-stake-{$user->id}-{$weekKey}";
-
+                    $txid = "weekly-stake-myt-{$user->id}-{$weekKey}";
                     $alreadyPaid = \App\Models\Payout::where([
                         'user_id' => $user->id,
                         'type'    => 'payout',
@@ -68,6 +67,6 @@ class DistributeWeeklyStaking extends Command
             }
         });
 
-        $this->info('✅ Weekly staking profit distributed (idempotent via weekly txid).');
+        $this->info('✅ Weekly staking profit distributed for last MYT week (idempotent).');
     }
 }

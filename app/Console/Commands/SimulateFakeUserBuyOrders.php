@@ -21,7 +21,7 @@ class SimulateFakeUserBuyOrders extends Command
     {
         // Retrieve all users with status = 2.
         $users = User::where('status', 2)
-             ->orWhere('id', 16)
+             //->orWhere('id', 16)
              ->get();
 
         if ($users->isEmpty()) {

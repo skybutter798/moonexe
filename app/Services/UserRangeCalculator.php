@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\DirectRange;
 use App\Models\MatchingRange;
 use App\Models\User;
+use App\Models\Staking;
 use Illuminate\Support\Facades\DB;
 
 class UserRangeCalculator
@@ -16,6 +17,7 @@ class UserRangeCalculator
     protected $campaignBonusInCache = [];
     protected $campaignBonusOutCache = [];
     protected $referralCache = [];
+    protected $stakingCache = [];
 
     public function calculate($user)
     {
@@ -68,7 +70,15 @@ class UserRangeCalculator
         }
         $pendingOrders = $this->orderSumCache[$userId];
 
-        $userTotal = $walletBalance + $pendingOrders;
+        // Staking balance cache
+        if (!array_key_exists($userId, $this->stakingCache)) {
+            $this->stakingCache[$userId] = Staking::where('user_id', $userId)
+                ->orderByDesc('id')
+                ->value('balance'); // only grab balance from latest row
+        }
+        $stakingBalance = $this->stakingCache[$userId] ?? 0;
+        
+        $userTotal = $walletBalance + $pendingOrders + $stakingBalance;
 
         if ($user->status == 1) {
             // Campaign bonus in

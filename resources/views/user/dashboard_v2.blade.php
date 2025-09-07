@@ -332,7 +332,20 @@
         
         <!-- Sub-Wallets -->
         <div class="row">
-            <h2 id="autoStakeSection" class="text-primary"><strong>Auto Stake Program</strong></h2>
+            <h2 id="autoStakeSection" class="text-primary d-inline-flex align-items-center">
+              <strong>Auto Stake Program</strong>
+            
+              <a href="{{ asset('img/staking.jpeg') }}"
+                 download="staking-promo.jpeg"
+                 class="btn btn-primary btn-sm rounded-circle ms-2 d-flex align-items-center justify-content-center"
+                 data-bs-toggle="tooltip"
+                 data-bs-placement="top"
+                 title="Download flyer"
+                 style="width:32px; height:32px;">
+                <i class="bi bi-download text-white"></i>
+              </a>
+            </h2>
+
 
             <!-- USDT Wallet Card -->
             <div class="col-12 col-md-6 mb-3">
@@ -344,17 +357,29 @@
                         </p>
                         <div class="d-flex flex-column align-items-center gap-1 mt-2">
                             @if($totalStaked > 0)
-                                <span class="badge rounded-pill bg-success text-white px-3 py-1">
-                                    Current ROI: {{ number_format(($currentStakingRate * 100) / 7, 2) }}% daily
-                                </span>
+                                <div class="d-flex justify-content-center align-items-center gap-2">
+                                    <span class="badge rounded-pill bg-success text-white px-3 py-1">
+                                        Current ROI: {{ number_format(($currentStakingRate * 100) / 7, 2) }}% daily
+                                    </span>
+                                    <span class="text-muted">|</span>
+                                    <button type="button"
+                                            class="badge rounded-pill bg-primary text-white px-3 py-1"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#accRoiModal"
+                                            title="View ROI breakdown">
+                                      Accumulate ROI: ${{ number_format($totalStakeROI, 2) }}
+                                    </button>
+
+                                </div>
                             @endif
+                        
                             @if($pendingUnstake > 0)
-                                <span class="badge rounded-pill bg-success text-white px-3 py-1">
+                                <span class="badge rounded-pill bg-danger text-white px-3 py-1 mt-1">
                                     Pending unstake: ${{ number_format($pendingUnstake, 2) }}
                                 </span>
                             @endif
                         </div>
-                        
+
                         
                         <button type="button" 
                                 class="btn wallet-btn btn-sm mt-2" 
@@ -842,7 +867,6 @@
                 </div>
             </div>
         </div>
-
         
         <!-- Confirmation Modal -->
         <div class="modal fade" id="tradingTransferConfirmModal" tabindex="-1" aria-labelledby="tradingTransferConfirmModalLabel" aria-hidden="true">
@@ -876,7 +900,6 @@
                 </div>
             </div>
         </div>
-
 
         <!-- Top-up Modal -->
         <div class="modal fade" id="packageModal" tabindex="-1" aria-labelledby="packageModalLabel" aria-hidden="true">
@@ -1267,6 +1290,76 @@
             </div>
           </div>
         </div>
+        
+        <!-- Accumulate ROI Breakdown Modal -->
+        <div class="modal fade" id="accRoiModal" tabindex="-1" aria-labelledby="accRoiModalLabel" aria-hidden="true">
+          <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content bg-white">
+              <div class="modal-header">
+                <h5 class="modal-title" id="accRoiModalLabel">Accumulate ROI — Itemized Breakdown</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+        
+              <div class="modal-body">
+                @if(!empty($stakeRoiWindow))
+                  <div class="alert alert-info py-2">
+                    <strong>Weekly window (NY Time):</strong>
+                    {{ \Carbon\Carbon::parse($stakeRoiWindow['start_nyt'])->format('d M Y, H:i') }}
+                    →
+                    {{ \Carbon\Carbon::parse($stakeRoiWindow['end_nyt'])->format('d M Y, H:i') }}
+                  </div>
+                @endif
+
+        
+                <div class="table-responsive">
+                  <table class="table table-sm align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Date (NYT)</th>
+                        <th class="text-end">Amount Staked</th>
+                        <th class="text-end">Daily Rate</th>
+                        <th class="text-end">Profit</th>
+                        <th class="text-end">Running Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @php $running = 0; @endphp
+                      @forelse($stakeRoiLogs as $log)
+                        @php $running += (float) $log->daily_profit; @endphp
+                        <tr>
+                          <td>{{ $log->created_at_nyt }}</td>
+                          <td class="text-end">{{ number_format((float)$log->total_balance, 2) }}</td>
+                          <td class="text-end">{{ number_format(((float)$log->daily_roi)*100, 2) }}%</td>
+                          <td class="text-end">{{ number_format((float)$log->daily_profit, 2) }}</td>
+                          <td class="text-end fw-semibold">{{ number_format($running, 2) }}</td>
+                        </tr>
+                      @empty
+                        <tr>
+                          <td colspan="5" class="text-center text-muted py-4">
+                            No ROI records found in the current weekly window.
+                          </td>
+                        </tr>
+                      @endforelse
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+        
+              <div class="modal-footer d-flex justify-content-between">
+                @php
+                  $computedTotal = isset($running) ? $running : 0;
+                  $expectedTotal = (float) $totalStakeROI;
+                  $matches = abs($computedTotal - $expectedTotal) < 0.005;
+                @endphp
+        
+                <div>
+                  <span class="badge badge-success me-3"><strong>Computed Total:</strong> ${{ number_format($computedTotal, 2) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
     </div>
     
     <x-slot:footerFiles>

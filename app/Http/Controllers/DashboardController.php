@@ -146,6 +146,38 @@ class DashboardController extends Controller
                     ->sum('amount')
             );
 
+        $tz = 'Asia/Kuala_Lumpur';
+        $today = \Carbon\Carbon::now($tz)->toDateString();           // e.g. 2025-09-07
+        $sevenDaysAgo = \Carbon\Carbon::now($tz)->subDays(6)->toDateString(); // include today + 6 days back
+        
+        $totalStakeROI = \DB::table('staking_logs')
+            ->where('user_id', $userId)
+            ->whereDate('created_at', '>=', $sevenDaysAgo)
+            ->whereDate('created_at', '<=', $today)
+            ->sum('daily_profit');
+        
+        $stakeRoiLogs = \DB::table('staking_logs')
+            ->select('id', 'created_at', 'total_balance', 'daily_roi', 'daily_profit')
+            ->where('user_id', $userId)
+            ->whereDate('created_at', '>=', $sevenDaysAgo)
+            ->whereDate('created_at', '<=', $today)
+            ->orderBy('created_at', 'asc')
+            ->get()
+            ->map(function ($row) {
+                $row->created_at_nyt = \Carbon\Carbon::parse($row->created_at)
+                    ->timezone('America/New_York')
+                    ->format('d M Y, H:i'); // nice formatted date
+                return $row;
+            });
+        
+        
+        // Optional debug
+        $stakeRoiWindow = [
+            'start_date' => $sevenDaysAgo,
+            'end_date'   => $today,
+        ];
+
+
 
         
         // Load tier values from settings
@@ -217,6 +249,8 @@ class DashboardController extends Controller
         $data['feeRate']          = $feeRate;
         $data['estimatedFee']     = $estimatedFee;
         $data['estimatedNet']     = $estimatedNet;
+        $data['totalStakeROI']   = $totalStakeROI;
+        $data['stakeRoiLogs']   = $stakeRoiLogs;
         
         if ($user->isAdmin) {
             return view('admin.dashboard', $data);

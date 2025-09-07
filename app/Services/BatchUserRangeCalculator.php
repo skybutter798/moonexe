@@ -7,6 +7,7 @@ use App\Models\Wallet;
 use App\Models\Order;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use App\Models\Staking;
 
 class BatchUserRangeCalculator
 {
@@ -16,6 +17,7 @@ class BatchUserRangeCalculator
     protected Collection $users;
     protected array $directRangeCache = [];
     protected array $matchingRangeCache = [];
+    protected $stakingCache = [];
 
     protected array $computed = [];
 
@@ -70,8 +72,17 @@ class BatchUserRangeCalculator
         $campaignTransfers = $this->transfers->get($userId) ?? collect();
         $campaignIn = $campaignTransfers->where('from_wallet', 'cash_wallet')->where('to_wallet', 'trading_wallet')->sum('amount');
         $campaignOut = $campaignTransfers->where('from_wallet', 'trading_wallet')->where('to_wallet', 'system')->sum('amount');
-    
-        $userTotal = $walletBalance + $pendingOrderSum - ($campaignIn - $campaignOut);
+        
+        
+        // Staking balance cache
+        if (!array_key_exists($userId, $this->stakingCache)) {
+            $this->stakingCache[$userId] = Staking::where('user_id', $userId)
+                ->orderByDesc('id')
+                ->value('balance'); // only grab balance from latest row
+        }
+        $stakingBalance = $this->stakingCache[$userId] ?? 0;
+        
+        $userTotal = $walletBalance + $pendingOrderSum + $stakingBalance - ($campaignIn - $campaignOut);
         $groupTotal = $userTotal;
     
         $downlines = $this->users->where('referral', $userId);

@@ -18,6 +18,7 @@ use App\Http\Controllers\StakingController;
 use App\Http\Controllers\Admin\TicketController;
 use App\Http\Controllers\UserTicketController;
 use App\Http\Controllers\WebhookController;
+use App\Http\Controllers\MarketingToolsController;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -155,6 +156,7 @@ Route::prefix('user-dashboard')->middleware(['auth', 'user.only'])->group(functi
     Route::get('/order_v2', [OrderController::class, 'index'])->name('user.order_v2');
     Route::get('/annoucement', [UserDashboardController::class, 'showAnnouncements']) ->name('user.annoucement');
     Route::get('/faq', [FaqController::class, 'faq']) ->name('user.faq');
+    Route::get('/marketing-tools', [MarketingToolsController::class, 'index']) ->name('user.marketing.tools');
     Route::post('/contact-support', [UserController::class, 'contactSupport'])->name('user.contact.support');
 
 

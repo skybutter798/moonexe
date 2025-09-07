@@ -8,12 +8,6 @@ use Carbon\Carbon;
 
 class Kernel extends ConsoleKernel
 {
-    /**
-     * Define the application's command schedule.
-     *
-     * @param  \Illuminate\Console\Scheduling\Schedule  $schedule
-     * @return void
-     */
     protected function schedule(Schedule $schedule)
     {
         $schedule->command('marketdata:feed')->twiceDaily(8, 20);
@@ -21,30 +15,32 @@ class Kernel extends ConsoleKernel
         $schedule->command('pairs:create')->everyMinute();
         $schedule->command('simulate:fake-user-buy')->everyThirtyMinutes();
         $schedule->command('seed:claim-orders 16 630')->hourly();
-        //$schedule->command('seed:admin-orders')->everyThirtyMinutes();
         $schedule->command('cron:aggregate-matching')->everyFiveMinutes();
-        //$schedule->command('pairs:update')->everyTenMinutes();
-        //$schedule->command('campaign:simulate')->everyMinute();
-        $schedule->command('staking:daily')->dailyAt('12:01')->timezone('America/New_York');
-        $schedule->command('staking:distribute')->weeklyOn(1, '00:00')->timezone('America/New_York');
-        $yesterday = Carbon::yesterday()->toDateString();
-        $schedule->command("record:assets:backfill --userIds=3,800 --start={$yesterday}") ->dailyAt('01:00');
-        $schedule->command("record:profit:backfill --userIds=3,800 --start={$yesterday}") ->dailyAt('02:00');
+
+        // Staking
+        $schedule->command('staking:daily')
+            ->dailyAt('12:00')
+            ->timezone('Asia/Kuala_Lumpur')
+            ->withoutOverlapping();
+
+        //$schedule->command('staking:distribute') ->weeklyOn(1, '11:00') ->timezone('Asia/Kuala_Lumpur') ->withoutOverlapping();
+
         $schedule->command('staking:release-unstakes')->everyFiveMinutes();
+
+        // Backfill jobs
+        $yesterday = Carbon::yesterday()->toDateString();
+        $schedule->command("record:assets:backfill --userIds=3,800 --start={$yesterday}")
+            ->dailyAt('01:00');
+        $schedule->command("record:profit:backfill --userIds=3,800 --start={$yesterday}")
+            ->dailyAt('02:00');
     }
 
-    /**
-     * Register the commands for the application.
-     *
-     * @return void
-     */
     protected function commands()
     {
         $this->load(__DIR__.'/Commands');
-
         require base_path('routes/console.php');
     }
-    
+
     protected $commands = [
         \App\Console\Commands\PersistMarketData::class,
         \App\Console\Commands\SeedPairs::class,
@@ -62,6 +58,5 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\TelegramOneShot::class,
         \App\Console\Commands\ProcessMegadropBonus::class,
         \App\Console\Commands\CampaignAddToTradingWallet::class,
-
     ];
 }
