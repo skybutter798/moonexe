@@ -455,7 +455,7 @@ class OrderController extends Controller
         $request->validate(['order_id' => 'required|exists:orders,id']);
     
         $user = auth()->user();
-        Log::info("User {$user->id} is attempting to claim order ID: {$request->order_id}");
+        Log::channel('order')->info("User {$user->id} is attempting to claim order ID: {$request->order_id}");
     
         $order = \App\Models\Order::where('id', $request->order_id)
             ->where('user_id', $user->id)
@@ -566,7 +566,7 @@ class OrderController extends Controller
         @ob_end_flush();
         @flush();
     
-        Log::info("Order ID: {$order->id} status updated to completed (response sent).");
+        Log::channel('order')->info("Order ID: {$order->id} status updated to completed (response sent).");
     
         // --- Heavy logic AFTER response ---
         try {

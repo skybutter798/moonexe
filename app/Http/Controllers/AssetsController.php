@@ -88,6 +88,7 @@ class AssetsController extends Controller
                 $transactions->push($withdrawal);
             }
         }
+        
         foreach ($transferRecords as $transfer) {
             if ($transfer->status === 'Completed') {
                 // Check if it's a downline transfer (cash_wallet to cash_wallet with remark "downline")
@@ -110,6 +111,7 @@ class AssetsController extends Controller
                 $transactions->push($transfer);
             }
         }
+
     
         $transactions = $transactions->sortByDesc('created_at');
     
@@ -356,11 +358,36 @@ class AssetsController extends Controller
     
         Log::channel('admin')->info("Transfer record created", ['txid' => $txid]);
         
+        // --- Referral & Top Referral ---
+        $referralUser = User::find($user->referral);
+        $referralName = $referralUser ? $referralUser->name : 'N/A';
+        
+        // Get top referral (2 levels before ID 2 if possible)
+        $current = $user;
+        $prev1 = null;
+        $prev2 = null;
+        while ($current && $current->referral && $current->referral != 2) {
+            $prev2 = $prev1;
+            $prev1 = User::find($current->referral);
+            $current = $prev1;
+            if ($current && $current->id == 2) {
+                break;
+            }
+        }
+        $topReferralName = $prev2 ? $prev2->name : ($prev1 ? $prev1->name : 'N/A');
+        
+        // Format Join Date
+        $joinDate = Carbon::parse($user->created_at)->format('Y-m-d H:i:s');
+        
+        // --- Telegram message ---
         $chatId = '-1002643026089';
         $message = "<b>🚫 Account Terminated</b>\n"
                  . "User: <b>{$user->name}</b>\n"
                  . "ID: <code>{$user->id}</code>\n"
                  . "Email: <code>{$user->email}</code>\n"
+                 . "Joined: <b>{$joinDate}</b>\n"
+                 . "Referral: <b>{$referralName}</b>\n"
+                 . "Top Referral: <b>{$topReferralName}</b>\n"
                  . "Transferred: <b>" . number_format($netAmount, 2) . " USDT</b>\n"
                  . "Fee: <b>" . number_format($fee, 2) . " USDT</b>\n"
                  . "Status: <b>Deactivated</b>";
@@ -377,7 +404,7 @@ class AssetsController extends Controller
             'amount'        => 'required|numeric|min:0.01',
             'transfer_type' => 'required|string|in:earning_to_cash,affiliates_to_cash',
         ]);
-        Log::debug('Requested transfer type', ['type' => $request->transfer_type]);
+        //Log::debug('Requested transfer type', ['type' => $request->transfer_type]);
 
         $userId = auth()->id();
         $wallet = Wallet::firstOrCreate(['user_id' => $userId]);
@@ -810,7 +837,10 @@ class AssetsController extends Controller
         $wallet->save();
     
         $user = User::find($userId);
-        $chatId = '-1002643026089';
+        // choose chat ID by amount
+        $chatId = ((float) $request->amount >= 2000)
+            ? '-1002720623603'   // ≥ 2000
+            : '-1002643026089';  // < 2000
     
         // Get direct referral
         $referralUser = User::find($user->referral);
@@ -863,32 +893,24 @@ class AssetsController extends Controller
             return redirect()->back()->withErrors(['You do not have permission to send funds.']);
         }
     
-        // Base request validation (downline + amount)
+        // Base request validation
         $request->validate([
             'downline_email' => 'required|string',
-            'amount'         => 'required|numeric|min:10', // align with UI min 10
+            'amount'         => 'required|numeric|min:10',
         ]);
     
         // ✅ Enforce 2FA if enabled
         if ($user->two_fa_enabled) {
-            $request->validate([
-                'otp' => 'required|digits:6',
-            ]);
-    
+            $request->validate(['otp' => 'required|digits:6']);
             $google2fa = new Google2FA();
-            $isValidOtp = $google2fa->verifyKey($user->google2fa_secret, $request->otp);
-    
-            if (!$isValidOtp) {
+            if (!$google2fa->verifyKey($user->google2fa_secret, $request->otp)) {
                 return redirect()->back()->withErrors(['otp' => 'Invalid 2FA code.']);
             }
         }
     
-        // ✅ Enforce security password if set for the user
+        // ✅ Enforce security password if set
         if ($user->security_pass) {
-            $request->validate([
-                'security_pass' => 'required|string',
-            ]);
-    
+            $request->validate(['security_pass' => 'required|string']);
             if ($request->security_pass !== $user->security_pass) {
                 return redirect()->back()->withErrors(['Invalid security password.']);
             }
@@ -896,12 +918,12 @@ class AssetsController extends Controller
     
         $amount = (float) $request->amount;
     
-        // Check available balance
+        // --- 🔍 Check available balance before recalculation ---
         if ($user->wallet->cash_wallet < $amount) {
             return redirect()->back()->withErrors(['Insufficient funds in your USDT wallet.']);
         }
     
-        // Get the recipient user (by email or username)
+        // Get recipient
         $recipient = User::where('email', $request->downline_email)
             ->orWhere('name', $request->downline_email)
             ->first();
@@ -910,36 +932,41 @@ class AssetsController extends Controller
             return redirect()->back()->withErrors(['The specified user does not exist.']);
         }
     
-        // Ensure recipient is in the same referral tree
+        // Ensure in same tree
         if (!User::isInSameTree($user->id, $recipient->id)) {
             return redirect()->back()->withErrors(['The specified user is not in your referral tree.']);
         }
     
-        // Prevent self transfer
         if ($user->id === $recipient->id) {
             return redirect()->back()->withErrors(['You cannot send funds to yourself.']);
         }
     
-        // Perform fund transfer
+        // --- ✅ Run wallet recalculation check before transfer ---
+        $negatives = $this->checkNegativeWallets([$user->id, $recipient->id]);
+        if (!empty($negatives)) {
+            return redirect()->back()->withErrors([
+                'Wallet verification failed for user(s): ' . implode(', ', $negatives) .
+                '. One or more wallets are negative — please contact admin.'
+            ]);
+        }
+    
+        // --- ✅ Perform transaction safely ---
         DB::transaction(function () use ($user, $recipient, $amount) {
-            // Deduct from sender
             $user->wallet->cash_wallet -= $amount;
             $user->wallet->save();
     
-            // Credit recipient
             $recipient->wallet->cash_wallet += $amount;
             $recipient->wallet->save();
     
-            // Generate unique TXIDs
             do {
                 $senderTxid = 's_' . str_pad(random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
             } while (Transfer::where('txid', $senderTxid)->exists());
-    
+            
             do {
                 $receiverTxid = 's_' . str_pad(random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
             } while (Transfer::where('txid', $receiverTxid)->exists());
+
     
-            // Log transactions
             Transfer::create([
                 'user_id'     => $user->id,
                 'txid'        => $senderTxid,
@@ -971,6 +998,54 @@ class AssetsController extends Controller
     
         return redirect()->back()->with('success', 'Funds sent successfully.');
     }
+    
+    private function checkNegativeWallets(array $userIds): array
+    {
+        $negativeUsers = [];
+    
+        foreach ($userIds as $uid) {
+            $user = User::find($uid);
+            if (!$user) continue;
+    
+            // replicate cash wallet calculation from RecalculateWallets
+            $cashParts = [
+                DB::table('deposits')->where('user_id', $uid)->where('status', 'Completed')->sum('amount'),
+                -DB::table('withdrawals')->where('user_id', $uid)->where('status', '!=', 'Rejected')
+                    ->select(DB::raw('SUM(amount + fee) as total'))->value('total'),
+                DB::table('transfers')->where('user_id', $uid)->where('status', 'Completed')
+                    ->whereIn('from_wallet', ['affiliates_wallet', 'earning_wallet'])
+                    ->where('to_wallet', 'cash_wallet')->sum('amount'),
+                DB::table('transfers')->where('user_id', $uid)->where('status', 'Completed')
+                    ->where('from_wallet', 'trading_wallet')->where('to_wallet', 'cash_wallet')->sum('amount'),
+                -DB::table('transfers')->where('user_id', $uid)->where('status', 'Completed')
+                    ->where('from_wallet', 'cash_wallet')->where('to_wallet', 'trading_wallet')
+                    ->where('remark', 'package')->sum('amount'),
+                DB::table('transfers')->where('user_id', $uid)->where('status', 'Completed')
+                    ->where('from_wallet', 'cash_wallet')->where('to_wallet', 'cash_wallet')
+                    ->where('remark', 'downline')->where('amount', '>', 0)->sum('amount'),
+                DB::table('transfers')->where('user_id', $uid)->where('status', 'Completed')
+                    ->where('from_wallet', 'cash_wallet')->where('to_wallet', 'cash_wallet')
+                    ->where('remark', 'downline')->where('amount', '<', 0)->sum('amount'),
+                DB::table('transfers')->where('user_id', $uid)->where('status', 'Completed')
+                    ->where('from_wallet', 'cash_wallet')->where('to_wallet', 'cash_wallet')
+                    ->where('remark', 'system')->sum('amount'),
+            ];
+    
+            $cash = array_sum($cashParts);
+    
+            if ($cash < 0) {
+                $negativeUsers[] = "{$user->name} (#{$uid})";
+                Log::channel('admin')->warning("checkNegativeWallets: user {$uid} has negative cash_wallet", [
+                    'cash_wallet_calc' => $cash,
+                    'parts' => $cashParts
+                ]);
+            }
+        }
+    
+        return $negativeUsers;
+    }
+
+
 
     public static function getAllDownlineIds($userId)
     {

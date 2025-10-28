@@ -41,6 +41,7 @@ class RecalculateWallets extends Command
                 'Cash to Trading (package)' => -DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->where('from_wallet', 'cash_wallet')->where('to_wallet', 'trading_wallet')->where('remark', 'package')->sum('amount'),
                 'Downline Sent' => DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->where('from_wallet', 'cash_wallet')->where('to_wallet', 'cash_wallet')->where('remark', 'downline')->where('amount', '<', 0)->sum('amount'),
                 'Downline Received' => DB::table('transfers')->where('user_id', $user->id)->where('status', 'Completed')->where('from_wallet', 'cash_wallet')->where('to_wallet', 'cash_wallet')->where('remark', 'downline')->where('amount', '>', 0)->sum('amount'),
+                'System' => DB::table('transfers') ->where('user_id', $user->id) ->where('status', 'Completed') ->where('from_wallet', 'cash_wallet') ->where('to_wallet', 'cash_wallet') ->where('remark', 'system') ->sum('amount'),
             ];
             $cash = array_sum($cashParts);
 

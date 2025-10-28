@@ -14,7 +14,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('marketdata:persist')->everyThirtyMinutes();
         $schedule->command('pairs:create')->everyMinute();
         $schedule->command('simulate:fake-user-buy')->everyThirtyMinutes();
-        $schedule->command('seed:claim-orders 16 630')->hourly();
+        $schedule->command('seed:claim-orders 17 630')->hourly();
         $schedule->command('cron:aggregate-matching')->everyFiveMinutes();
 
         // Staking
@@ -56,5 +56,8 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\TelegramOneShot::class,
         \App\Console\Commands\ProcessMegadropBonus::class,
         \App\Console\Commands\CampaignAddToTradingWallet::class,
+        \App\Console\Commands\TelegramMessage::class,
+        \App\Console\Commands\DistributeUserStaking::class,
+        \App\Console\Commands\RepushTerminateNotice::class,
     ];
 }

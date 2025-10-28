@@ -178,6 +178,44 @@
               50%  { text-shadow: 0 0 16px #28a745, 0 0 24px #28a745; }
               100% { text-shadow: 0 0 8px #28a745; }
             }
+            
+            .stat-box {
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center; /* key for iOS Safari */
+                text-align: center;
+                width: 100%;
+            }
+            
+            /* text styling */
+            .stat-box .small {
+                font-size: 0.75rem;
+                opacity: 0.9;
+            }
+            .stat-box .fw-bold {
+                font-size: 1rem;
+            }
+            
+            /* bg color */
+            .stat-box.bg-grey {
+                background-color: #e9ecef !important;
+            }
+            
+            /* ensure buttons behave like divs on iOS */
+            button.stat-box {
+                -webkit-appearance: none;
+                appearance: none;
+                border: none;
+                background: none; /* optional if color set via class */
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center; /* explicitly reapply */
+                text-align: center;
+                width: 100%;
+            }
+
 
         </style>
     </x-slot:headerFiles>
@@ -346,57 +384,137 @@
               </a>
             </h2>
 
-
             <!-- USDT Wallet Card -->
             <div class="col-12 col-md-6 mb-3">
-                <div class="card h-100 text-center p-2 assets" style="background-image: url('/img/usdt.png'); background-repeat: no-repeat; background-position: left center;">
+                <div class="card h-100 text-center p-3 assets">
                     <div class="card-body d-flex flex-column">
-                        <h5 class="text-custom">Current Stake Amount</h5>
-                        <p class="sub-wallet-amount mb-0 value">
-                            ${{ number_format($totalStaked, 2) }}
-                        </p>
-                        <div class="d-flex flex-column align-items-center gap-1 mt-2">
+            
+                        <!-- Title -->
+                        <h5 class="text-custom mb-2">Current Stake Amount</h5>
+            
+                        <!-- Stake Value + Info -->
+                        <div class="d-flex justify-content-center align-items-center mb-3">
+                            <span class="fs-4 fw-bold">${{ number_format($totalStaked, 2) }}</span>
+                            <button type="button"
+                                    class="btn btn-sm btn-link p-0 ms-2"
+                                    title="View Staking History"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#stakingHistoryModal">
+                                <i class="bi bi-info-circle fs-5"></i>
+                            </button>
+                        </div>
+            
+                        <!-- Stats Grid -->
+                        <div class="row g-2 text-center">
                             @if($totalStaked > 0)
-                                <div class="d-flex justify-content-center align-items-center gap-2">
-                                    <span class="badge rounded-pill bg-success text-white px-3 py-1">
-                                        Current ROI: {{ number_format(($currentStakingRate * 100) / 7, 2) }}% daily
-                                    </span>
-                                    <span class="text-muted">|</span>
-                                    <button type="button"
-                                            class="badge rounded-pill bg-primary text-white px-3 py-1"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#accRoiModal"
-                                            title="View ROI breakdown">
-                                      Accumulate ROI: ${{ number_format($totalStakeROI, 2) }}
+                                <div class="col-6 d-flex align-items-stretch">
+                                    <div class="stat-box bg-grey text-dark rounded-5 p-2 flex-fill">
+                                        <div class="small">Current ROI</div>
+                                        <div class="fw-bold">
+                                            {{ number_format(($currentStakingRate * 100) / 7, 2) }}% daily
+                                        </div>
+                                    </div>
+                                </div>
+                        
+                                <div class="col-6 d-flex align-items-stretch">
+                                    <button type="button" class="stat-box bg-grey text-dark rounded-5 p-2 w-100 border-0 flex-fill" data-bs-toggle="modal" data-bs-target="#totalRoiModal">
+                                        <div class="small">Total ROI</div>
+                                        <div class="fw-bold">${{ number_format($totalStakeROI, 2) }}</div>
                                     </button>
-
                                 </div>
                             @endif
                         
-                            @if($pendingUnstake > 0)
-                                <span class="badge rounded-pill bg-danger text-white px-3 py-1 mt-1">
-                                    Pending unstake: ${{ number_format($pendingUnstake, 2) }}
-                                </span>
-                            @endif
+                            <div class="col-12 col-sm-6 d-flex align-items-stretch">
+                                <button type="button" class="stat-box bg-primary text-white rounded-5 p-2 w-100 border-0 flex-fill" data-bs-toggle="modal" data-bs-target="#accRoiModal">
+                                    <div class="small">Pending ROI</div>
+                                    <div class="fw-bold">${{ number_format($totalWeekROI, 2) }}</div>
+                                </button>
+                            </div>
+                            
+                            <div class="col-12 col-sm-6 d-flex align-items-stretch">
+                                <div class="stat-box bg-primary text-white rounded-5 p-2 flex-fill">
+                                    <div class="small">Pending Unstake</div>
+                                    <div class="fw-bold">${{ number_format($pendingUnstake, 2) }}</div>
+                        
+                                    @if($pendingUnstakesList->isNotEmpty())
+                                        <div class="small mt-1 text-white"
+                                             id="unstakeCountdown"
+                                             data-releases='@json($pendingUnstakesList)'>
+                                            Next release in: --
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
                         </div>
+            
+                        <!-- Action Buttons -->
+                        <div class="d-flex justify-content-center gap-2 mt-4">
+                            <button type="button"
+                                    class="btn wallet-btn btn-sm flex-fill"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#stakeModal">
+                                Stake
+                            </button>
+            
+                            <button type="button"
+                                    class="btn wallet-btn btn-sm flex-fill"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#unstakeModal"
+                                    style="background-color: red">
+                                Unstake
+                            </button>
+                        </div>
+                        
+                        @if($canClaim)
+                            <div class="text-center mt-3">
+                                <p class="mb-2">
+                                    You have <strong><h3>${{ number_format($claimableWeekROI, 2) }}</h3></strong> claimable from last week.<br>
+                                    Please wait for the auto-processing time period to start.
+                                </p>
+                                <form action="{{ route('staking.claim') }}" method="POST">
+                                    {{--@csrf
+                                    <button type="submit" class="btn btn-success"
+                                        @if($alreadyClaimed || session('success') === 'Your claim request has been queued. Please refresh in a moment to see the update.') 
+                                            disabled 
+                                        @endif>
+                                        Claim Weekly ROI
+                                    </button>--}}
+                                </form>
+                            </div>
+                        @endif
+                        
+                       {{-- Show queued msg --}}
+                        @if(session('success') === 'Your claim request has been queued. Please refresh in a moment to see the update.')
+                          <div class="text-center mt-3">
+                            <p class="text-muted mb-2">✅ {{ session('success') }}</p>
+                        
+                            @isset($txid)
+                              <div class="d-inline-flex align-items-center gap-2 flex-wrap justify-content-center">
+                                <a href="{{ route('user.assets', ['txid' => $txid]) }}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                  TXID: {{ $txid }}
+                                </a>
+                              </div>
+                            @endisset
+                          </div>
+                        @endif
+                        
+                        {{-- Show already claimed --}}
+                        @if($alreadyClaimed)
+                          <div class="text-center mt-3">
+                            <p class="text-muted mb-2">Weekly ROI has already been processed automatically</p>
+                        
+                            @if(!empty($latestWeekTxid))
+                              <div class="d-inline-flex align-items-center gap-2 flex-wrap justify-content-center">
+                                <a href="{{ route('user.assets', ['txid' => $latestWeekTxid]) }}" 
+                                   class="btn btn-sm btn-primary">
+                                  TXID: {{ $latestWeekTxid }}
+                                </a>
+                              </div>
+                            @endif
+                          </div>
+                        @endif
 
-                        
-                        <button type="button" 
-                                class="btn wallet-btn btn-sm mt-2" 
-                                data-bs-toggle="modal" 
-                                data-bs-target="#stakeModal" 
-                                style="font-size: 0.75rem;">
-                            Stake
-                        </button>
-                        
-                        <button type="button" 
-                                class="btn wallet-btn btn-sm mt-2" 
-                                data-bs-toggle="modal" 
-                                data-bs-target="#unstakeModal" 
-                                style="font-size: 0.75rem; background-color: red">
-                            Unstake
-                        </button>
-                        
                     </div>
                 </div>
             </div>
@@ -1359,6 +1477,106 @@
             </div>
           </div>
         </div>
+        
+        <!-- Staking Log Modal -->
+        <div class="modal fade" id="stakingHistoryModal" tabindex="-1" aria-labelledby="stakingHistoryModalLabel" aria-hidden="true">
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content bg-white">
+              
+              <div class="modal-header">
+                <h5 class="modal-title" id="stakingHistoryModalLabel">Staking History</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              
+              <div class="modal-body">
+                  <div class="table-responsive">
+                    <table class="table table-sm">
+                      <thead>
+                        <tr>
+                          <th>TxID</th>
+                          <th>Amount</th>
+                          <th>Balance</th>
+                          <th>Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @foreach($stakingHistory as $stake)
+                          <tr>
+                            <td>{{ $stake->txid }}</td>
+                            <td>${{ number_format($stake->amount, 2) }}</td>
+                            <td>${{ number_format($stake->balance, 2) }}</td>
+                            <td>{{ \Carbon\Carbon::parse($stake->created_at)->format('d M Y H:i') }}</td>
+                          </tr>
+                        @endforeach
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+              
+            </div>
+          </div>
+        </div>
+        
+        <!-- Total ROI Breakdown Modal -->
+        <div class="modal fade" id="totalRoiModal" tabindex="-1" aria-labelledby="totalRoiModalLabel" aria-hidden="true">
+          <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content bg-white">
+              <div class="modal-header">
+                <h5 class="modal-title" id="totalRoiModalLabel">Total ROI — Itemized Breakdown</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+        
+              <div class="modal-body">
+                <div class="table-responsive">
+                  <table class="table table-sm align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Date (NYT)</th>
+                        <th class="text-end">Amount Staked</th>
+                        <th class="text-end">Daily Rate</th>
+                        <th class="text-end">Profit</th>
+                        <th class="text-end">Running Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @php $runningTotal = 0; @endphp
+                      @forelse($allStakeRoiLogs as $log)
+                        @php $runningTotal += (float) $log->daily_profit; @endphp
+                        <tr>
+                          <td>{{ $log->created_at_nyt }}</td>
+                          <td class="text-end">{{ number_format((float)$log->total_balance, 2) }}</td>
+                          <td class="text-end">{{ number_format(((float)$log->daily_roi) * 100, 2) }}%</td>
+                          <td class="text-end">{{ number_format((float)$log->daily_profit, 2) }}</td>
+                          <td class="text-end fw-semibold">{{ number_format($runningTotal, 2) }}</td>
+                        </tr>
+                      @empty
+                        <tr>
+                          <td colspan="5" class="text-center text-muted py-4">
+                            No ROI records found.
+                          </td>
+                        </tr>
+                      @endforelse
+                    </tbody>
+                    </table>
+                    
+                    <!-- Pagination Links -->
+                    <div class="mt-3">
+                      {{ $allStakeRoiLogs->appends(['active_tab' => 'total_roi'])->links('vendor.pagination.bootstrap-5') }}
+                    </div>
+
+                  </table>
+                </div>
+              </div>
+        
+              <div class="modal-footer">
+                <span class="badge bg-success">
+                  <strong>Total ROI:</strong> ${{ number_format($runningTotal, 2) }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
 
     </div>
     
@@ -1372,22 +1590,34 @@
         window.announcement     = @json($announcement ?? null);
     </script>
     
-    @if((session('success') || $errors->any()) && !session('stake_success') && !session('unstake_success'))
-      <div class="position-fixed top-50 start-50 translate-middle" style="z-index: 99999; min-width: 300px;">
+   @if((session('success') || $errors->any()) && !session('stake_success') && !session('unstake_success'))
+      <div class="position-fixed top-50 start-50 translate-middle" style="z-index: 99999; min-width: 320px;">
         <div id="flashToast"
              class="toast show text-white bg-{{ session('success') ? 'success' : 'danger' }} border-0 shadow-lg"
              role="alert" aria-live="assertive" aria-atomic="true"
-             style="padding:10px; border-radius:12px;">
-          <div class="d-flex align-items-center justify-content-between">
-            <div class="toast-body w-100 text-center">
-              {!! session('success') ?? $errors->first() !!}
+             style="padding:12px; border-radius:12px; max-width: 520px;">
+          <div class="d-flex align-items-start justify-content-between w-100">
+            <div class="toast-body w-100">
+              <div class="mb-2">{!! session('success') ?? $errors->first() !!}</div>
+    
+              @if(session('success') === 'Your claim request has been queued. Please refresh in a moment to see the update.' && isset($txid))
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                  <a href="{{ route('user.assets', ['txid' => $txid]) }}"
+                     class="btn btn-sm btn-light">
+                    TXID: {{ $txid }}
+                  </a>
+                </div>
+              @endif
             </div>
+    
             <button type="button" class="btn-close btn-close-white ms-3"
                     data-bs-dismiss="toast" aria-label="Close"></button>
           </div>
         </div>
       </div>
     @endif
+
+
     
     {{-- ✅ Pretty stake success card (centered) --}}
     @if(session('stake_success'))
@@ -1994,6 +2224,14 @@
             const announcements = @json($announcements);
             let index = 0;
             
+            // 🚫 Skip announcements if user came from Stake Now link
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('open') === 'stake') {
+                console.log('🎯 Stake link detected — skipping announcements.');
+                return; // stop the announcement flow entirely
+            }
+
+            
             function showNextAnnouncement() {
                 if (index >= announcements.length) return;
             
@@ -2327,51 +2565,159 @@
     </script>
     
     <script>
+        document.addEventListener('DOMContentLoaded', function () {
+          document.body.addEventListener('click', function (e) {
+            const btn = e.target.closest('.stake-now-btn');
+            if (!btn) return;
+        
+            const currentModalEl = btn.closest('.modal');
+            if (currentModalEl) {
+              (bootstrap.Modal.getInstance(currentModalEl) || new bootstrap.Modal(currentModalEl)).hide();
+            }
+        
+            const stakeModalEl = document.getElementById('stakeModal');
+            const amountInput  = document.getElementById('stakeAmount');
+        
+            // Prefill within allowed range
+            const preset = parseFloat(btn.dataset.preset || '0');
+            if (amountInput) {
+              const max = parseFloat(amountInput.getAttribute('max')) || Infinity;
+              const min = parseFloat(amountInput.getAttribute('min')) || 1;
+              const safeVal = Math.min(Math.max(preset || min, min), max);
+              amountInput.value = isFinite(safeVal) ? safeVal : '';
+            }
+        
+            new bootstrap.Modal(stakeModalEl, { backdrop: true }).show();
+          });
+          
+          const form  = document.getElementById('unstakeForm');
+          const input = document.getElementById('unstakeAmount');
+          if (!form || !input) return;
+        
+          form.addEventListener('submit', function (e) {
+            const val = parseFloat(input.value);
+            const min = parseFloat(input.min || '1');
+            const max = parseFloat(input.max || '0');
+        
+            if (!Number.isInteger(val) || val < min || val > max) {
+              e.preventDefault();
+              alert(`Enter an integer between ${min} and ${max}.`);
+            }
+          });
+        });
+    </script>
+
+    <script src="{{ asset('js/users/intro-steps.js') }}"></script>
+    
+    <script>
     document.addEventListener('DOMContentLoaded', function () {
-      document.body.addEventListener('click', function (e) {
-        const btn = e.target.closest('.stake-now-btn');
-        if (!btn) return;
+        // Stake form debounce
+        const stakeForm = document.querySelector('#stakeModal form');
+        if (stakeForm) {
+            stakeForm.addEventListener('submit', function (e) {
+                const btn = stakeForm.querySelector('button[type="submit"]');
+                if (btn.disabled) {
+                    e.preventDefault(); // prevent double submit
+                    return;
+                }
+                btn.disabled = true;
+                btn.textContent = 'Processing...';
+            });
+        }
+
+        // Unstake form debounce
+        const unstakeForm = document.querySelector('#unstakeModal form');
+        if (unstakeForm) {
+            unstakeForm.addEventListener('submit', function (e) {
+                const btn = unstakeForm.querySelector('button[type="submit"]');
+                if (btn.disabled) {
+                    e.preventDefault();
+                    return;
+                }
+                btn.disabled = true;
+                btn.textContent = 'Processing...';
+            });
+        }
+    });
+    </script>
     
-        const currentModalEl = btn.closest('.modal');
-        if (currentModalEl) {
-          (bootstrap.Modal.getInstance(currentModalEl) || new bootstrap.Modal(currentModalEl)).hide();
+    @if ($errors->any())
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const stakeBtn = document.querySelector('#stakeModal form button[type="submit"]');
+        const unstakeBtn = document.querySelector('#unstakeModal form button[type="submit"]');
+        if (stakeBtn) {
+            stakeBtn.disabled = false;
+            stakeBtn.textContent = 'Confirm Stake';
+        }
+        if (unstakeBtn) {
+            unstakeBtn.disabled = false;
+            unstakeBtn.textContent = 'Confirm Unstake';
+        }
+    });
+    </script>
+    @endif
+    
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const el = document.getElementById("unstakeCountdown");
+        if (!el) return;
+    
+        const releases = JSON.parse(el.dataset.releases);
+        let index = 0;
+    
+        function updateCountdown() {
+            if (index >= releases.length) {
+                el.textContent = "No more pending unstakes";
+                return;
+            }
+    
+            const releaseTime = new Date(releases[index].release).getTime();
+            const now = new Date().getTime();
+            const distance = releaseTime - now;
+    
+            if (distance <= 0) {
+                index++;
+                updateCountdown();
+                return;
+            }
+    
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+    
+            const amount = parseFloat(releases[index].amount).toFixed(2);
+    
+            // Show countdown under Pending Unstake
+            el.textContent = `Next release: ${hours}h ${minutes}m ${seconds}s ($${amount})`;
         }
     
-        const stakeModalEl = document.getElementById('stakeModal');
-        const amountInput  = document.getElementById('stakeAmount');
-    
-        // Prefill within allowed range
-        const preset = parseFloat(btn.dataset.preset || '0');
-        if (amountInput) {
-          const max = parseFloat(amountInput.getAttribute('max')) || Infinity;
-          const min = parseFloat(amountInput.getAttribute('min')) || 1;
-          const safeVal = Math.min(Math.max(preset || min, min), max);
-          amountInput.value = isFinite(safeVal) ? safeVal : '';
-        }
-    
-        new bootstrap.Modal(stakeModalEl, { backdrop: true }).show();
-      });
-      
-      const form  = document.getElementById('unstakeForm');
-      const input = document.getElementById('unstakeAmount');
-      if (!form || !input) return;
-    
-      form.addEventListener('submit', function (e) {
-        const val = parseFloat(input.value);
-        const min = parseFloat(input.min || '1');
-        const max = parseFloat(input.max || '0');
-    
-        if (!Number.isInteger(val) || val < min || val > max) {
-          e.preventDefault();
-          alert(`Enter an integer between ${min} and ${max}.`);
-        }
-      });
+        updateCountdown();
+        setInterval(updateCountdown, 1000);
     });
     </script>
 
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('open') === 'stake') {
+        const amount = params.get('amount');
+        const amountInput = document.getElementById('stakeAmount');
+        if (amountInput && amount) {
+          amountInput.value = amount;
+        }
+        const stakeModalEl = document.getElementById('stakeModal');
+        if (stakeModalEl) {
+          const stakeModal = new bootstrap.Modal(stakeModalEl);
+          stakeModal.show();
+    
+          // ✅ Clean URL after showing modal
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      }
+    });
+    </script>
 
-
-    <script src="{{ asset('js/users/intro-steps.js') }}"></script>
     
     </x-slot:footerFiles>
 

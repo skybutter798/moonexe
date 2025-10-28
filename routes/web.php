@@ -75,10 +75,14 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::get('/deposits', [AdminDepositController::class, 'index'])->name('admin.deposits.index');
     Route::post('/deposits/{id}/approve', [AdminDepositController::class, 'approve'])->name('admin.deposits.approve');
     Route::post('/deposits/{id}/reject', [AdminDepositController::class, 'reject'])->name('admin.deposits.reject');
+    
+    Route::get('/deposits/export', [AdminDepositController::class, 'export']) ->name('admin.deposits.export');
 
     Route::get('/withdrawals', [AdminWithdrawalController::class, 'index'])->name('admin.withdrawals.index');
     Route::post('/withdrawals/{id}/approve', [AdminWithdrawalController::class, 'approve'])->name('admin.withdrawals.approve');
     Route::post('/withdrawals/{id}/reject', [AdminWithdrawalController::class, 'reject'])->name('admin.withdrawals.reject');
+    
+    Route::get('/withdrawals/export', [AdminWithdrawalController::class, 'export']) ->name('admin.withdrawals.export');
 
     Route::get('/currencies', [CurrencyController::class, 'index'])->name('admin.currencies.index');
     Route::get('/currencies/create', [CurrencyController::class, 'create'])->name('admin.currencies.create');
@@ -147,6 +151,7 @@ Route::prefix('user-dashboard')->middleware(['auth', 'user.only'])->group(functi
     Route::post('/bonusclaim', [AssetsController::class, 'claimCampaignBonus'])->name('user.claimCampaignBonus');
     Route::post('/stake',   [StakingController::class, 'store'])->name('stake.store');
     Route::post('/unstake', [StakingController::class, 'unstake'])->name('stake.unstake');
+    Route::post('/staking/claim', [StakingController::class, 'claim']) ->name('staking.claim') ->middleware('auth');
     
     //New layout
     Route::get('/account_v2', [AccountController::class, 'index'])->name('user.account_v2');

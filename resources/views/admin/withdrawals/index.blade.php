@@ -47,15 +47,26 @@
                           <option value="Rejected" {{ request('status')=='Rejected'?'selected':'' }}>Rejected</option>
                         </select>
                       </div>
+                      {{-- ✅ Date range filter --}}
+                        <div class="col-auto">
+                          <label class="form-label mb-0 small">From</label>
+                          <input type="date" name="start_date" class="form-control form-control-sm"
+                                 value="{{ request('start_date') }}">
+                        </div>
+                        <div class="col-auto">
+                          <label class="form-label mb-0 small">To</label>
+                          <input type="date" name="end_date" class="form-control form-control-sm"
+                                 value="{{ request('end_date') }}">
+                        </div>
+
                       <div class="col-auto">
-                        <input type="date" name="date" class="form-control form-control-sm"
-                               value="{{ request('date') }}">
-                      </div>
-                      <div class="col-auto">
-                        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
-                        <a href="{{ route('admin.withdrawals.index') }}"
-                           class="btn btn-secondary btn-sm ms-1">Reset</a>
-                      </div>
+                          <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+                          <a href="{{ route('admin.withdrawals.index') }}" class="btn btn-secondary btn-sm ms-1">Reset</a>
+                          <a href="{{ route('admin.withdrawals.export', request()->query()) }}" class="btn btn-success btn-sm ms-1">
+                            Export Excel
+                          </a>
+                        </div>
+
                     </form>
 
                     <div class="table-responsive">

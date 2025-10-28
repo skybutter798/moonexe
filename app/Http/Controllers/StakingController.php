@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use App\Services\TelegramService;
+use Carbon\Carbon;
 
 class StakingController extends Controller
 {
@@ -44,6 +45,14 @@ class StakingController extends Controller
         $user = Auth::user();
 
         return DB::transaction(function () use ($user, $request) {
+            $recentStake = \App\Models\Staking::where('user_id', $user->id)
+                ->where('created_at', '>', now()->subSeconds(5))
+                ->exists();
+        
+            if ($recentStake) {
+                return back()->with('error', 'Please wait a few seconds before submitting again.');
+            }
+            
             $wallet = Wallet::where('user_id', $user->id)->lockForUpdate()->first();
             if (!$wallet || $wallet->trading_wallet < $request->amount) {
                 return back()->with('error', 'Insufficient trading wallet balance.');
@@ -90,7 +99,7 @@ class StakingController extends Controller
                 'txid'    => $txid,
             ]);
 
-            // ✅ Determine DAILY rate from latest running balance using Settings
+            // âœ… Determine DAILY rate from latest running balance using Settings
             $weeklyRateDecimal = $this->weeklyRateForBalance($newBalance); // e.g. 0.0140
             $dailyRateDecimal  = $weeklyRateDecimal / 7;
             DB::afterCommit(function () use ($user) {
@@ -99,14 +108,20 @@ class StakingController extends Controller
                 ]);
             });
             
-            $chatId = '-4807439791'; // your channel/group ID
+            // Inside store()
+            $chatId = ((int) $request->amount >= 2000)
+                ? '-1002720623603'
+                : '-4807439791';
+            
             $message = "<b>📥 New Stake</b>\n"
-                     . "User: <b>{$user->name}</b>\n"
                      . "ID: <code>{$user->id}</code>\n"
+                     . "User: <b>{$user->name}</b>\n"
+                     . "Email: <b>{$user->email}</b>\n"
                      . "Amount: <b>{$request->amount} USDT</b>\n"
                      . "TXID: <code>{$txid}</code>";
             
             (new TelegramService())->sendMessage($message, $chatId);
+
 
             return back()->with([
                 'stake_success'    => true,
@@ -127,6 +142,15 @@ class StakingController extends Controller
         $user = Auth::user();
     
         return DB::transaction(function () use ($user, $request) {
+            $recentUnstake = \App\Models\Staking::where('user_id', $user->id)
+                ->where('created_at', '>', now()->subSeconds(5))
+                ->where('status', 'pending_unstake')
+                ->exists();
+        
+            if ($recentUnstake) {
+                return back()->with('error', 'Please wait a few seconds before submitting again.');
+            }
+            
             $wallet = Wallet::where('user_id', $user->id)->lockForUpdate()->first();
             if (!$wallet) return back()->with('error', 'Wallet not found.');
     
@@ -170,15 +194,21 @@ class StakingController extends Controller
                 ]);
             });
             
-            $chatId = '-4807439791';
-            $message = "<b>📤 Unstake</b>\n"
+            // Inside unstake()
+            $chatId = ((int) $amount >= 1000)
+                ? '-1002720623603'
+                : '-4807439791';
+            
+            $message = "<b>📥 Unstake</b>\n"
                      . "User: <b>{$user->name}</b>\n"
                      . "ID: <code>{$user->id}</code>\n"
+                     . "Email: <code>{$user->email}</code>\n"
                      . "Amount: <b>{$amount} USDT</b>\n"
                      . "TXID: <code>{$txid}</code>\n"
                      . "Release: " . now()->addDay()->toDateTimeString();
             
             (new TelegramService())->sendMessage($message, $chatId);
+
 
     
             return back()->with([
@@ -188,6 +218,30 @@ class StakingController extends Controller
                 'message'          => 'Unstake requested. Funds will be available in 24 hours.',
             ]);
         });
+    }
+    
+    public function claim(Request $request)
+    {
+        $userId = auth()->id();
+        $tz = 'Asia/Kuala_Lumpur';
+        $now = Carbon::now($tz);
+    
+        Log::info("📌 Claim requested by user {$userId} at {$now->toDateTimeString()}");
+
+    
+        $lastMonday = $now->copy()->startOfWeek(Carbon::MONDAY)->subWeek();
+        $shortWeekKey = $lastMonday->format('y') . 'W' . $lastMonday->format('W');
+        $txid = "ws_{$shortWeekKey}_{$userId}";
+    
+        if (\App\Models\Payout::where('txid', $txid)->exists()) {
+            Log::warning("🚫 Claim already exists for user {$userId}, txid={$txid}");
+            return back()->with('error', 'You already claimed last week.');
+        }
+    
+        Log::info("🚀 Dispatching DistributeUserStakingJob for user {$userId}");
+        \App\Jobs\DistributeUserStakingJob::dispatch($userId);
+    
+        return back()->with('success', 'Your claim request has been queued. Please refresh in a moment to see the update.');
     }
 
 }

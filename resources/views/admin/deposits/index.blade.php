@@ -48,15 +48,29 @@
                           <option value="Rejected" {{ request('status')=='Rejected'?'selected':'' }}>Rejected</option>
                         </select>
                       </div>
+                    
+                      {{-- ✅ Date Range Filter --}}
                       <div class="col-auto">
-                        <input type="date" name="date" class="form-control form-control-sm"
-                               value="{{ request('date') }}">
+                        <label class="form-label mb-0 small">From</label>
+                        <input type="date" name="start_date" class="form-control form-control-sm"
+                               value="{{ request('start_date') }}">
                       </div>
                       <div class="col-auto">
-                        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
-                        <a href="{{ route('admin.deposits.index') }}" class="btn btn-secondary btn-sm ms-1">Reset</a>
+                        <label class="form-label mb-0 small">To</label>
+                        <input type="date" name="end_date" class="form-control form-control-sm"
+                               value="{{ request('end_date') }}">
                       </div>
+                    
+                      <div class="col-auto">
+                          <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+                          <a href="{{ route('admin.deposits.index') }}" class="btn btn-secondary btn-sm ms-1">Reset</a>
+                          <a href="{{ route('admin.deposits.export', request()->query()) }}" class="btn btn-success btn-sm ms-1">
+                              Export Excel
+                          </a>
+                        </div>
+
                     </form>
+
                     {{-- End search form --}}
                     
                     @if($deposits->count())
@@ -65,28 +79,33 @@
                             Total Deposit: {{ number_format($totalAmount, 2) }}
                           </span>
                         </div>
-
                     @endif
         
                     <div class="table-responsive">
                       <table class="table table-bordered">
                         <thead class="bg-dark text-white">
-                            <tr>
-                                <th>Deposit ID</th>
-                                <th>Username</th>
-                                <th>TXID</th>
-                                <th>Amount</th>
-                                <th>TRC20 Address</th>
-                                <th>Status</th>
-                                <th>Created At</th>
-                                <th class="text-center">Action</th>
-                            </tr>
+                          <tr>
+                            <th>ID</th>
+                            <th>User ID</th>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>User TRX Address</th>
+                            <th>TXID</th>
+                            <th>Amount</th>
+                            <th>Deposit TRC20 Addr</th>
+                            <th>Status</th>
+                            <th>Created At</th>
+                            <th class="text-center">Action</th>
+                          </tr>
                         </thead>
                         <tbody>
                           @forelse ($deposits as $deposit)
                             <tr>
                               <td>{{ $deposit->id }}</td>
-                              <td>{{ $deposit->user->name }}</td>
+                              <td>{{ $deposit->user_id }}</td>
+                              <td>{{ $deposit->user->name ?? '-' }}</td>
+                              <td>{{ $deposit->user->email ?? '-' }}</td>
+                              <td>{{ $deposit->user->trx_address ?? '-' }}</td>
                               <td>{{ $deposit->txid }}</td>
                               <td>{{ number_format($deposit->amount, 2) }}</td>
                               <td>{{ $deposit->trc20_address }}</td>
@@ -101,13 +120,11 @@
                               <td>{{ $deposit->created_at->format('d M Y') }}</td>
                               <td class="text-center">
                                 @if($deposit->status === 'Pending')
-                                  <form action="{{ route('admin.deposits.approve', $deposit->id) }}"
-                                        method="POST" class="d-inline">
+                                  <form action="{{ route('admin.deposits.approve', $deposit->id) }}" method="POST" class="d-inline">
                                     @csrf
                                     <button class="btn btn-success btn-sm">Approve</button>
                                   </form>
-                                  <form action="{{ route('admin.deposits.reject', $deposit->id) }}"
-                                        method="POST" class="d-inline">
+                                  <form action="{{ route('admin.deposits.reject', $deposit->id) }}" method="POST" class="d-inline">
                                     @csrf
                                     <button class="btn btn-danger btn-sm">Reject</button>
                                   </form>
@@ -118,12 +135,13 @@
                             </tr>
                           @empty
                             <tr>
-                              <td colspan="8" class="text-center">No deposits found.</td>
+                              <td colspan="11" class="text-center">No deposits found.</td>
                             </tr>
                           @endforelse
                         </tbody>
                       </table>
                     </div>
+
         
                     {{-- Pagination links --}}
                     <div class="mt-3">

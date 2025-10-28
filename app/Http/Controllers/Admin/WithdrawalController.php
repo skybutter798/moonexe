@@ -8,16 +8,19 @@ use App\Models\Withdrawal;
 use App\Models\Wallet;
 use App\Services\TelegramService;
 use App\Models\User;
+use App\Exports\WithdrawalsExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class WithdrawalController extends Controller
 {
-
     public function index(Request $request)
     {
         $query = Withdrawal::with('user')
             ->whereNotIn('id', [61, 63])
+            ->whereHas('user', function ($q) {
+                $q->where('id', '!=', 665);
+            })
             ->orderBy('created_at', 'desc');
-
 
         // Username
         if ($request->filled('username')) {
@@ -47,14 +50,28 @@ class WithdrawalController extends Controller
             $query->where('status', $request->status);
         }
 
-        // Date
-        if ($request->filled('date')) {
-            $query->whereDate('created_at', $request->date);
+        // ✅ Date range filter
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('created_at', [
+                $request->start_date . ' 00:00:00',
+                $request->end_date . ' 23:59:59',
+            ]);
+        } elseif ($request->filled('start_date')) {
+            $query->whereDate('created_at', '>=', $request->start_date);
+        } elseif ($request->filled('end_date')) {
+            $query->whereDate('created_at', '<=', $request->end_date);
         }
 
         $withdrawals = $query->paginate(15)->withQueryString();
 
         return view('admin.withdrawals.index', compact('withdrawals'));
+    }
+
+    // ✅ Excel export
+    public function export(Request $request)
+    {
+        $filters = $request->all();
+        return Excel::download(new WithdrawalsExport($filters), 'withdrawals_'.now()->format('Ymd_His').'.xlsx');
     }
 
     public function approve($id)

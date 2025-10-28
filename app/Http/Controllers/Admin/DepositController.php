@@ -6,24 +6,27 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Deposit;
 use App\Models\Wallet;
+use App\Exports\DepositsExport;
+use Maatwebsite\Excel\Facades\Excel;
+
 
 class DepositController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Deposit::with('user')
-            //->where('status', 'Completed')
-            //->whereNotNull('external_txid')
-            ->whereNotIn('id', [302, 245, 279])
+        $query = Deposit::with(['user:id,name,email,trx_address'])
+            ->where('status', 'Completed')
+            ->whereNotNull('external_txid')
+            ->whereNotIn('id', [302, 245, 279, 299, 281, 272, 262, 256, 252, 234])
             ->orderBy('created_at', 'desc');
-    
+
         // username search
         if ($request->filled('username')) {
             $query->whereHas('user', function($q) use ($request) {
                 $q->where('name', 'like', '%'.$request->username.'%');
             });
         }
-    
+
         // other filters
         if ($request->filled('txid')) {
             $query->where('txid', 'like', '%'.$request->txid.'%');
@@ -32,7 +35,6 @@ class DepositController extends Controller
             $query->where('trc20_address', 'like', '%'.$request->trc20_address.'%');
         }
         if ($request->filled('amount')) {
-            // ensure we compare at 2 decimal places
             $val = number_format((float)$request->amount, 2, '.', '');
             $query->whereRaw('FORMAT(amount, 2) = ?', [$val]);
         }
@@ -40,26 +42,28 @@ class DepositController extends Controller
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
-        if ($request->filled('date')) {
-            $query->whereDate('created_at', $request->date);
+
+        // ✅ Date range filter
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('created_at', [
+                $request->start_date . ' 00:00:00',
+                $request->end_date . ' 23:59:59',
+            ]);
+        } elseif ($request->filled('start_date')) {
+            $query->whereDate('created_at', '>=', $request->start_date);
+        } elseif ($request->filled('end_date')) {
+            $query->whereDate('created_at', '<=', $request->end_date);
         }
-    
+
         // paginate, keep query string for filters
         $deposits = $query->paginate(15)->withQueryString();
-    
-        // Clone the query to calculate total amount separately
+
+        // Clone for total
         $totalAmount = (clone $query)->sum('amount');
-        
-        // Paginate the original query
-        $deposits = $query->paginate(15)->withQueryString();
-        
-        // Pass total amount to the view
+
         return view('admin.deposits.index', compact('deposits', 'totalAmount'));
     }
 
-    /**
-     * Approve a deposit request.
-     */
     public function approve($id)
     {
         $deposit = Deposit::findOrFail($id);
@@ -67,11 +71,9 @@ class DepositController extends Controller
             return redirect()->back()->with('error', 'This deposit has already been processed.');
         }
 
-        // Update the deposit status.
         $deposit->status = 'Completed';
         $deposit->save();
 
-        // Find the user's wallet; create one if it doesn't exist.
         $wallet = Wallet::firstOrNew(['user_id' => $deposit->user_id]);
         if (!$wallet->exists) {
             $wallet->cash_wallet = 0;
@@ -80,16 +82,12 @@ class DepositController extends Controller
             $wallet->affiliates_wallet = 0;
         }
 
-        // Add the deposit amount to the user's Cash Wallet.
         $wallet->cash_wallet += $deposit->amount;
         $wallet->save();
 
         return redirect()->back()->with('success', 'Deposit approved successfully.');
     }
 
-    /**
-     * Reject a deposit request.
-     */
     public function reject($id)
     {
         $deposit = Deposit::findOrFail($id);
@@ -102,4 +100,13 @@ class DepositController extends Controller
 
         return redirect()->back()->with('success', 'Deposit rejected.');
     }
+    
+    public function export(Request $request)
+    {
+        $filters = $request->all();
+    
+        return Excel::download(new DepositsExport($filters), 'deposits_export_'.now()->format('Ymd_His').'.xlsx');
+    }
+
 }
+
