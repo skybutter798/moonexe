@@ -12,12 +12,10 @@ class DepositController extends Controller
     public function index(Request $request)
     {
         $query = Deposit::with('user')
-            ->where('status', 'Completed')
-            ->whereNotNull('external_txid')
+            //->where('status', 'Completed')
+            //->whereNotNull('external_txid')
             ->whereNotIn('id', [302, 245, 279])
             ->orderBy('created_at', 'desc');
-
-
     
         // username search
         if ($request->filled('username')) {

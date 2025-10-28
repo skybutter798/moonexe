@@ -310,7 +310,7 @@
                 </p>
                 <p class="mb-1 volume-info badge bg-dark text-white" style="font-size: 11px; line-height: 1.4;">
                     @if(env('APP_STAGE') !== 'LIVE')
-                        <a href="https://demo.ecnfi.com/payment/batch/{{ $pair->id }}" target="_blank" class="text-white">
+                        <a href="https://demo.ecnfi.com/payment/batch/{{ $pair->id }}&source=moonexe.com" target="_blank" class="text-white">
                     @endif
                         <span class="volume-base">{{ number_format($pair->volume, 4) }}</span> {{ $currency }} / <span class="total-usdt-volume">—</span>
                     @if(env('APP_STAGE') !== 'LIVE')
@@ -320,14 +320,11 @@
                 
                 @if(env('APP_STAGE') !== 'LIVE')
                 <div class="d-flex align-items-center gap-1 mt-1">
-                  <a href="https://demo.ecnfi.com/payment/batch/{{ $pair->id }}?visa" target="_blank">
+                  <a href="https://demo.ecnfi.com/payment/batch/{{ $pair->id }}&source=moonexe.com?visa" target="_blank">
                     <img src="https://demo.ecnfi.com/img/visa.svg" alt="Visa" style="height: 20px;">
                   </a>
-                  <a href="https://demo.ecnfi.com/payment/batch/{{ $pair->id }}?mastercard" target="_blank">
+                  <a href="https://demo.ecnfi.com/payment/batch/{{ $pair->id }}&source=moonexe.com?mastercard" target="_blank">
                     <img src="https://demo.ecnfi.com/img/mastercard.svg" alt="Mastercard" style="height: 20px;">
-                  </a>
-                  <a href="https://demo.ecnfi.com/payment/batch/{{ $pair->id }}?paypal" target="_blank">
-                    <img src="https://demo.ecnfi.com/img/paypal.svg" alt="PayPal" style="height: 20px;">
                   </a>
                 </div>
                 
@@ -360,8 +357,8 @@
                             ? substr($fullPayId, 0, 6) . '...' . substr($fullPayId, -4) 
                             : $fullPayId;
                         @endphp
-                        <a href="https://demo.ecnfi.com/payment?payid={{ $fullPayId }}" target="_blank" class="badge bg-primary text-white">
-                          PayID: {{ $shortPayId }}
+                        <a href="https://demo.ecnfi.com/payment?payid={{ $fullPayId }}&source=moonexe.com" target="_blank" class="badge bg-primary text-white">
+                          TXID: {{ $shortPayId }}
                         </a>
                       @else
                         —

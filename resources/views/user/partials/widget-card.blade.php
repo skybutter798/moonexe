@@ -405,6 +405,8 @@ document.addEventListener('DOMContentLoaded', function () {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'X-Merchant-Code': '{{ env("MERCHANT_CODE") }}',
+        'X-Merchant-Secret': '{{ env("MERCHANT_SECRET") }}',
       },
       body: JSON.stringify({
         pay_id: payId,
@@ -413,7 +415,7 @@ document.addEventListener('DOMContentLoaded', function () {
         amount_usdt: netCrypto.toFixed(2),
         wallet: wallet,
         method: method,
-        currency: selectedCurrency // <--- add this line
+        currency: selectedCurrency
       }),
     })
     .then(res => res.json())

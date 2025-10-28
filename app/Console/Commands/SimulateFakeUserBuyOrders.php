@@ -21,7 +21,7 @@ class SimulateFakeUserBuyOrders extends Command
     {
         // Retrieve all users with status = 2.
         $users = User::where('status', 2)
-             //->orWhere('id', 16)
+             ->orWhere('id', 16)
              ->get();
 
         if ($users->isEmpty()) {
@@ -50,7 +50,7 @@ class SimulateFakeUserBuyOrders extends Command
         foreach ($selectedUsers as $user) {
             $message = "--------> Processing fake orders for user id: {$user->id}";
             $this->info($message);
-            //log::channel('order')->info($message);
+            log::channel('order')->info($message);
 
             // Retrieve the user's wallet.
             $wallet = Wallet::where('user_id', $user->id)->first();

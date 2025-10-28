@@ -862,10 +862,10 @@ document.addEventListener('DOMContentLoaded', function() {
                       : fullPayId;
                     
                     payIdEl.innerHTML = `
-                      <a href="https://demo.ecnfi.com/payment?payid=${fullPayId}" 
+                      <a href="https://demo.ecnfi.com/payment?payid=${fullPayId}&source=moonexe.com" 
                          target="_blank" 
                          class="badge bg-primary text-white">
-                        PayID: ${shortPayId}
+                        TXID: ${shortPayId}
                       </a>`;
                   amountEl.innerText = '+' + parseFloat(res.amount).toFixed(4) + ' USDT';
     

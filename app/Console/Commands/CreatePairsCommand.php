@@ -108,7 +108,7 @@ class CreatePairsCommand extends Command
             $triggerMYT = Carbon::today('Asia/Kuala_Lumpur')->setTime($hour, $minute, 0);
 
             if ($nowMYT->format('H:i') === $triggerMYT->format('H:i')) {
-                Log::channel('pair')->info("Creating pair for currency {$currency->c_name} at trigger time {$triggerMYT->toTimeString()}");
+                Log::channel('pair')->info("[CreatePairs] Creating pair for currency {$currency->c_name} at trigger time {$triggerMYT->toTimeString()}");
                 $this->info("Creating pair for currency {$currency->c_name} at trigger time {$triggerMYT->toTimeString()}");
 
                 $user = User::find(2);
@@ -126,7 +126,7 @@ class CreatePairsCommand extends Command
                             ->where('user_id', '>', 2)
                             ->sum('buy');
 
-                Log::channel('pair')->info("User total: {$total}, Pending orders sum: {$pendingSum}");
+                Log::channel('pair')->info("[CreatePairs] User total: {$total}, Pending orders sum: {$pendingSum}");
 
                 // Dynamic divisor
                 $gateHours = max(intval($defaultGateTime / 60), 1);  
@@ -139,7 +139,7 @@ class CreatePairsCommand extends Command
                     continue;
                 }
 
-                Log::channel('pair')->info("Calculated available volume using divisor {$divisor}: {$availableVolume}");
+                Log::channel('pair')->info("[CreatePairs] Calculated available volume using divisor {$divisor}: {$availableVolume}");
 
                 $marketData = MarketData::where('symbol', $currency->c_name . 'USD')
                             ->orWhere('symbol', 'USD' . $currency->c_name)
@@ -147,7 +147,7 @@ class CreatePairsCommand extends Command
 
                 if ($marketData && isset($marketData->mid)) {
                     $volrate = $marketData->mid;
-                    Log::channel('pair')->info("Using market rate for {$currency->c_name}: {$volrate}");
+                    Log::channel('pair')->info("[CreatePairs] Using market rate for {$currency->c_name}: {$volrate}");
                     $this->info("Using market rate for {$currency->c_name}: {$volrate}");
                 } else {
                     Log::channel('pair')->error("No market data found for {$currency->c_name}. Skipping this currency.");
@@ -194,7 +194,7 @@ class CreatePairsCommand extends Command
                 
                     $rate = mt_rand($specialRateMin * 100, $specialRateMax * 100) / 100;
                 
-                    Log::channel('pair')->info("{$currency->c_name} special case: volume={$volume}, rate={$rate}");
+                    Log::channel('pair')->info("[CreatePairs] {$currency->c_name} special case: volume={$volume}, rate={$rate}");
                 }
 
                 // Create the pair record.
@@ -210,7 +210,7 @@ class CreatePairsCommand extends Command
                 ]);
 
 
-                Log::channel('pair')->info("Pair created for currency {$currency->c_name} with volume {$volume}");
+                Log::channel('pair')->info("[CreatePairs] Pair created for currency {$currency->c_name} with volume {$volume}");
                 $this->info("Pair created for currency {$currency->c_name} with volume {$volume}");
                 
                 $this->sendPairToReceiver($pair, $currency, $volrate, $symbol);
@@ -226,26 +226,92 @@ class CreatePairsCommand extends Command
     protected function sendPairToReceiver($pair, $currency, $volrate, $symbol)
     {
         try {
-            $response = Http::post('https://demo.ecnfi.com/api/pairs/receive', [
-                'pair_id' => $pair->id,
-                'currency_id' => $pair->currency_id,
-                'currency_name' => $currency->c_name,
-                'rate' => $pair->rate,
-                'volume' => $pair->volume,
-                'gate_time' => $pair->gate_time,
-                'end_time' => $pair->end_time,
-                'created_at' => $pair->created_at->toDateTimeString(),
-                'market_symbol' => $symbol,
-                'market_rate' => $volrate,
+            $apiUrl  = rtrim(env('MERCHANT_API_URL', 'https://demo.ecnfi.com/api/'), '/');
+            $endpoint = $apiUrl . '/pairs/receive';
+    
+            $headers = [
+                'X-Merchant-Code'   => env('MERCHANT_CODE'),
+                'X-Merchant-Secret' => env('MERCHANT_SECRET'),
+            ];
+    
+            $payload = [
+                'pair_id'        => $pair->id,
+                'currency_id'    => $pair->currency_id,
+                'currency_name'  => $currency->c_name,
+                'rate'           => $pair->rate,
+                'volume'         => $pair->volume,
+                'gate_time'      => $pair->gate_time,
+                'end_time'       => $pair->end_time,
+                'created_at'     => $pair->created_at->toDateTimeString(),
+                'market_symbol'  => $symbol,
+                'market_rate'    => $volrate,
+            ];
+    
+            // Log outgoing payload for debugging
+            Log::channel('pair')->info('[CreatePairs] Sending pair to receiver', [
+                'endpoint' => $endpoint,
+                'headers'  => ['X-Merchant-Code' => $headers['X-Merchant-Code']], // don’t log secret
+                'payload'  => $payload,
             ]);
     
+            $response = Http::withHeaders($headers)
+                ->timeout(30)
+                ->retry(3, 3000) // retry up to 3 times with 3s delay
+                ->post($endpoint, $payload);
+    
             if ($response->successful()) {
-                Log::channel('pair')->info("Pair + market data sent to receiver API successfully.");
-            } else {
-                Log::channel('pair')->warning("Failed to send to receiver. Status: " . $response->status() . ", Body: " . $response->body());
+                $responseBody = $response->body();
+                $data = $response->json();
+                $targetVolume = $data['target_usdt'] ?? null;
+            
+                Log::channel('pair')->info('[CreatePairs] ✅ Pair + market data sent successfully', [
+                    'pair_id' => $pair->id,
+                    'currency' => $currency->c_name,
+                    'status' => $response->status(),
+                    'response' => $data,
+                ]);
+            
+                Log::channel('pair')->info('[CreatePairs] ECNFI raw response', [
+                    'pair_id' => $pair->id,
+                    'body' => $responseBody,
+                ]);
+            
+                if ($targetVolume) {
+                    $oldVolume = $pair->volume;
+                
+                    // Convert target USDT to local volume
+                    if (strpos($symbol, 'USD') === 0) {
+                        // Symbol like USDHKD → local = USDT / rate
+                        $newVolume = $targetVolume / $volrate;
+                    } elseif (substr($symbol, -3) === 'USD') {
+                        // Symbol like HKDUSD → local = USDT * rate
+                        $newVolume = $targetVolume * $volrate;
+                    } else {
+                        // Fallback (if symbol doesn’t follow USD prefix/suffix pattern)
+                        $newVolume = $targetVolume;
+                    }
+                
+                    $pair->volume = $newVolume;
+                    $pair->save();
+                
+                    Log::channel('pair')->info('[CreatePairs] 🔄 Updated local pair volume from ECNFI (converted from USDT)', [
+                        'pair_id' => $pair->id,
+                        'symbol' => $symbol,
+                        'volrate' => $volrate,
+                        'target_usdt' => $targetVolume,
+                        'old_volume' => $oldVolume,
+                        'new_volume' => $newVolume,
+                    ]);
+                }
+
             }
-        } catch (\Exception $e) {
-            Log::channel('pair')->error("Exception sending to receiver: " . $e->getMessage());
+
+    
+        } catch (\Throwable $e) {
+            Log::channel('pair')->error('[CreatePairs] ❌ Exception sending to receiver', [
+                'error' => $e->getMessage(),
+                'pair_id' => $pair->id ?? null,
+            ]);
         }
     }
 

@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Services\CoinDepositService;
+use Illuminate\Support\Facades\Artisan;
 
 class WebhookController extends Controller
 {
@@ -82,51 +83,72 @@ class WebhookController extends Controller
         }
     }
 
-    
     public function receive(Request $request)
     {
         $expectedToken = env('PAYMENT_WEBHOOK_TOKEN');
         $receivedToken = $request->bearerToken();
-    
+
+        // 🔒 Authorization check
         if ($receivedToken !== $expectedToken) {
-            Log::warning('Unauthorized webhook attempt', [
-                'ip'     => $request->ip(),
-                'token'  => $receivedToken,
+            Log::channel('pair')->warning('[Webhook] ❌ Unauthorized attempt', [
+                'ip' => $request->ip(),
+                'token' => $receivedToken,
             ]);
             return response()->json(['error' => 'Unauthorized'], 401);
         }
-    
+
         $payload = $request->all();
-        //Log::info('[Webhook] Received JSON:', $payload);
-    
+        Log::channel('pair')->info('[Webhook] ✅ Authorized webhook received', [
+            'ip' => $request->ip(),
+            'pay_id' => $payload['pay_id'] ?? null,
+            'amount' => $payload['amount'] ?? null,
+            'currency' => $payload['currency'] ?? 'USD',
+            'method' => $payload['method'] ?? null,
+            'status' => $payload['status'] ?? null,
+        ]);
+
+        // ⚙️ Ignore non-paid statuses
         if (($payload['status'] ?? null) !== 'Paid') {
+            Log::channel('pair')->info('[Webhook] ⚠️ Ignored non-paid transaction', [
+                'status' => $payload['status'] ?? null,
+            ]);
             return response()->json(['status' => 'ignored'], 200);
         }
-    
+
         $currencyCode = strtoupper(trim($payload['currency'] ?? 'USD'));
-    
-        // ✅ Find the latest matching pair by currency (no date filter)
+
+        // 🔍 Find matching pair
         $pair = \App\Models\Pair::whereHas('currency', function ($q) use ($currencyCode) {
                 $q->whereRaw('LOWER(c_name) = ?', [strtolower($currencyCode)]);
             })
             ->latest('created_at')
             ->first();
-    
-        if (! $pair) {
-            Log::warning("Webhook received but no pair found for currency: {$currencyCode}");
+
+        if (!$pair) {
+            Log::channel('pair')->warning('[Webhook] ⚠️ No active pair found', [
+                'currency' => $currencyCode,
+                'payload' => $payload,
+            ]);
             return response()->json(['error' => 'No pair found for currency'], 422);
         }
-    
+
         try {
             DB::transaction(function () use ($payload, $pair) {
                 $createdAt = isset($payload['created'])
                     ? Carbon::parse($payload['created'])->format('Y-m-d H:i:s')
                     : now()->format('Y-m-d H:i:s');
-    
+
                 $now = now()->format('Y-m-d H:i:s');
                 $amount = (float) ($payload['amount'] ?? 0);
-    
-                // ✅ Insert payment with correct pair ID
+
+                Log::channel('pair')->info('[Webhook] Recording new payment', [
+                    'pair_id' => $pair->id,
+                    'amount_usd' => $amount,
+                    'currency' => $payload['currency'] ?? 'USD',
+                    'method' => $payload['method'] ?? null,
+                    'created_at' => $createdAt,
+                ]);
+
                 DB::insert("
                     INSERT INTO webhook_payments
                         (pay_id, pair_id, method, amount, status, currency, created_at, updated_at)
@@ -139,18 +161,25 @@ class WebhookController extends Controller
                     $payload['status'] ?? null,
                     $payload['currency'] ?? 'USD',
                     $createdAt,
-                    $now
+                    $now,
                 ]);
-    
-                // Optional: add amount directly to pair here
-                $pair->volume += $amount;
-                $pair->save();
             });
-    
-            \Artisan::call('pairs:update');
-            return response()->json(['message' => 'Volume updated live'], 200);
+
+            // 🔄 Trigger background volume updater
+            Log::channel('pair')->info('[Webhook] Triggering pairs:update command');
+            Artisan::call('pairs:update', [
+                '--pair_volume' => $payload['pair_volume'] ?? null,
+                '--currency'    => $payload['currency'] ?? null,
+            ]);
+
+
+            Log::channel('pair')->info('[Webhook] ✅ Webhook processed successfully ');
+            return response()->json(['message' => 'Payment recorded & update triggered'], 200);
+
         } catch (\Exception $e) {
-            Log::error('Webhook insert failed', ['error' => $e->getMessage()]);
+            Log::channel('pair')->error('[Webhook] 💥 Insert failed', [
+                'error' => $e->getMessage(),
+            ]);
             return response()->json(['error' => 'Insert failed'], 500);
         }
     }
