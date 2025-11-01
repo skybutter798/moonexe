@@ -34,7 +34,7 @@ class CreatePairsVolumeUpdateCommand extends Command
          * ============================================================
          */
         if ($pairVolumeUSD > 0 && !empty($currencyCode)) {
-            Log::channel('pair')->info("[Webhook] ⚙️ Direct update mode detected", [
+            Log::channel('pair')->info("[Webhook] Direct update mode detected", [
                 'currency' => $currencyCode,
                 'pair_volume_usd' => $pairVolumeUSD,
             ]);
@@ -46,7 +46,7 @@ class CreatePairsVolumeUpdateCommand extends Command
                 ->first();
 
             if (!$pair) {
-                Log::channel('pair')->warning("[Webhook] ⚠️ No pair found for {$currencyCode}");
+                Log::channel('pair')->warning("[Webhook] No pair found for {$currencyCode}");
                 return 0;
             }
 
@@ -68,7 +68,7 @@ class CreatePairsVolumeUpdateCommand extends Command
                         ? $pairVolumeUSD * $rateRow->mid
                         : $pairVolumeUSD / $rateRow->mid;
                 } else {
-                    Log::channel('pair')->warning("[Webhook] ⚠️ No FX rate found for {$localCurrency}");
+                    Log::channel('pair')->warning("[Webhook] No FX rate found for {$localCurrency}");
                     return 0;
                 }
             }
@@ -77,7 +77,7 @@ class CreatePairsVolumeUpdateCommand extends Command
             $pair->volume = $finalVolumeLocal;
             $pair->save();
 
-            Log::channel('pair')->info("[Webhook] 🔄 Pair volume replaced → {$pairVolumeUSD} USD ({$finalVolumeLocal} {$localCurrency}) for Pair #{$pair->id}");
+            Log::channel('pair')->info("[Webhook] Pair volume replaced → {$pairVolumeUSD} USD ({$finalVolumeLocal} {$localCurrency}) for Pair #{$pair->id}");
 
             // 📢 Broadcast updated volume
             $pendingBuyLocal = Order::where('pair_id', $pair->id)

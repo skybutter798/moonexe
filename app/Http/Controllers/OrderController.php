@@ -47,9 +47,12 @@ class OrderController extends Controller
     
         // Eager load orders with each pair and filter pairs created in the last 24 hours.
         $pairs = Pair::with(['orders', 'currency', 'pairCurrency', 'latestWebhookPayment'])
-                     //->where('created_at', '>=', now()->subDay())
-                     ->where('created_at', '>=', now()->startOfDay())
-                     ->get();
+            ->where(function ($q) {
+                // Include pairs created in the last 24 hours OR those whose gate hasn't closed yet
+                $q->where('created_at', '>=', now()->subDay())
+                  ->orWhereRaw('TIMESTAMPADD(MINUTE, gate_time, created_at) > ?', [now()]);
+            })
+            ->get();
                     
         $package = $user->package ? Directrange::find($user->package) : null;
         $packageProfit = $package ? $package->percentage : 0;

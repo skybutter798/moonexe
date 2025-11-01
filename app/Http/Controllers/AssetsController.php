@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
@@ -24,212 +25,182 @@ use App\Events\CampaignBalanceUpdated;
 use PragmaRX\Google2FA\Google2FA;
 use Illuminate\Support\Facades\Auth;
 
+use App\Http\Controllers\Controller;
+use App\Models\UserAssetsCache;
+use App\Jobs\BuildUserAssetsCache;
+use App\Services\AssetsIndexBuilder;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
+
+
 class AssetsController extends Controller
 {
     public function __construct()
     {
         $this->middleware('auth');
     }
-
-    public function index()
+    
+    public function index(Request $request)
     {
-        $userId = auth()->id();
-        $wallets = Wallet::where('user_id', $userId)->first();
-    
-        if (!$wallets) {
-            $wallets = (object) [
-                'cash_wallet'       => 0,
-                'trading_wallet'    => 0,
-                'earning_wallet'    => 0,
-                'affiliates_wallet' => 0,
-            ];
-        }
-    
-        $total_balance = (float)$wallets->cash_wallet +
-                         (float)$wallets->trading_wallet +
-                         (float)$wallets->earning_wallet +
-                         (float)$wallets->affiliates_wallet;
-                         
-        $roiRecords = \App\Models\Payout::with(['order.pair.currency'])
-            ->where('user_id', $userId)
-            ->where('type', 'payout')
-            ->where('wallet', 'earning')
-            ->orderBy('created_at', 'desc')
-            ->paginate(10, ['*'], 'trading_page');
-        
-        foreach ($roiRecords as $roi) {
-            if ($roi->order && $roi->order->pair && $roi->order->pair->currency) {
-                $roi->cname = $roi->order->pair->currency->c_name;
-            } else {
-                $roi->cname = 'N/A';
-            }
-        }
-
-    
-        // Existing queries for deposits, withdrawals, and transfers…
-        $depositRequests = Deposit::where('user_id', $userId)->orderBy('created_at', 'desc')->get();
-        $withdrawalRequests = Withdrawal::where('user_id', $userId)->orderBy('created_at', 'desc')->get();
-        $transferRecords = Transfer::where('user_id', $userId)->orderBy('created_at', 'desc')->get();
-    
-        $transactions = collect();
-        foreach ($depositRequests as $deposit) {
-            if ($deposit->status === 'Completed') {
-                $deposit->type = 'Deposit';
-                $deposit->transaction_description = 'Deposit';
-                $deposit->transaction_amount = '+' . number_format($deposit->amount, 4);
-                $transactions->push($deposit);
-            }
-        }
-        foreach ($withdrawalRequests as $withdrawal) {
-            if ($withdrawal->status === 'Completed') {
-                $withdrawal->type = 'Withdrawal';
-                $withdrawal->transaction_description = 'Withdraw';
-                $withdrawal->transaction_amount = '-' . number_format($withdrawal->amount, 4);
-                $transactions->push($withdrawal);
-            }
-        }
-        
-        foreach ($transferRecords as $transfer) {
-            if ($transfer->status === 'Completed') {
-                // Check if it's a downline transfer (cash_wallet to cash_wallet with remark "downline")
-                if ($transfer->from_wallet === 'cash_wallet' && $transfer->to_wallet === 'cash_wallet' && $transfer->remark === 'downline') {
-                    $transfer->transaction_description = 'USDT → Downline';
-                    $transfer->type = 'Transfer';
-                } else {
-                    $transfer->type = 'Transfer';
-                    $walletMapping = [
-                        'earning_wallet'    => 'Trade Profit',
-                        'affiliates_wallet' => 'Affiliates',
-                        'cash_wallet'       => 'USDT',
-                        'trading_wallet'    => 'Trade Margin',
-                    ];
-                    $fromReadable = $walletMapping[$transfer->from_wallet] ?? ucfirst($transfer->from_wallet);
-                    $toReadable   = $walletMapping[$transfer->to_wallet] ?? ucfirst($transfer->to_wallet);
-                    $transfer->transaction_description = "{$fromReadable} → {$toReadable}";
-                }
-                $transfer->transaction_amount = number_format($transfer->amount, 4);
-                $transactions->push($transfer);
-            }
-        }
-
-    
-        $transactions = $transactions->sortByDesc('created_at');
-    
-        $assets = \App\Models\Asset::with('currencyData')
-            ->where('user_id', $userId)
-            ->get();
-    
-        // (Optional) Price/Cost and 24H Change queries using orders, pairs, and currencies tables.
-        $priceCostByCurrency = DB::table('orders')
-            ->join('pairs', 'orders.pair_id', '=', 'pairs.id')
-            ->join('currencies', 'pairs.currency_id', '=', 'currencies.id')
-            ->select('currencies.c_name as currency', DB::raw('AVG(orders.buy) as avg_price'))
-            ->where('orders.user_id', $userId)
-            ->where('orders.buy', '>', 0)
-            ->groupBy('currencies.c_name')
-            ->pluck('avg_price', 'currency')
-            ->toArray();
-    
-        $today = now()->startOfDay();
-        $changeResults = DB::table('orders')
-            ->join('pairs', 'orders.pair_id', '=', 'pairs.id')
-            ->join('currencies', 'pairs.currency_id', '=', 'currencies.id')
-            ->select(
-                'currencies.c_name as currency',
-                DB::raw("SUM(orders.buy) as total_buy"),
-                DB::raw("SUM(orders.sell) as total_sell")
-            )
-            ->where('orders.user_id', $userId)
-            ->where('orders.created_at', '>=', $today)
-            ->groupBy('currencies.c_name')
-            ->get();
-    
-        $netChangeByCurrency = [];
-        foreach ($changeResults as $row) {
-            $netChangeByCurrency[$row->currency] = $row->total_buy - $row->total_sell;
-        }
-    
-        // Fetch packages (for the package modal). Here we assume you only show active packages.
-        $packages = DB::table('packages')->where('status', '1')->get();
-    
         $user = auth()->user();
-        $currentPackage = null;
-        if ($user->package) {
-            $currentPackage = DB::table('packages')->where('id', $user->package)->first();
-        }
-    
-        // --- Retrieve dynamic payout records based on payout type ---
-        // Fetch payouts for the current user (assuming payout->wallet is used to differentiate earning vs. affiliates)
-        $payoutRecords = \App\Models\Payout::where('user_id', $userId)
-            ->where('wallet', 'affiliates')
-            ->where('type', 'payout')  // <-- Added condition here
-            ->orderBy('created_at', 'desc')
-            ->paginate(10, ['*'], 'payout_page');
-        
-        // New query for direct affiliates payouts (Type = "direct")
-        $directPayoutRecords = \App\Models\Payout::where('user_id', $userId)
-            ->where('wallet', 'affiliates')
-            ->where('type', 'direct')
-            ->orderBy('created_at', 'desc')
-            ->paginate(10, ['*'], 'direct_payout_page');
+        $userId = (int) $user->id;
 
-    
-        // Run the UserRangeCalculator to get the percentages
-        $userRangeCalc = new \App\Services\UserRangeCalculator();
-        $rangeCalculation = $userRangeCalc->calculate($user);
-        $directPercentage = $rangeCalculation['direct_percentage'];
-        $matchingPercentage = $rangeCalculation['matching_percentage'];
-        
-        // Enrich each payout record with additional data based on type.
-        foreach ($payoutRecords as $payout) {
-            // This branch will always get the non-direct records,
-            // so you can continue with the regular logic (order lookup, etc).
-            $order = \App\Models\Order::find($payout->order_id);
-            if ($order) {
-                $payout->txid = $order->txid;
-                $payout->buy = number_format($order->buy, 4);
-                $payout->earning = number_format($order->earning, 4);
-            } else {
-                $payout->txid = 'N/A';
-                $payout->buy = '0.0000';
-                $payout->earning = '0.0000';
+        $ttlSeconds = 60; // refresh cadence
+        $cache = UserAssetsCache::where('user_id', $userId)->first();
+
+        if (!$cache) {
+            // First load: build synchronously, save, and show
+            $payload = (new AssetsIndexBuilder())->build($user);
+            $cache = UserAssetsCache::create([
+                'user_id'           => $userId,
+                'data'              => $payload,
+                'last_refreshed_at' => now(),
+            ]);
+        } else {
+            // Subsequent loads: return cache immediately
+            $payload = $cache->data ?? [];
+
+            // Refresh in background if stale or ?refresh=1
+            $stale = !$cache->last_refreshed_at
+                || now()->diffInSeconds($cache->last_refreshed_at) > $ttlSeconds;
+
+            if ($stale || $request->boolean('refresh')) {
+                BuildUserAssetsCache::dispatch($userId);
             }
-            // Assign the matching percentage for affiliate (non-direct) payouts.
-            $payout->profit_sharing = $matchingPercentage;
-        }
-        
-        // For direct payouts, similar logic can be used (if necessary).
-        foreach ($directPayoutRecords as $payout) {
-            // For direct payouts you want to fetch the transfer details.
-            $transfer = \App\Models\Transfer::where('txid', $payout->txid)->first();
-            if ($transfer) {
-                $payout->deposit_txid = $transfer->txid;
-                $payout->deposit_amount = number_format($transfer->amount, 4);
-            } else {
-                $payout->deposit_txid = 'N/A';
-                $payout->deposit_amount = '0.0000';
-            }
-            // Attach the direct percentage.
-            $payout->direct_percentage = $directPercentage;
         }
 
-    
+        // JSON endpoint: /user/assets?json=1
+        if ($request->wantsJson() || $request->boolean('json')) {
+            return response()->json($payload);
+        }
+
+        // ---- Rehydrate for Blade (objects/collections/paginators) ----
+        $wallets = (object)($payload['wallets'] ?? [
+            'cash_wallet'       => 0.0,
+            'trading_wallet'    => 0.0,
+            'earning_wallet'    => 0.0,
+            'affiliates_wallet' => 0.0,
+        ]);
+
+        // Movements & assets: restore Carbon timestamps
+        $depositRequests    = collect($payload['depositRequests'] ?? [])->map(function ($x) {
+            $x = $this->normalizeItem($x);
+            return (object) $x;
+        });
+        $withdrawalRequests = collect($payload['withdrawalRequests'] ?? [])->map(function ($x) {
+            $x = $this->normalizeItem($x);
+            return (object) $x;
+        });
+        $transferRecords    = collect($payload['transferRecords'] ?? [])->map(function ($x) {
+            $x = $this->normalizeItem($x);
+            return (object) $x;
+        });
+
+        $transactions       = collect($payload['transactions'] ?? [])->map(function ($x) {
+            $x = $this->normalizeItem($x);
+            return (object) $x;
+        });
+
+        $assets = collect($payload['assets'] ?? [])->map(function ($x) {
+            $x = $this->normalizeItem($x);
+            $x['currency_data'] = isset($x['currency_data']) && $x['currency_data'] ? (object) $x['currency_data'] : null;
+            return (object) $x;
+        });
+
+        // Rebuild simple paginators so ->links() still works in Blade
+        $payoutRecords       = $this->rehydratePaginator($payload['payoutRecords'] ?? null, $request, 'payout_page', (float)($payload['matching_percentage'] ?? 0), null);
+        $directPayoutRecords = $this->rehydratePaginator($payload['directPayoutRecords'] ?? null, $request, 'direct_payout_page', null, (float)($payload['direct_percentage'] ?? 0));
+        $roiRecords          = $this->rehydratePaginator($payload['roiRecords'] ?? null, $request, 'trading_page');
+
         return view('user.assets_v2', [
-            'title'               => 'My Assets',
+            'title'               => $payload['title'] ?? 'My Assets',
             'wallets'             => $wallets,
-            'total_balance'       => $total_balance,
+            'total_balance'       => (float) ($payload['total_balance'] ?? 0),
             'depositRequests'     => $depositRequests,
             'withdrawalRequests'  => $withdrawalRequests,
             'transactions'        => $transactions,
             'assets'              => $assets,
-            'priceCostByCurrency' => $priceCostByCurrency,
-            'netChangeByCurrency' => $netChangeByCurrency,
-            'packages'            => $packages,
-            'currentPackage'      => $currentPackage,
+            'priceCostByCurrency' => $payload['priceCostByCurrency'] ?? [],
+            'netChangeByCurrency' => $payload['netChangeByCurrency'] ?? [],
+            'packages'            => collect($payload['packages'] ?? [])->map(fn ($x) => (object) $x),
+            'currentPackage'      => isset($payload['currentPackage']) && $payload['currentPackage'] ? (object) $payload['currentPackage'] : null,
             'payoutRecords'       => $payoutRecords,
             'directPayoutRecords' => $directPayoutRecords,
             'roiRecords'          => $roiRecords,
         ]);
+    }
+
+    private function toCarbon(mixed $v): ?Carbon
+    {
+        if ($v instanceof Carbon) return $v;
+        if ($v === null || $v === '') return null;
+        try {
+            return Carbon::parse($v);
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+    
+    /**
+     * Normalize a snapshot row (array|object) and restore date fields to Carbon.
+     */
+    private function normalizeItem($x): array
+    {
+        if (is_object($x)) $x = (array) $x;
+    
+        if (array_key_exists('created_at', $x)) {
+            $x['created_at'] = $this->toCarbon($x['created_at']);
+        }
+        if (array_key_exists('updated_at', $x)) {
+            $x['updated_at'] = $this->toCarbon($x['updated_at']);
+        }
+    
+        return $x;
+    }
+    
+    /**
+     * Turn a plain paginator snapshot back into a paginator so Blade's ->links() works.
+     * Also patches missing item fields for older snapshots.
+     */
+    private function rehydratePaginator(
+        ?array $snap,
+        Request $request,
+        string $pageName,
+        ?float $matchingPctForItems = null,   // adds ->profit_sharing if missing
+        ?float $directPctForItems   = null    // adds ->direct_percentage if missing
+    ): LengthAwarePaginator {
+        $snap = $snap ?? [
+            'data'         => [],
+            'total'        => 0,
+            'per_page'     => 10,
+            'current_page' => 1,
+            'last_page'    => 1,
+            'page_name'    => $pageName,
+        ];
+    
+        $items = collect($snap['data'] ?? [])->map(function ($row) use ($matchingPctForItems, $directPctForItems) {
+            $row = $this->normalizeItem($row);
+    
+            if ($matchingPctForItems !== null && !array_key_exists('profit_sharing', $row)) {
+                $row['profit_sharing'] = $matchingPctForItems;
+            }
+            if ($directPctForItems !== null && !array_key_exists('direct_percentage', $row)) {
+                $row['direct_percentage'] = $directPctForItems;
+            }
+    
+            return (object) $row;
+        });
+    
+        return new LengthAwarePaginator(
+            $items,
+            (int) ($snap['total'] ?? 0),
+            (int) ($snap['per_page'] ?? 10),
+            (int) ($snap['current_page'] ?? 1),
+            [
+                'path'     => $request->url(),
+                'pageName' => $snap['page_name'] ?? $pageName,
+            ]
+        );
     }
     
     public function transferTrading(Request $request)
@@ -1044,8 +1015,6 @@ class AssetsController extends Controller
     
         return $negativeUsers;
     }
-
-
 
     public static function getAllDownlineIds($userId)
     {

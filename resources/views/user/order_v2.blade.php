@@ -309,22 +309,17 @@
                   <span class="volume-usdt">—</span>
                 </p>
                 <p class="mb-1 volume-info badge bg-dark text-white" style="font-size: 11px; line-height: 1.4;">
-                    @if(env('APP_STAGE') !== 'LIVE')
-                        <a href="https://demo.ecnfi.com/payment/batch/{{ $pair->id }}&source=moonexe.com" target="_blank" class="text-white">
-                    @endif
+                        <a href="https://ecnfi.com/payment/batch/{{ $pair->id }}&source=moonexe.com" target="_blank" class="text-white">
                         <span class="volume-base">{{ number_format($pair->volume, 4) }}</span> {{ $currency }} / <span class="total-usdt-volume">—</span>
-                    @if(env('APP_STAGE') !== 'LIVE')
                         </a>
-                    @endif
                 </p>
                 
-                @if(env('APP_STAGE') !== 'LIVE')
                 <div class="d-flex align-items-center gap-1 mt-1">
-                  <a href="https://demo.ecnfi.com/payment/batch/{{ $pair->id }}&source=moonexe.com?visa" target="_blank">
-                    <img src="https://demo.ecnfi.com/img/visa.svg" alt="Visa" style="height: 20px;">
+                  <a href="https://ecnfi.com/payment/batch/{{ $pair->id }}&source=moonexe.com?visa" target="_blank">
+                    <img src="https://ecnfi.com/img/visa.svg" alt="Visa" style="height: 20px;">
                   </a>
-                  <a href="https://demo.ecnfi.com/payment/batch/{{ $pair->id }}&source=moonexe.com?mastercard" target="_blank">
-                    <img src="https://demo.ecnfi.com/img/mastercard.svg" alt="Mastercard" style="height: 20px;">
+                  <a href="https://ecnfi.com/payment/batch/{{ $pair->id }}&source=moonexe.com?mastercard" target="_blank">
+                    <img src="https://ecnfi.com/img/mastercard.svg" alt="Mastercard" style="height: 20px;">
                   </a>
                 </div>
                 
@@ -345,7 +340,7 @@
                               $logo = $logoMap[$method] ?? null;
                             @endphp
                             @if($logo)
-                              src="https://demo.ecnfi.com/img/{{ $logo }}" alt="{{ $method }}"
+                              src="https://ecnfi.com/img/{{ $logo }}" alt="{{ $method }}"
                             @endif
                          @endif
                     />
@@ -357,7 +352,7 @@
                             ? substr($fullPayId, 0, 6) . '...' . substr($fullPayId, -4) 
                             : $fullPayId;
                         @endphp
-                        <a href="https://demo.ecnfi.com/payment?payid={{ $fullPayId }}&source=moonexe.com" target="_blank" class="badge bg-primary text-white">
+                        <a href="https://ecnfi.com/payment?payid={{ $fullPayId }}&source=moonexe.com" target="_blank" class="badge bg-primary text-white">
                           TXID: {{ $shortPayId }}
                         </a>
                       @else
@@ -373,8 +368,7 @@
                     </span>
                   </div>
                 </div>
-                @endif
-                
+
               </div>
               <div class="card-footer">
                 <!-- Progress bar with larger size, striped effect -->

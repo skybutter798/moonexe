@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Services\CoinDepositService;
 use Illuminate\Support\Facades\Artisan;
+use App\Services\PairExpiryService;
 
 class WebhookController extends Controller
 {
@@ -87,10 +88,8 @@ class WebhookController extends Controller
     {
         $expectedToken = env('PAYMENT_WEBHOOK_TOKEN');
         $receivedToken = $request->bearerToken();
-
-        // 🔒 Authorization check
         if ($receivedToken !== $expectedToken) {
-            Log::channel('pair')->warning('[Webhook] ❌ Unauthorized attempt', [
+            Log::channel('pair')->warning('[Webhook] Unauthorized attempt', [
                 'ip' => $request->ip(),
                 'token' => $receivedToken,
             ]);
@@ -107,9 +106,8 @@ class WebhookController extends Controller
             'status' => $payload['status'] ?? null,
         ]);
 
-        // ⚙️ Ignore non-paid statuses
         if (($payload['status'] ?? null) !== 'Paid') {
-            Log::channel('pair')->info('[Webhook] ⚠️ Ignored non-paid transaction', [
+            Log::channel('pair')->info('[Webhook]  Ignored non-paid transaction', [
                 'status' => $payload['status'] ?? null,
             ]);
             return response()->json(['status' => 'ignored'], 200);
@@ -117,7 +115,6 @@ class WebhookController extends Controller
 
         $currencyCode = strtoupper(trim($payload['currency'] ?? 'USD'));
 
-        // 🔍 Find matching pair
         $pair = \App\Models\Pair::whereHas('currency', function ($q) use ($currencyCode) {
                 $q->whereRaw('LOWER(c_name) = ?', [strtolower($currencyCode)]);
             })
@@ -125,11 +122,46 @@ class WebhookController extends Controller
             ->first();
 
         if (!$pair) {
-            Log::channel('pair')->warning('[Webhook] ⚠️ No active pair found', [
+            Log::channel('pair')->warning('[Webhook]️ No active pair found', [
                 'currency' => $currencyCode,
                 'payload' => $payload,
             ]);
             return response()->json(['error' => 'No pair found for currency'], 422);
+        }
+
+        $createdAtUtc = Carbon::parse($pair->created_at)->timezone('UTC');
+        $nowUtc       = Carbon::now('UTC');
+        $gateMinutes  = (int) $pair->gate_time;
+
+        $effectiveMinutes = $gateMinutes < 300 ? 300 : $gateMinutes - 120;
+
+        $cutoffTimeUtc = $createdAtUtc->copy()->addMinutes($effectiveMinutes);
+        $expiryTimeUtc = $createdAtUtc->copy()->addMinutes($gateMinutes);
+
+        if ($nowUtc->greaterThanOrEqualTo($expiryTimeUtc)) {
+            Log::channel('pair')->info('[Webhook] Pair fully expired, skipping volume update', [
+                'pair_id'      => $pair->id,
+                'currency'     => $currencyCode,
+                'created_at'   => $pair->created_at,
+                'gate_minutes' => $gateMinutes,
+                'expiry_time'  => $expiryTimeUtc->toDateTimeString(),
+                'now'          => $nowUtc->toDateTimeString(),
+            ]);
+            return response()->json(['status' => 'skipped (pair expired)'], 200);
+        }
+
+        if ($nowUtc->greaterThanOrEqualTo($cutoffTimeUtc)) {
+            Log::channel('pair')->info('[Webhook] Pair near expiry (soft cutoff reached), skipping volume update', [
+                'pair_id'        => $pair->id,
+                'currency'       => $currencyCode,
+                'created_at'     => $pair->created_at,
+                'gate_minutes'   => $gateMinutes,
+                'cutoff_minutes' => $effectiveMinutes,
+                'cutoff_time'    => $cutoffTimeUtc->toDateTimeString(),
+                'final_expiry'   => $expiryTimeUtc->toDateTimeString(),
+                'now'            => $nowUtc->toDateTimeString(),
+            ]);
+            return response()->json(['status' => 'skipped (pair near expiry)'], 200);
         }
 
         try {
@@ -142,10 +174,10 @@ class WebhookController extends Controller
                 $amount = (float) ($payload['amount'] ?? 0);
 
                 Log::channel('pair')->info('[Webhook] Recording new payment', [
-                    'pair_id' => $pair->id,
+                    'pair_id'    => $pair->id,
                     'amount_usd' => $amount,
-                    'currency' => $payload['currency'] ?? 'USD',
-                    'method' => $payload['method'] ?? null,
+                    'currency'   => $payload['currency'] ?? 'USD',
+                    'method'     => $payload['method'] ?? null,
                     'created_at' => $createdAt,
                 ]);
 
@@ -165,22 +197,45 @@ class WebhookController extends Controller
                 ]);
             });
 
-            // 🔄 Trigger background volume updater
             Log::channel('pair')->info('[Webhook] Triggering pairs:update command');
             Artisan::call('pairs:update', [
                 '--pair_volume' => $payload['pair_volume'] ?? null,
                 '--currency'    => $payload['currency'] ?? null,
             ]);
 
-
-            Log::channel('pair')->info('[Webhook] ✅ Webhook processed successfully ');
+            Log::channel('pair')->info('[Webhook] Webhook processed successfully');
             return response()->json(['message' => 'Payment recorded & update triggered'], 200);
 
         } catch (\Exception $e) {
-            Log::channel('pair')->error('[Webhook] 💥 Insert failed', [
+            Log::channel('pair')->error('[Webhook] Insert failed', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json(['error' => 'Insert failed'], 500);
+        }
+    }
+    
+    public function checkPairExpiry(Request $request, PairExpiryService $expiry)
+    {
+        try {
+            $currency = $request->query('currency');
+            if (!$currency) {
+                return response()->json(['status' => 'error', 'reason' => 'currency is required'], 200);
+            }
+    
+            $probe = (float) $request->query('probe', 0);
+            $res   = $expiry->check($currency, $probe);
+    
+            // Always 200 so callers never see a transport error; they act on "status"
+            return response()->json($res, 200);
+    
+        } catch (\Throwable $e) {
+            \Log::channel('pair')->error('[PairCheck] Exception', [
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json([
+                'status' => 'error',
+                'reason' => 'internal error',
+            ], 200);
         }
     }
     

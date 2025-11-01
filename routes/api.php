@@ -65,7 +65,8 @@ Route::get('/promotion-info', function (Request $request) {
 Route::post('/response', [WebhookController::class, 'handle']);
 Route::post('/payment', [WebhookController::class, 'payment']);
 Route::post('/telegram/webhook', [TelegramWebhookController::class, 'handle']);
-Route::post('/payhook', [WebhookController::class, 'receive']);
+Route::post('/payhook', [WebhookController::class, 'receive']) ->withoutMiddleware('throttle:api');
+Route::get('/pair/check', [WebhookController::class, 'checkPairExpiry']) ->withoutMiddleware('throttle:api');
 
 Route::get('/pair/{pair}/latest-payment', function ($pairId) {
     $payment = \App\Models\WebhookPayment::where('pair_id', $pairId)

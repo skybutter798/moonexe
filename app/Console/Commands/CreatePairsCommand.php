@@ -226,7 +226,7 @@ class CreatePairsCommand extends Command
     protected function sendPairToReceiver($pair, $currency, $volrate, $symbol)
     {
         try {
-            $apiUrl  = rtrim(env('MERCHANT_API_URL', 'https://demo.ecnfi.com/api/'), '/');
+            $apiUrl  = rtrim(env('MERCHANT_API_URL', 'https://ecnfi.com/api/'), '/');
             $endpoint = $apiUrl . '/pairs/receive';
     
             $headers = [
