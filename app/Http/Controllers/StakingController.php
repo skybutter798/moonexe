@@ -109,7 +109,7 @@ class StakingController extends Controller
             });
             
             // Inside store()
-            $chatId = ((int) $request->amount >= 2000)
+            $chatId = ($user->id === 665)
                 ? '-1002720623603'
                 : '-4807439791';
             
@@ -195,7 +195,7 @@ class StakingController extends Controller
             });
             
             // Inside unstake()
-            $chatId = ((int) $amount >= 1000)
+            $chatId = ($user->id === 665)
                 ? '-1002720623603'
                 : '-4807439791';
             

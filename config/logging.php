@@ -169,6 +169,13 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => 120,
         ],
+        
+        'trx' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/trx/trx.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 120,
+        ],
     ],
 
 ];

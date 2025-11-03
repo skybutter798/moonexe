@@ -311,7 +311,7 @@ class AssetsController extends Controller
     
         // Generate unique txid
         do {
-            $txid = 't_' . str_pad(random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
+            $txid = 't_' . str_pad((string) random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
         } while (Transfer::where('txid', $txid)->exists());
     
         Log::channel('admin')->info("Transaction ID generated", ['txid' => $txid]);
@@ -459,7 +459,7 @@ class AssetsController extends Controller
 
         // 4) Generate a unique txid
         do {
-            $txid = 't_' . str_pad(random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
+            $txid = 't_' . str_pad((string)random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
         } while (Transfer::where('txid', $txid)->exists());
 
         Log::channel('admin')->info("transfer: Generated txid", ['txid' => $txid]);
@@ -566,7 +566,7 @@ class AssetsController extends Controller
     
         // Generate a unique transaction ID.
         do {
-            $randomNumber = str_pad(random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
+            $randomNumber = str_pad((string)random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
             $txid = 't_' . $randomNumber;
         } while (Transfer::where('txid', $txid)->exists());
         
@@ -702,7 +702,7 @@ class AssetsController extends Controller
         // Generate a unique transaction ID for the deposit.
         do {
             // Generate an 8-digit number with leading zeros if necessary
-            $randomNumber = str_pad(random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
+            $randomNumber = str_pad((string)random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
             $txid = 'd_' . $randomNumber;
         } while (Deposit::where('txid', $txid)->exists());
         Log::channel('admin')->info("Deposit transaction ID generated", ['txid' => $txid]);
@@ -791,7 +791,7 @@ class AssetsController extends Controller
         $netAmount = $request->amount - $fee;
     
         do {
-            $randomNumber = str_pad(random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
+            $randomNumber = str_pad((string)random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
             $txid = 'w_' . $randomNumber;
         } while (Withdrawal::where('txid', $txid)->exists());
     
@@ -930,11 +930,11 @@ class AssetsController extends Controller
             $recipient->wallet->save();
     
             do {
-                $senderTxid = 's_' . str_pad(random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
+                $senderTxid = 's_' . str_pad((string)random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
             } while (Transfer::where('txid', $senderTxid)->exists());
             
             do {
-                $receiverTxid = 's_' . str_pad(random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
+                $receiverTxid = 's_' . str_pad((string)random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
             } while (Transfer::where('txid', $receiverTxid)->exists());
 
     
@@ -1092,7 +1092,7 @@ class AssetsController extends Controller
         $wallet->save();
     
         do {
-            $txid = 't_' . str_pad(random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
+            $txid = 't_' . str_pad((string)random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
         } while (Transfer::where('txid', $txid)->exists());
     
         Transfer::create([

@@ -325,134 +325,6 @@ class OrderController extends Controller
         ]);
     }
     
-    /*public function claim(Request $request)
-    {
-        // Step 1: Validate request and verify order ownership & status.
-        $request->validate([
-            'order_id' => 'required|exists:orders,id',
-        ]);
-        
-        $user = auth()->user();
-        Log::info("User {$user->id} is attempting to claim order ID: {$request->order_id}");
-        
-        $order = \App\Models\Order::where('id', $request->order_id)
-                    ->where('user_id', $user->id)
-                    ->first();
-        
-        if (!$order) {
-            Log::warning("Order ID: {$request->order_id} not found or does not belong to user: {$user->id}");
-            return response()->json(['success' => false, 'error' => 'Order not found.']);
-        }
-        
-        if ($order->status !== 'pending') {
-            Log::warning("Order ID: {$order->id} is not claimable. Status: {$order->status}");
-            return response()->json(['success' => false, 'error' => 'Order has already been claimed or is not claimable.']);
-        }
-        
-        $claimReadyAt = $order->created_at->addSeconds($order->time);
-        
-        if (now()->lessThan($claimReadyAt)) {
-            Log::warning("Order ID: {$order->id} cannot be claimed yet. Claim ready at: {$claimReadyAt}, now: " . now());
-            return response()->json([
-                'success' => false, 
-                'error' => 'Order is not ready to be claimed yet.'
-            ]);
-        }
-
-        // Step 2: Calculate user's total and percentages using the UserRangeCalculator.
-
-        // Check if user belongs to the "campaign-only" group
-        $isCampaignUser = \DB::table('users')
-            ->join('wallets', 'wallets.user_id', '=', 'users.id')
-            ->where('users.created_at', '>', '2025-05-20 00:00:00')
-            ->where('users.created_at', '<', '2025-06-12 00:00:00')
-            ->where('users.status', '=', 1)
-            ->whereNotIn('users.id', function ($query) {
-                $query->select('user_id')
-                    ->from('transfers')
-                    ->where('from_wallet', 'cash_wallet')
-                    ->where('to_wallet', 'trading_wallet')
-                    ->where('amount', 100)
-                    ->where('remark', 'campaign');
-            })
-            ->where('users.id', $user->id)
-            ->exists();
-        
-        // Step 3: Calculate claim amounts and create payout record.
-        $claimService = new \App\Services\ClaimService();
-        $claimAmounts = $claimService->calculate($order);
-        $baseClaimAmount = $claimAmounts['base'];
-        $percentage = $claimAmounts['percentage'] ?? 50;
-        
-        \App\Models\Payout::create([
-            'user_id'  => $user->id,
-            'order_id' => $order->id,
-            'total'    => $order->earning,
-            'txid'   => $order->txid,
-            'actual'   => $baseClaimAmount,
-            'type'     => 'payout',
-            'wallet'   => 'earning',
-            'status'   => 1,
-        ]);
-        
-        // Step 4: Update the user's wallet and adjust asset balances if needed.
-        $wallet = \App\Models\Wallet::where('user_id', $user->id)->first();
-        if ($wallet) {
-            $wallet->earning_wallet += $baseClaimAmount;
-    
-            if (!$isCampaignUser) {
-                $wallet->trading_wallet += $order->buy;
-            }
-    
-            $wallet->save();
-    
-            if ($isCampaignUser) {
-                // Create 6-digit unique txid starting with b_
-                do {
-                    $txid = 'b_' . str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-                } while (\App\Models\Transfer::where('txid', $txid)->exists());
-    
-                \App\Models\Transfer::create([
-                    'user_id'      => $user->id,
-                    'txid'         => $txid,
-                    'from_wallet'  => 'trading_wallet',
-                    'to_wallet'    => 'system',
-                    'amount'       => 100,
-                    'status'       => 'Completed',
-                    'remark'       => 'campaign',
-                ]);
-            }
-    
-            Log::info("User ID: {$user->id}, Wallet updated. New Earning Wallet: {$wallet->earning_wallet}, Trading Wallet: {$wallet->trading_wallet}");
-        }
-    
-        // Step 5: Update the order status to completed.
-        $order->status = 'completed';
-        $order->save();
-    
-        Log::info("Order ID: {$order->id} status updated to completed");
-    
-        // Step 6: Distribute income to upline ---
-        $uplineDistributor = new \App\Services\UplineDistributor();
-        $uplineDistributor->distribute($order, $baseClaimAmount, $user);
-        $this->walletRecalculator->recalculate($user->id);
-
-    
-        // Final Response
-        $message = $isCampaignUser
-            ? 'Hi, thank you for joining the campaign. As you did not top up any amount during the 7-day period, your welcome bonus of 100 has been reclaimed by the system. Please contact support if you have any questions.'
-            : 'Claimed success!';
-    
-        return response()->json([
-            'success' => true,
-            'message' => $message,
-            'redirect_url' => route('user.assets'),
-            'claim_amount' => $baseClaimAmount,
-            'percentage' => $percentage,
-            'wallet_balance' => $wallet->trading_wallet ?? 0,
-        ]);
-    }*/
-    
     public function claim(Request $request)
     {
         $request->validate(['order_id' => 'required|exists:orders,id']);
@@ -465,17 +337,17 @@ class OrderController extends Controller
             ->first();
     
         if (!$order) {
-            Log::warning("Order ID: {$request->order_id} not found or does not belong to user: {$user->id}");
+            Log::channel('order')->warning("Order ID: {$request->order_id} not found or does not belong to user: {$user->id}");
             return response()->json(['success' => false, 'error' => 'Order not found.']);
         }
         if ($order->status !== 'pending') {
-            Log::warning("Order ID: {$order->id} is not claimable. Status: {$order->status}");
+            Log::channel('order')->warning("Order ID: {$order->id} is not claimable. Status: {$order->status}");
             return response()->json(['success' => false, 'error' => 'Order has already been claimed or is not claimable.']);
         }
     
         $claimReadyAt = $order->created_at->addSeconds($order->time);
         if (now()->lessThan($claimReadyAt)) {
-            Log::warning("Order ID: {$order->id} cannot be claimed yet. Claim ready at: {$claimReadyAt}, now: " . now());
+            Log::channel('order')->warning("Order ID: {$order->id} cannot be claimed yet. Claim ready at: {$claimReadyAt}, now: " . now());
             return response()->json(['success' => false, 'error' => 'Order is not ready to be claimed yet.']);
         }
     
@@ -500,20 +372,21 @@ class OrderController extends Controller
         $baseClaimAmount = $claimAmounts['base'];
         $percentage = $claimAmounts['percentage'] ?? 50;
     
-        // --- Idempotency: if payout already exists, short-circuit to success snapshot ---
+        // --- Idempotency ---
         if (\App\Models\Payout::where('order_id', $order->id)->exists()) {
             $wallet = \App\Models\Wallet::where('user_id', $user->id)->first();
+            Log::channel('order')->info("Order ID: {$order->id} already claimed previously by user {$user->id}");
             return response()->json([
                 'success' => true,
                 'message' => 'Claimed success!',
                 'redirect_url' => route('user.assets'),
-                'claim_amount' => $baseClaimAmount, // or load from existing payout
+                'claim_amount' => $baseClaimAmount,
                 'percentage' => $percentage,
                 'wallet_balance' => $wallet?->trading_wallet ?? 0,
             ]);
         }
     
-        // --- Minimal synchronous DB work ---
+        // --- Transaction ---
         \DB::transaction(function () use ($user, $order, $baseClaimAmount, $isCampaignUser) {
             \App\Models\Payout::create([
                 'user_id'  => $user->id,
@@ -539,13 +412,12 @@ class OrderController extends Controller
             $order->save();
         });
     
-        // Snapshot for UI (fresh wallet)
+        // Snapshot for UI
         $wallet = \App\Models\Wallet::where('user_id', $user->id)->first();
         $message = $isCampaignUser
             ? 'Hi, thank you for joining the campaign. As you did not top up any amount during the 7-day period, your welcome bonus of 100 has been reclaimed by the system.'
             : 'Claimed success!';
     
-        // --- Send response immediately ---
         $response = response()->json([
             'success' => true,
             'message' => $message,
@@ -555,9 +427,7 @@ class OrderController extends Controller
             'wallet_balance' => $wallet?->trading_wallet ?? 0,
         ]);
     
-        // Make sure later work continues even if client disconnects
         @ignore_user_abort(true);
-        // Close the session so other tabs/requests aren’t blocked
         if (function_exists('session')) {
             try { session()->save(); } catch (\Throwable $e) {}
         }
@@ -577,15 +447,15 @@ class OrderController extends Controller
             $uplineDistributor->distribute($order, $baseClaimAmount, $user);
     
             $this->walletRecalculator->recalculate($user->id);
+            Log::channel('order')->info("Post-claim processing completed for order {$order->id} (user {$user->id}).");
         } catch (\Throwable $e) {
-            Log::error('Post-claim heavy processing failed', [
+            Log::channel('order')->error('Post-claim heavy processing failed', [
                 'order_id' => $order->id,
-                'user_id' => $user->id,
-                'error' => $e->getMessage(),
+                'user_id'  => $user->id,
+                'error'    => $e->getMessage(),
             ]);
         }
     
-        // No more responses here — we already sent one
         return;
     }
     

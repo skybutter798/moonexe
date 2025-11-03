@@ -248,7 +248,7 @@ class WebhookController extends Controller
     
     public function trxPayment(Request $request, CoinDepositService $coinService)
     {
-        Log::info('[TRX Webhook] Raw payload', [
+        Log::channel('trx')->info('[TRX Webhook] Raw payload', [
             'headers'   => $request->headers->all(),
             'payload'   => $request->all(),
             'raw'       => $request->getContent(),
@@ -262,7 +262,7 @@ class WebhookController extends Controller
             !isset($payload['status']) || $payload['status'] !== 'success' ||
             !isset($payload['data']) || !is_array($payload['data']) || empty($payload['data'])
         ) {
-            Log::warning('[TRX Webhook] Invalid or missing payload structure', $payload);
+            Log::channel('trx')->warning('[TRX Webhook] Invalid or missing payload structure', $payload);
             return response()->json(['error' => 'Invalid structure'], 400);
         }
     
@@ -274,20 +274,20 @@ class WebhookController extends Controller
             $token = $tx['tokenCode'] ?? null;
     
             if (!$to || !$value || !$token || !$hash) {
-                Log::warning('[TRX Webhook] Skipped TX due to missing fields', $tx);
+                Log::channel('trx')->warning('[TRX Webhook] Skipped TX due to missing fields', $tx);
                 continue;
             }
     
             $user = User::where('trx_address', $to)->first();
             if (!$user) {
-                Log::warning('[TRX Webhook] No user found for TRX address', ['address' => $to]);
+                Log::channel('trx')->warning('[TRX Webhook] No user found for TRX address', ['address' => $to]);
                 continue;
             }
     
             try {
                 $amount = (float) $value;
                 if ($amount <= 0) {
-                    Log::warning('[TRX Webhook] Invalid amount', ['amount' => $value]);
+                    Log::channel('trx')->warning('[TRX Webhook] Invalid amount', ['amount' => $value]);
                     continue;
                 }
     
@@ -300,12 +300,12 @@ class WebhookController extends Controller
                 );
     
                 if (!$isNew) {
-                    Log::info('[TRX Webhook] Duplicate TXID ignored', [
+                    Log::channel('trx')->info('[TRX Webhook] Duplicate TXID ignored', [
                         'user_id' => $user->id,
                         'txid'    => $hash,
                     ]);
                 } else {
-                    Log::info('[TRX Webhook] Deposit successful', [
+                    Log::channel('trx')->info('[TRX Webhook] Deposit successful', [
                         'user_id'    => $user->id,
                         'amount'     => $amount,
                         'hash'       => $hash,
@@ -313,7 +313,7 @@ class WebhookController extends Controller
                     ]);
                 }
             } catch (\Throwable $e) {
-                Log::error('[TRX Webhook] Exception during deposit', [
+                Log::channel('trx')->error('[TRX Webhook] Exception during deposit', [
                     'message' => $e->getMessage(),
                     'trace'   => $e->getTraceAsString(),
                     'txid'    => $hash,
@@ -321,6 +321,7 @@ class WebhookController extends Controller
             }
         }
     
+        Log::channel('trx')->info('[TRX Webhook] Processing completed successfully');
         return response()->json(['status' => 'processed'], 200);
     }
 
