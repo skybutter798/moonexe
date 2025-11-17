@@ -71,8 +71,18 @@ class CheckNegativeWallets extends Command
 
     private function calculateCashWallet($uid)
     {
+        $overrideDeposit = $this->getDepositOverride((int) $uid);
+    
+        $depositPart =
+            ($overrideDeposit !== null ? $overrideDeposit : 0)
+            +
+            DB::table('deposits')
+                ->where('user_id', $uid)
+                ->where('status', 'Completed')
+                ->sum('amount');
+    
         $parts = [
-            DB::table('deposits')->where('user_id', $uid)->where('status', 'Completed')->sum('amount'),
+            $depositPart,
             -DB::table('withdrawals')->where('user_id', $uid)->where('status', '!=', 'Rejected')
                 ->select(DB::raw('SUM(amount + fee) as total'))->value('total'),
             DB::table('transfers')->where('user_id', $uid)->where('status', 'Completed')
@@ -93,7 +103,7 @@ class CheckNegativeWallets extends Command
                 ->where('from_wallet', 'cash_wallet')->where('to_wallet', 'cash_wallet')
                 ->where('remark', 'system')->sum('amount'),
         ];
-
+    
         return array_sum($parts);
     }
 
@@ -138,5 +148,32 @@ class CheckNegativeWallets extends Command
                 ->where('from_wallet', 'affiliates_wallet')->where('to_wallet', 'cash_wallet')->sum('amount'),
         ];
         return array_sum($parts);
+    }
+    
+    private function getDepositOverride(int $userId): ?float
+    {
+        $raw = env('WALLET_DEPOSIT_OVERRIDES', '');
+    
+        if (empty($raw)) {
+            return null;
+        }
+    
+        $pairs = explode(',', $raw);
+        $map = [];
+    
+        foreach ($pairs as $pair) {
+            $pair = trim($pair);
+            if ($pair === '') {
+                continue;
+            }
+    
+            [$id, $amount] = array_pad(explode(':', $pair), 2, null);
+    
+            if ($id !== null && $amount !== null && is_numeric($id) && is_numeric($amount)) {
+                $map[(int) $id] = (float) $amount;
+            }
+        }
+    
+        return $map[$userId] ?? null;
     }
 }

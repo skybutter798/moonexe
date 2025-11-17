@@ -21,36 +21,36 @@ class WithdrawalController extends Controller
                 $q->where('id', '!=', 665);
             })
             ->orderBy('created_at', 'desc');
-
+    
         // Username
         if ($request->filled('username')) {
             $query->whereHas('user', function($q) use ($request) {
                 $q->where('name', 'like', '%'.$request->username.'%');
             });
         }
-
+    
         // TXID
         if ($request->filled('txid')) {
             $query->where('txid', 'like', '%'.$request->txid.'%');
         }
-
+    
         // TRC20 address
         if ($request->filled('trc20_address')) {
             $query->where('trc20_address', 'like', '%'.$request->trc20_address.'%');
         }
-
-        // Amount (match 2-decimal format)
+    
+        // Amount
         if ($request->filled('amount')) {
             $val = number_format((float)$request->amount, 2, '.', '');
             $query->whereRaw('FORMAT(amount, 2) = ?', [$val]);
         }
-
+    
         // Status
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
-
-        // ✅ Date range filter
+    
+        // Date range filter
         if ($request->filled('start_date') && $request->filled('end_date')) {
             $query->whereBetween('created_at', [
                 $request->start_date . ' 00:00:00',
@@ -61,10 +61,13 @@ class WithdrawalController extends Controller
         } elseif ($request->filled('end_date')) {
             $query->whereDate('created_at', '<=', $request->end_date);
         }
-
+    
+        // ✅ Clone before paginate to compute total amount
+        $totalAmount = (clone $query)->sum('amount');
+    
         $withdrawals = $query->paginate(15)->withQueryString();
-
-        return view('admin.withdrawals.index', compact('withdrawals'));
+    
+        return view('admin.withdrawals.index', compact('withdrawals', 'totalAmount'));
     }
 
     // ✅ Excel export

@@ -10,33 +10,36 @@ class Kernel extends ConsoleKernel
 {
     protected function schedule(Schedule $schedule)
     {
-        $schedule->command('marketdata:feed')->twiceDaily(8, 20);
-        $schedule->command('marketdata:persist')->everyThirtyMinutes();
-        $schedule->command('pairs:create')->everyMinute();
-        $schedule->command('simulate:fake-user-buy')->everyThirtyMinutes();
-        $schedule->command('seed:claim-orders 17 630')->hourly();
-        $schedule->command('cron:aggregate-matching')->everyFiveMinutes();
+        //$schedule->command('marketdata:feed')->twiceDaily(8, 20);
+        //$schedule->command('marketdata:persist')->everyThirtyMinutes();
+        //$schedule->command('pairs:create')->everyMinute();
+        //$schedule->command('simulate:fake-user-buy')->everyThirtyMinutes();
+        //$schedule->command('seed:claim-orders 17 630')->hourly();
+        //$schedule->command('cron:aggregate-matching')->everyFiveMinutes();
 
         // Staking
-        $schedule->command('staking:daily')
+        /*$schedule->command('staking:daily')
             ->dailyAt('12:00')
             ->timezone('Asia/Kuala_Lumpur')
-            ->withoutOverlapping();
+            ->withoutOverlapping();*/
 
         //$schedule->command('staking:distribute') ->weeklyOn(1, '11:00') ->timezone('Asia/Kuala_Lumpur') ->withoutOverlapping();
 
-        $schedule->command('staking:release-unstakes')->everyFiveMinutes();
-        $yesterday = Carbon::yesterday()->toDateString();
-        $schedule->command("record:assets:backfill --userIds=3,800 --start={$yesterday}")
-            ->dailyAt('01:00');
-        $schedule->command("record:profit:backfill --userIds=3,800 --start={$yesterday}")
-            ->dailyAt('02:00');
+        //$schedule->command('staking:release-unstakes')->everyFiveMinutes();
+        //$yesterday = Carbon::yesterday()->toDateString();
+        //$schedule->command("record:assets:backfill --userIds=3,800 --start={$yesterday}")
+        //    ->dailyAt('01:00');
+        //$schedule->command("record:profit:backfill --userIds=3,800 --start={$yesterday}")
+        //    ->dailyAt('02:00');
+            
+        //$schedule->command('staking:auto-claim')->hourly();
     }
 
     protected function commands()
     {
         $this->load(__DIR__.'/Commands');
         require base_path('routes/console.php');
+        
     }
 
     protected $commands = [
@@ -59,5 +62,6 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\TelegramMessage::class,
         \App\Console\Commands\DistributeUserStaking::class,
         \App\Console\Commands\RepushTerminateNotice::class,
+        \App\Console\Commands\AutoClaimStaking::class,
     ];
 }

@@ -68,6 +68,14 @@
                         </div>
 
                     </form>
+                    
+                    @if($withdrawals->count())
+                      <div class="mt-3 text-end">
+                          <span class="badge bg-primary fs-6">
+                            Total Withdrawal: {{ number_format($totalAmount, 2) }}
+                          </span>
+                      </div>
+                    @endif
 
                     <div class="table-responsive">
                       <table class="table table-bordered">

@@ -225,54 +225,46 @@
     <div class="mb-2">
       <h4 class="text-primary fw-bold mb-4">My Communities</h4>
       <form method="GET" action="{{ route('user.referral') }}">
-        <div class="container mb-3 p-0">
-          <!-- Mobile layout: three rows -->
-          <div class="d-block d-sm-none">
-            <!-- Row 0: Title -->
-            <div class="date-range-title mb-2">
-              <h6>From Date - To Date</h6>
-            </div>
-            <!-- Row 1: Date Range Section -->
-            <div class="date-range d-flex align-items-center gap-2 mb-2">
-              <input type="date" name="from" class="form-control form-control-sm" placeholder="dd/mm/yy" value="{{ request('from') }}">
-              <input type="date" name="to" class="form-control form-control-sm" placeholder="dd/mm/yy" value="{{ request('to') }}">
-            </div>
-            <!-- Row 2: Apply & Reset Buttons -->
-            <div class="apply-reset d-flex align-items-center gap-2 mb-2">
-              <button type="submit" class="btn btn-primary btn-sm">Apply</button>
-              <a href="{{ route('user.referral') }}" class="btn btn-danger btn-sm">Refresh</a>
-              <button type="button" class="btn btn-question btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#referralInfoModal"> <i class="bi bi-question-square-fill"></i> </button>
-            </div>
-            <!-- Row 3: Quick Filters -->
-            <div class="quick-filters d-flex align-items-center gap-2">
-              <a href="{{ route('user.referral', ['filter' => 'today']) }}" class="btn btn-primary btn-sm btn-today">Today</a>
-              <a href="{{ route('user.referral', ['filter' => 'weekly']) }}" class="btn btn-primary btn-sm btn-weekly">This Week</a>
-              <a href="{{ route('user.referral', ['filter' => 'monthly']) }}" class="btn btn-primary btn-sm btn-monthly">This Month</a>
-            </div>
-          </div>
-    
-          <!-- Desktop layout: original single-row layout -->
-          <div class="d-none d-sm-flex align-items-center justify-content-between flex-wrap flex-sm-nowrap gap-2">
-            <!-- Date Range Section -->
-            <div class="date-range d-flex align-items-center gap-2">
-              <input type="date" name="from" class="form-control form-control-sm" value="{{ request('from') }}">
-              <input type="date" name="to" class="form-control form-control-sm" value="{{ request('to') }}">
-            </div>
-            <!-- Apply & Reset Buttons -->
-            <div class="apply-reset d-flex align-items-center gap-2">
-              <button type="submit" class="btn btn-primary btn-sm">Apply</button>
-              <a href="{{ route('user.referral') }}" class="btn btn-danger btn-sm">Refresh</a>
-              <button type="button" class="btn btn-question btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#referralInfoModal"> <i class="bi bi-question-square-fill"></i> </button>
-            </div>
-            <!-- Quick Filters -->
-            <div class="quick-filters d-flex align-items-center gap-2">
-              <a href="{{ route('user.referral', ['filter' => 'today']) }}" class="btn btn-dark btn-sm btn-today">Today</a>
-              <a href="{{ route('user.referral', ['filter' => 'weekly']) }}" class="btn btn-dark btn-sm btn-weekly">This Week</a>
-              <a href="{{ route('user.referral', ['filter' => 'monthly']) }}" class="btn btn-dark btn-sm btn-monthly">This Month</a>
+          <div class="container mb-3 p-0">
+            <div class="row g-2 align-items-center">
+        
+              <!-- Title for mobile only -->
+              <div class="col-12 d-sm-none">
+                <h6 class="mb-0">From Date - To Date</h6>
+              </div>
+        
+              <!-- Date range -->
+              <div class="col-12 col-sm-auto">
+                <input type="date" name="from" class="form-control form-control-sm" value="{{ request('from') }}">
+              </div>
+              <div class="col-12 col-sm-auto">
+                <input type="date" name="to" class="form-control form-control-sm" value="{{ request('to') }}">
+              </div>
+        
+              <!-- Apply / Refresh / ? -->
+              <div class="col-12 col-sm-auto">
+                <div class="d-flex gap-2">
+                  <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+                  <a href="{{ route('user.referral') }}" class="btn btn-danger btn-sm">Refresh</a>
+                  <button type="button" class="btn btn-question btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#referralInfoModal">
+                    <i class="bi bi-question-square-fill"></i>
+                  </button>
+                </div>
+              </div>
+        
+              <!-- Quick filters (push right on desktop) -->
+              <div class="col-12 col-sm-auto ms-sm-auto">
+                <div class="d-flex gap-2">
+                  <a href="{{ route('user.referral', ['filter' => 'today']) }}" class="btn btn-dark btn-sm">Today</a>
+                  <a href="{{ route('user.referral', ['filter' => 'weekly']) }}" class="btn btn-dark btn-sm">This Week</a>
+                  <a href="{{ route('user.referral', ['filter' => 'monthly']) }}" class="btn btn-dark btn-sm">This Month</a>
+                </div>
+              </div>
+        
             </div>
           </div>
-        </div>
-      </form>
+        </form>
+
     </div>
     
     <div class="row mb-4">

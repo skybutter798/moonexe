@@ -90,54 +90,68 @@ class WebhookController extends Controller
         $receivedToken = $request->bearerToken();
         if ($receivedToken !== $expectedToken) {
             Log::channel('pair')->warning('[Webhook] Unauthorized attempt', [
-                'ip' => $request->ip(),
+                'ip'    => $request->ip(),
                 'token' => $receivedToken,
             ]);
             return response()->json(['error' => 'Unauthorized'], 401);
         }
-
+    
         $payload = $request->all();
-        Log::channel('pair')->info('[Webhook] ✅ Authorized webhook received', [
-            'ip' => $request->ip(),
-            'pay_id' => $payload['pay_id'] ?? null,
-            'amount' => $payload['amount'] ?? null,
-            'currency' => $payload['currency'] ?? 'USD',
-            'method' => $payload['method'] ?? null,
-            'status' => $payload['status'] ?? null,
+    
+        // 🔥 Debug who is sending
+        Log::channel('pair')->info('[Webhook][DEBUG Incoming]', [
+            'ip'      => $request->ip(),
+            'agent'   => $request->header('User-Agent'),
+            'payload' => $payload,
         ]);
-
+    
+        // 🔥 1. BLOCK internal update pushes to avoid infinite loop
+        if (($payload['source'] ?? null) === 'internal-update') {
+            Log::channel('pair')->info('[Webhook] Skipped internal-update webhook');
+            return response()->json(['status' => 'ok'], 200);
+        }
+    
+        Log::channel('pair')->info('[Webhook] ✅ Authorized webhook received', [
+            'ip'       => $request->ip(),
+            'pay_id'   => $payload['pay_id'] ?? null,
+            'amount'   => $payload['amount'] ?? null,
+            'currency' => $payload['currency'] ?? 'USD',
+            'method'   => $payload['method'] ?? null,
+            'status'   => $payload['status'] ?? null,
+        ]);
+    
         if (($payload['status'] ?? null) !== 'Paid') {
-            Log::channel('pair')->info('[Webhook]  Ignored non-paid transaction', [
+            Log::channel('pair')->info('[Webhook] Ignored non-paid transaction', [
                 'status' => $payload['status'] ?? null,
             ]);
             return response()->json(['status' => 'ignored'], 200);
         }
-
+    
         $currencyCode = strtoupper(trim($payload['currency'] ?? 'USD'));
-
+    
         $pair = \App\Models\Pair::whereHas('currency', function ($q) use ($currencyCode) {
-                $q->whereRaw('LOWER(c_name) = ?', [strtolower($currencyCode)]);
-            })
-            ->latest('created_at')
-            ->first();
-
+            $q->whereRaw('LOWER(c_name) = ?', [strtolower($currencyCode)]);
+        })
+        ->latest('created_at')
+        ->first();
+    
         if (!$pair) {
-            Log::channel('pair')->warning('[Webhook]️ No active pair found', [
+            Log::channel('pair')->warning('[Webhook] No active pair found', [
                 'currency' => $currencyCode,
-                'payload' => $payload,
+                'payload'  => $payload,
             ]);
             return response()->json(['error' => 'No pair found for currency'], 422);
         }
-
+    
         $createdAtUtc = Carbon::parse($pair->created_at)->timezone('UTC');
         $nowUtc       = Carbon::now('UTC');
         $gateMinutes  = (int) $pair->gate_time;
-
+    
         $effectiveMinutes = $gateMinutes < 300 ? 300 : $gateMinutes - 120;
-
+    
         $cutoffTimeUtc = $createdAtUtc->copy()->addMinutes($effectiveMinutes);
         $expiryTimeUtc = $createdAtUtc->copy()->addMinutes($gateMinutes);
-
+    
         if ($nowUtc->greaterThanOrEqualTo($expiryTimeUtc)) {
             Log::channel('pair')->info('[Webhook] Pair fully expired, skipping volume update', [
                 'pair_id'      => $pair->id,
@@ -149,30 +163,29 @@ class WebhookController extends Controller
             ]);
             return response()->json(['status' => 'skipped (pair expired)'], 200);
         }
-
+    
         if ($nowUtc->greaterThanOrEqualTo($cutoffTimeUtc)) {
-            Log::channel('pair')->info('[Webhook] Pair near expiry (soft cutoff reached), skipping volume update', [
-                'pair_id'        => $pair->id,
-                'currency'       => $currencyCode,
-                'created_at'     => $pair->created_at,
-                'gate_minutes'   => $gateMinutes,
-                'cutoff_minutes' => $effectiveMinutes,
-                'cutoff_time'    => $cutoffTimeUtc->toDateTimeString(),
-                'final_expiry'   => $expiryTimeUtc->toDateTimeString(),
-                'now'            => $nowUtc->toDateTimeString(),
+            Log::channel('pair')->info('[Webhook] Pair near expiry, skipping volume update', [
+                'pair_id'      => $pair->id,
+                'currency'     => $currencyCode,
+                'created_at'   => $pair->created_at,
+                'gate_minutes' => $gateMinutes,
+                'cutoff_time'  => $cutoffTimeUtc->toDateTimeString(),
+                'now'          => $nowUtc->toDateTimeString(),
             ]);
             return response()->json(['status' => 'skipped (pair near expiry)'], 200);
         }
-
+    
         try {
             DB::transaction(function () use ($payload, $pair) {
+    
                 $createdAt = isset($payload['created'])
                     ? Carbon::parse($payload['created'])->format('Y-m-d H:i:s')
                     : now()->format('Y-m-d H:i:s');
-
+    
                 $now = now()->format('Y-m-d H:i:s');
                 $amount = (float) ($payload['amount'] ?? 0);
-
+    
                 Log::channel('pair')->info('[Webhook] Recording new payment', [
                     'pair_id'    => $pair->id,
                     'amount_usd' => $amount,
@@ -180,7 +193,7 @@ class WebhookController extends Controller
                     'method'     => $payload['method'] ?? null,
                     'created_at' => $createdAt,
                 ]);
-
+    
                 DB::insert("
                     INSERT INTO webhook_payments
                         (pay_id, pair_id, method, amount, status, currency, created_at, updated_at)
@@ -196,16 +209,19 @@ class WebhookController extends Controller
                     $now,
                 ]);
             });
-
-            Log::channel('pair')->info('[Webhook] Triggering pairs:update command');
+    
+            Log::channel('pair')->info('[Webhook] Triggering pairs:update');
+    
+            // 🔥 include source tag to stop loop
             Artisan::call('pairs:update', [
                 '--pair_volume' => $payload['pair_volume'] ?? null,
                 '--currency'    => $payload['currency'] ?? null,
+                '--source'      => 'webhook', // optional
             ]);
-
-            Log::channel('pair')->info('[Webhook] Webhook processed successfully');
+    
+            Log::channel('pair')->info('[Webhook] Done.');
             return response()->json(['message' => 'Payment recorded & update triggered'], 200);
-
+    
         } catch (\Exception $e) {
             Log::channel('pair')->error('[Webhook] Insert failed', [
                 'error' => $e->getMessage(),
@@ -213,6 +229,7 @@ class WebhookController extends Controller
             return response()->json(['error' => 'Insert failed'], 500);
         }
     }
+
     
     public function checkPairExpiry(Request $request, PairExpiryService $expiry)
     {

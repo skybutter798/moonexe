@@ -453,7 +453,7 @@ class DashboardController extends Controller
     public function showAnnouncements(Request $request)
     {
         $query = Annoucement::query()
-            ->where('show', 1)
+            ->where('status', 1)
             ->orderBy('created_at', 'desc');
     
         $announcements = $query->get();

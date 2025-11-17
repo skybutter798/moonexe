@@ -530,15 +530,20 @@
           
         // Get the URL search parameters
         var urlParams = new URLSearchParams(window.location.search);
-        var activeTab = urlParams.get('active_tab');
+          var activeTab = urlParams.get('active_tab');
         
-        // If the active_tab parameter is 'payout', activate the payout tab
-        if (activeTab === 'payout') {
-          var payoutTabEl = document.querySelector('a[href="#payoutTab"]');
-          if (payoutTabEl) {
-              new bootstrap.Tab(payoutTabEl).show();
+          var tabMap = {
+            trading: '#tradingTab',
+            payout: '#payoutTab',
+            direct_payout: '#directPayoutTab',
+            transactions: '#transactionTab',
+            deposit_withdrawal: '#depositWithdrawalTab'
+          };
+        
+          if (activeTab && tabMap[activeTab]) {
+            var tabEl = document.querySelector('a[href="'+ tabMap[activeTab] +'"]');
+            if (tabEl) new bootstrap.Tab(tabEl).show();
           }
-        }
 
         var payoutLinks = document.querySelectorAll('.payout-detail-link');
         payoutLinks.forEach(function(link) {

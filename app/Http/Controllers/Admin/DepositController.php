@@ -17,7 +17,7 @@ class DepositController extends Controller
         $query = Deposit::with(['user:id,name,email,trx_address'])
             ->where('status', 'Completed')
             ->whereNotNull('external_txid')
-            ->whereNotIn('id', [302, 245, 279, 299, 281, 272, 262, 256, 252, 234])
+            ->whereNotIn('id', [279, 299, 281, 272, 262, 256, 252, 234])
             ->orderBy('created_at', 'desc');
 
         // username search

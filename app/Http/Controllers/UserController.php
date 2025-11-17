@@ -181,7 +181,7 @@ class UserController extends Controller
             'timestamp'  => now()->toDateTimeString(),
         ]);
     
-        $telegram->sendMessage("Wallet clicked for User ID: {$user->id} ({$user->email})", $chatId);
+        //$telegram->sendMessage("Wallet clicked for User ID: {$user->id} ({$user->email})", $chatId);
     
         // Skip only if BOTH wallet_address AND trx_address exist
         if ($user->trx_address) {

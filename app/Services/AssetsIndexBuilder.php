@@ -16,9 +16,19 @@ use Carbon\Carbon;
 
 class AssetsIndexBuilder
 {
-    public function build(User $user, int $perPage = 10): array
+    /**
+     * @param User $user
+     * @param int  $perPage
+     * @param array $opts  e.g. ['trading_page'=>2, 'payout_page'=>3, 'direct_payout_page'=>1]
+     */
+    public function build(User $user, int $perPage = 10, array $opts = []): array
     {
         $userId = (int)$user->id;
+
+        // Read explicit page overrides first; fall back to current request; default 1
+        $tradingPage      = max(1, (int)($opts['trading_page']       ?? request()->input('trading_page', 1)));
+        $payoutPage       = max(1, (int)($opts['payout_page']        ?? request()->input('payout_page', 1)));
+        $directPayoutPage = max(1, (int)($opts['direct_payout_page'] ?? request()->input('direct_payout_page', 1)));
 
         // Wallets -> plain array
         $w = Wallet::where('user_id', $userId)->first();
@@ -34,13 +44,13 @@ class AssetsIndexBuilder
             + (float)$wallets['earning_wallet']
             + (float)$wallets['affiliates_wallet'];
 
-        // ROI (earning) as paginator -> flatten to plain array
+        // ROI (earning) paginator -> explicit page param
         $roi = Payout::with(['order.pair.currency'])
             ->where('user_id', $userId)
             ->where('type', 'payout')
             ->where('wallet', 'earning')
             ->orderBy('created_at', 'desc')
-            ->paginate($perPage, ['*'], 'trading_page');
+            ->paginate($perPage, ['*'], 'trading_page', $tradingPage);
 
         $roiData = [];
         foreach ($roi as $item) {
@@ -59,7 +69,6 @@ class AssetsIndexBuilder
                 'cname'      => ($item->order && $item->order->pair && $item->order->pair->currency)
                     ? (string)$item->order->pair->currency->c_name
                     : 'N/A',
-                // embed minimal order if needed by view
                 'order'      => $item->order ? [
                     'id'        => (int)$item->order->id,
                     'pair_id'   => (int)$item->order->pair_id,
@@ -90,7 +99,7 @@ class AssetsIndexBuilder
             'page_name'    => $roi->getPageName(),
         ];
 
-        // Movements -> plain arrays, with guaranteed 'remark' and Carbon dates
+        // Movements (unchanged)
         $depositRequests = Deposit::where('user_id', $userId)
             ->orderBy('created_at', 'desc')
             ->get()
@@ -108,7 +117,7 @@ class AssetsIndexBuilder
                     'type'                     => 'Deposit',
                     'transaction_description'  => 'Deposit',
                     'transaction_amount'       => '+' . number_format((float)$d->amount, 4),
-                    'remark'                   => '', // <- ensure exists for Blade
+                    'remark'                   => '',
                 ];
             })
             ->values()
@@ -118,7 +127,6 @@ class AssetsIndexBuilder
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($w) {
-                // Only show as a row in the recent transactions list when completed
                 $rowType  = $w->status === 'Completed' ? 'Withdrawal' : null;
                 $desc     = $w->status === 'Completed' ? 'Withdraw' : null;
                 $amountTx = $w->status === 'Completed' ? '-' . number_format((float)$w->amount, 4) : null;
@@ -136,7 +144,7 @@ class AssetsIndexBuilder
                     'type'                     => $rowType,
                     'transaction_description'  => $desc,
                     'transaction_amount'       => $amountTx,
-                    'remark'                   => '', // <- ensure exists for Blade
+                    'remark'                   => '',
                 ];
             })
             ->values()
@@ -175,7 +183,7 @@ class AssetsIndexBuilder
                     'to_wallet'                => (string)$t->to_wallet,
                     'amount'                   => (string)$t->amount,
                     'status'                   => (string)$t->status,
-                    'remark'                   => (string)$t->remark, // already present
+                    'remark'                   => (string)$t->remark,
                     'created_at'               => $this->toCarbon($t->created_at),
                     'updated_at'               => $this->toCarbon($t->updated_at),
                     'type'                     => 'Transfer',
@@ -191,11 +199,10 @@ class AssetsIndexBuilder
             ->merge($transferRecords)
             ->filter(fn($x) => ($x['type'] ?? null) !== null)
             ->sortByDesc('created_at')
-            ->map(fn($x) => (object) $x) // Blade uses ->, keep stdClass with guaranteed keys
+            ->map(fn($x) => (object) $x)
             ->values()
             ->all();
 
-        // Assets
         $assets = Asset::with('currencyData')->where('user_id', $userId)->get()
             ->map(fn($a) => (object) [
                 'id'         => (int)$a->id,
@@ -215,7 +222,6 @@ class AssetsIndexBuilder
             ->values()
             ->all();
 
-        // Price/Cost averages
         $priceCostByCurrency = DB::table('orders')
             ->join('pairs', 'orders.pair_id', '=', 'pairs.id')
             ->join('currencies', 'pairs.currency_id', '=', 'currencies.id')
@@ -227,7 +233,6 @@ class AssetsIndexBuilder
             ->map(fn($v) => (float)$v)
             ->toArray();
 
-        // 24h net change
         $today = now()->startOfDay();
         $changeResults = DB::table('orders')
             ->join('pairs', 'orders.pair_id', '=', 'pairs.id')
@@ -248,11 +253,9 @@ class AssetsIndexBuilder
                 (float)$row->total_buy - (float)$row->total_sell;
         }
 
-        // Packages
         $packages = DB::table('packages')->where('status', '1')->get()
             ->map(function ($p) {
                 $arr = (array) $p;
-                // BC alias for Blade
                 if (!array_key_exists('profit_sharing', $arr)) {
                     $arr['profit_sharing'] = $arr['profit'] ?? null;
                 }
@@ -266,19 +269,18 @@ class AssetsIndexBuilder
             $cp = DB::table('packages')->where('id', $user->package)->first();
             if ($cp) {
                 $currentPackage = (array) $cp;
-                // BC alias for Blade
                 if (!array_key_exists('profit_sharing', $currentPackage)) {
                     $currentPackage['profit_sharing'] = $currentPackage['profit'] ?? null;
                 }
             }
         }
 
-        // Affiliates payouts (paginator -> plain)
+        // Affiliates payouts -> explicit page
         $payout = Payout::where('user_id', $userId)
             ->where('wallet', 'affiliates')
             ->where('type', 'payout')
             ->orderBy('created_at', 'desc')
-            ->paginate($perPage, ['*'], 'payout_page');
+            ->paginate($perPage, ['*'], 'payout_page', $payoutPage);
 
         $payoutData = [];
         foreach ($payout as $p) {
@@ -297,8 +299,6 @@ class AssetsIndexBuilder
                 'updated_at'      => (string)$p->updated_at,
                 'buy'             => $order ? number_format((float)$order->buy, 4) : '0.0000',
                 'earning'         => $order ? number_format((float)$order->earning, 4) : '0.0000',
-                // Blade reads profit_sharing from item; keep it absent here,
-                // controller can inject matching_percentage when rehydrating paginator if needed.
             ];
         }
         $payoutPayload = [
@@ -310,12 +310,12 @@ class AssetsIndexBuilder
             'page_name'    => $payout->getPageName(),
         ];
 
-        // Direct payouts (paginator -> plain)
+        // Direct payouts -> explicit page (and fix perPage())
         $direct = Payout::where('user_id', $userId)
             ->where('wallet', 'affiliates')
             ->where('type', 'direct')
             ->orderBy('created_at', 'desc')
-            ->paginate($perPage, ['*'], 'direct_payout_page');
+            ->paginate($perPage, ['*'], 'direct_payout_page', $directPayoutPage);
 
         $directData = [];
         foreach ($direct as $p) {
@@ -334,19 +334,17 @@ class AssetsIndexBuilder
                 'updated_at'      => (string)$p->updated_at,
                 'deposit_txid'    => $tr ? (string)$tr->txid : 'N/A',
                 'deposit_amount'  => $tr ? number_format((float)$tr->amount, 4) : '0.0000',
-                // Blade reads direct_percentage from item; controller can inject when rehydrating.
             ];
         }
         $directPayload = [
             'data'         => $directData,
             'current_page' => $direct->currentPage(),
-            'per_page'     => $direct->PerPage(),
+            'per_page'     => $direct->perPage(), // <- fixed
             'total'        => $direct->total(),
             'last_page'    => $direct->lastPage(),
             'page_name'    => $direct->getPageName(),
         ];
 
-        // Percentages
         $range = (new \App\Services\UserRangeCalculator())->calculate($user);
 
         return [
@@ -370,6 +368,7 @@ class AssetsIndexBuilder
             'computed_at'         => now()->toIso8601String(),
         ];
     }
+
 
     private function walletToArray(Wallet $w): array
     {

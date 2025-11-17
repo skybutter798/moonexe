@@ -208,6 +208,12 @@
       <div class="modal-body" style="max-height: 70vh; overflow-y: auto; font-size: 0.9rem; padding: 20px;">
         @include('user.partials.terms')
       </div>
+        <div class="modal-footer d-flex flex-column align-items-start">
+          <p style="font-size: 0.8rem; color: #777; margin: 0 0 8px;">
+            <em>Note: MoonExe reserves the right to adjust, modify, or suspend any campaign’s status, rules, or reward structure at its sole discretion.</em>
+          </p>
+          <button type="button" class="btn btn-primary" id="acceptTermsBtn" data-bs-dismiss="modal">I Agree</button>
+        </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-primary" id="acceptTermsBtn" data-bs-dismiss="modal"> I Agree </button>
       </div>

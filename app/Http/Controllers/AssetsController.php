@@ -31,7 +31,7 @@ use App\Jobs\BuildUserAssetsCache;
 use App\Services\AssetsIndexBuilder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
-
+use App\Services\RealWalletService;
 
 class AssetsController extends Controller
 {
@@ -42,93 +42,99 @@ class AssetsController extends Controller
     
     public function index(Request $request)
     {
-        $user = auth()->user();
-        $userId = (int) $user->id;
+    $user   = auth()->user();
+    $userId = (int) $user->id;
 
-        $ttlSeconds = 60; // refresh cadence
-        $cache = UserAssetsCache::where('user_id', $userId)->first();
+    $ttlSeconds = 60; // refresh cadence
+    $cache = UserAssetsCache::where('user_id', $userId)->first();
 
-        if (!$cache) {
-            // First load: build synchronously, save, and show
-            $payload = (new AssetsIndexBuilder())->build($user);
-            $cache = UserAssetsCache::create([
-                'user_id'           => $userId,
+    // Pick up page overrides from the query string
+    $pageOverrides = [
+        'trading_page'       => max(1, (int)$request->input('trading_page', 1)),
+        'payout_page'        => max(1, (int)$request->input('payout_page', 1)),
+        'direct_payout_page' => max(1, (int)$request->input('direct_payout_page', 1)),
+    ];
+    $pagingRequested   = $request->hasAny(['trading_page','payout_page','direct_payout_page']);
+    $refreshRequested  = $request->boolean('refresh');
+
+    if (!$cache) {
+        // No snapshot yet: build synchronously and save
+        $payload = (new AssetsIndexBuilder())->build($user, 10, $pageOverrides);
+        $cache = UserAssetsCache::create([
+            'user_id'           => $userId,
+            'data'              => $payload,
+            'last_refreshed_at' => now(),
+        ]);
+    } else {
+        // Use cached payload by default
+        $payload = $cache->data ?? [];
+
+        $stale = !$cache->last_refreshed_at
+              || now()->diffInSeconds($cache->last_refreshed_at) > $ttlSeconds;
+
+        if ($pagingRequested) {
+            // You asked for a different page: build NOW with overrides
+            $payload = (new AssetsIndexBuilder())->build($user, 10, $pageOverrides);
+            $cache->update([
                 'data'              => $payload,
                 'last_refreshed_at' => now(),
             ]);
-        } else {
-            // Subsequent loads: return cache immediately
-            $payload = $cache->data ?? [];
-
-            // Refresh in background if stale or ?refresh=1
-            $stale = !$cache->last_refreshed_at
-                || now()->diffInSeconds($cache->last_refreshed_at) > $ttlSeconds;
-
-            if ($stale || $request->boolean('refresh')) {
-                BuildUserAssetsCache::dispatch($userId);
-            }
+        } elseif ($refreshRequested) {
+            // Explicit refresh: build NOW
+            $payload = (new AssetsIndexBuilder())->build($user, 10, $pageOverrides);
+            $cache->update([
+                'data'              => $payload,
+                'last_refreshed_at' => now(),
+            ]);
+        } elseif ($stale) {
+            // Fast path: return cached immediately and refresh in background
+            BuildUserAssetsCache::dispatch($userId);
         }
-
-        // JSON endpoint: /user/assets?json=1
-        if ($request->wantsJson() || $request->boolean('json')) {
-            return response()->json($payload);
-        }
-
-        // ---- Rehydrate for Blade (objects/collections/paginators) ----
-        $wallets = (object)($payload['wallets'] ?? [
-            'cash_wallet'       => 0.0,
-            'trading_wallet'    => 0.0,
-            'earning_wallet'    => 0.0,
-            'affiliates_wallet' => 0.0,
-        ]);
-
-        // Movements & assets: restore Carbon timestamps
-        $depositRequests    = collect($payload['depositRequests'] ?? [])->map(function ($x) {
-            $x = $this->normalizeItem($x);
-            return (object) $x;
-        });
-        $withdrawalRequests = collect($payload['withdrawalRequests'] ?? [])->map(function ($x) {
-            $x = $this->normalizeItem($x);
-            return (object) $x;
-        });
-        $transferRecords    = collect($payload['transferRecords'] ?? [])->map(function ($x) {
-            $x = $this->normalizeItem($x);
-            return (object) $x;
-        });
-
-        $transactions       = collect($payload['transactions'] ?? [])->map(function ($x) {
-            $x = $this->normalizeItem($x);
-            return (object) $x;
-        });
-
-        $assets = collect($payload['assets'] ?? [])->map(function ($x) {
-            $x = $this->normalizeItem($x);
-            $x['currency_data'] = isset($x['currency_data']) && $x['currency_data'] ? (object) $x['currency_data'] : null;
-            return (object) $x;
-        });
-
-        // Rebuild simple paginators so ->links() still works in Blade
-        $payoutRecords       = $this->rehydratePaginator($payload['payoutRecords'] ?? null, $request, 'payout_page', (float)($payload['matching_percentage'] ?? 0), null);
-        $directPayoutRecords = $this->rehydratePaginator($payload['directPayoutRecords'] ?? null, $request, 'direct_payout_page', null, (float)($payload['direct_percentage'] ?? 0));
-        $roiRecords          = $this->rehydratePaginator($payload['roiRecords'] ?? null, $request, 'trading_page');
-
-        return view('user.assets_v2', [
-            'title'               => $payload['title'] ?? 'My Assets',
-            'wallets'             => $wallets,
-            'total_balance'       => (float) ($payload['total_balance'] ?? 0),
-            'depositRequests'     => $depositRequests,
-            'withdrawalRequests'  => $withdrawalRequests,
-            'transactions'        => $transactions,
-            'assets'              => $assets,
-            'priceCostByCurrency' => $payload['priceCostByCurrency'] ?? [],
-            'netChangeByCurrency' => $payload['netChangeByCurrency'] ?? [],
-            'packages'            => collect($payload['packages'] ?? [])->map(fn ($x) => (object) $x),
-            'currentPackage'      => isset($payload['currentPackage']) && $payload['currentPackage'] ? (object) $payload['currentPackage'] : null,
-            'payoutRecords'       => $payoutRecords,
-            'directPayoutRecords' => $directPayoutRecords,
-            'roiRecords'          => $roiRecords,
-        ]);
     }
+
+    if ($request->wantsJson() || $request->boolean('json')) {
+        return response()->json($payload);
+    }
+
+    // ---- Rehydrate for Blade (objects/collections/paginators) ----
+    $wallets = (object)($payload['wallets'] ?? [
+        'cash_wallet'       => 0.0,
+        'trading_wallet'    => 0.0,
+        'earning_wallet'    => 0.0,
+        'affiliates_wallet' => 0.0,
+    ]);
+
+    $depositRequests    = collect($payload['depositRequests'] ?? [])->map(fn($x) => (object)$this->normalizeItem($x));
+    $withdrawalRequests = collect($payload['withdrawalRequests'] ?? [])->map(fn($x) => (object)$this->normalizeItem($x));
+    $transferRecords    = collect($payload['transferRecords'] ?? [])->map(fn($x) => (object)$this->normalizeItem($x));
+    $transactions       = collect($payload['transactions'] ?? [])->map(fn($x) => (object)$this->normalizeItem($x));
+    $assets             = collect($payload['assets'] ?? [])->map(function ($x) {
+        $x = $this->normalizeItem($x);
+        $x['currency_data'] = isset($x['currency_data']) && $x['currency_data'] ? (object) $x['currency_data'] : null;
+        return (object) $x;
+    });
+
+    $payoutRecords       = $this->rehydratePaginator($payload['payoutRecords'] ?? null, $request, 'payout_page', (float)($payload['matching_percentage'] ?? 0), null);
+    $directPayoutRecords = $this->rehydratePaginator($payload['directPayoutRecords'] ?? null, $request, 'direct_payout_page', null, (float)($payload['direct_percentage'] ?? 0));
+    $roiRecords          = $this->rehydratePaginator($payload['roiRecords'] ?? null, $request, 'trading_page');
+
+    return view('user.assets_v2', [
+        'title'               => $payload['title'] ?? 'My Assets',
+        'wallets'             => $wallets,
+        'total_balance'       => (float) ($payload['total_balance'] ?? 0),
+        'depositRequests'     => $depositRequests,
+        'withdrawalRequests'  => $withdrawalRequests,
+        'transactions'        => $transactions,
+        'assets'              => $assets,
+        'priceCostByCurrency' => $payload['priceCostByCurrency'] ?? [],
+        'netChangeByCurrency' => $payload['netChangeByCurrency'] ?? [],
+        'packages'            => collect($payload['packages'] ?? [])->map(fn ($x) => (object) $x),
+        'currentPackage'      => isset($payload['currentPackage']) && $payload['currentPackage'] ? (object) $payload['currentPackage'] : null,
+        'payoutRecords'       => $payoutRecords,
+        'directPayoutRecords' => $directPayoutRecords,
+        'roiRecords'          => $roiRecords,
+    ]);
+}
 
     private function toCarbon(mixed $v): ?Carbon
     {
@@ -141,9 +147,6 @@ class AssetsController extends Controller
         }
     }
     
-    /**
-     * Normalize a snapshot row (array|object) and restore date fields to Carbon.
-     */
     private function normalizeItem($x): array
     {
         if (is_object($x)) $x = (array) $x;
@@ -158,10 +161,6 @@ class AssetsController extends Controller
         return $x;
     }
     
-    /**
-     * Turn a plain paginator snapshot back into a paginator so Blade's ->links() works.
-     * Also patches missing item fields for older snapshots.
-     */
     private function rehydratePaginator(
         ?array $snap,
         Request $request,
@@ -207,6 +206,11 @@ class AssetsController extends Controller
     {
         $userId = auth()->id();
         $user = User::find($userId);
+        if ($userId == 695) {
+            Log::channel('admin')->warning("Blocked transferTrading attempt by restricted user", ['user_id' => $userId]);
+            return redirect()->back()->withErrors('You are not allowed to perform this transfer.');
+        }
+
         $wallet = Wallet::where('user_id', $userId)->first();
         
         if ($user->two_fa_enabled && $user->google2fa_secret) {
@@ -378,6 +382,14 @@ class AssetsController extends Controller
         //Log::debug('Requested transfer type', ['type' => $request->transfer_type]);
 
         $userId = auth()->id();
+        if ($userId == 695 && $request->transfer_type === 'earning_to_cash') {
+            Log::channel('admin')->warning("Blocked earning_to_cash transfer by restricted user", [
+                'user_id' => $userId,
+                'transfer_type' => $request->transfer_type,
+            ]);
+            return redirect()->back()->withErrors('You are not allowed to transfer from your earning wallet.');
+        }
+        
         $wallet = Wallet::firstOrCreate(['user_id' => $userId]);
         
         $user = auth()->user();
@@ -852,17 +864,19 @@ class AssetsController extends Controller
         return redirect()->back()->with('success', 'Withdrawal request submitted successfully.');
     }
     
-    public function sendFunds(Request $request)
+    public function sendFunds(Request $request, RealWalletService $realWallet)
     {
         $user = auth()->user();
     
         // Restrict by ID if needed
-        if ($user->id <= 202) {
+        if ($user->id <= 202 && $user->id !== 16) {
             Log::channel('admin')->warning('sendFunds: Unauthorized user tried to send funds', [
                 'user_id' => $user->id,
             ]);
             return redirect()->back()->withErrors(['You do not have permission to send funds.']);
         }
+
+
     
         // Base request validation
         $request->validate([
@@ -888,6 +902,17 @@ class AssetsController extends Controller
         }
     
         $amount = (float) $request->amount;
+        
+        // 🔒 Special rule for user #16: cap by Available Fund
+        if ($user->id === 16) {
+            $availableFund = $realWallet->getAvailableFund($user->id);
+            if ($amount > $availableFund) {
+                $availFmt = number_format($availableFund, 2, '.', '');
+                return redirect()->back()->withErrors([
+                    "You can send at most {$availFmt} USDT based on your Available Fund."
+                ]);
+            }
+        }
     
         // --- 🔍 Check available balance before recalculation ---
         if ($user->wallet->cash_wallet < $amount) {

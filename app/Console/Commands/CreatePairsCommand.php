@@ -234,12 +234,22 @@ class CreatePairsCommand extends Command
                 'X-Merchant-Secret' => env('MERCHANT_SECRET'),
             ];
     
+            // Convert local currency volume → USD
+            $usdVolume = $this->convertLocalToUsd($pair->volume, $symbol, $volrate);
+    
+            // Always send USD volume + total
             $payload = [
                 'pair_id'        => $pair->id,
                 'currency_id'    => $pair->currency_id,
                 'currency_name'  => $currency->c_name,
                 'rate'           => $pair->rate,
-                'volume'         => $pair->volume,
+    
+                // 🔥 Send USD amount here
+                'volume'         => round($usdVolume, 6),
+    
+                // 🔥 Always include USD total
+                'total'          => 100000,
+    
                 'gate_time'      => $pair->gate_time,
                 'end_time'       => $pair->end_time,
                 'created_at'     => $pair->created_at->toDateTimeString(),
@@ -247,73 +257,88 @@ class CreatePairsCommand extends Command
                 'market_rate'    => $volrate,
             ];
     
-            // Log outgoing payload for debugging
-            Log::channel('pair')->info('[CreatePairs] Sending pair to receiver', [
+            Log::channel('pair')->info('[CreatePairs] Sending pair to receiver (USD normalized)', [
                 'endpoint' => $endpoint,
-                'headers'  => ['X-Merchant-Code' => $headers['X-Merchant-Code']], // don’t log secret
                 'payload'  => $payload,
             ]);
     
             $response = Http::withHeaders($headers)
                 ->timeout(30)
-                ->retry(3, 3000) // retry up to 3 times with 3s delay
+                ->retry(3, 3000)
                 ->post($endpoint, $payload);
     
             if ($response->successful()) {
                 $responseBody = $response->body();
                 $data = $response->json();
                 $targetVolume = $data['target_usdt'] ?? null;
-            
-                Log::channel('pair')->info('[CreatePairs] ✅ Pair + market data sent successfully', [
-                    'pair_id' => $pair->id,
+    
+                Log::channel('pair')->info('[CreatePairs] ✅ Pair + USD volume sent successfully', [
+                    'pair_id'  => $pair->id,
                     'currency' => $currency->c_name,
-                    'status' => $response->status(),
+                    'status'   => $response->status(),
                     'response' => $data,
                 ]);
-            
-                Log::channel('pair')->info('[CreatePairs] ECNFI raw response', [
+    
+                Log::channel('pair')->info('[CreatePairs] Raw Response', [
                     'pair_id' => $pair->id,
-                    'body' => $responseBody,
+                    'body'    => $responseBody,
                 ]);
-            
+    
+                // Update local volume (convert USD → BASE currency)
                 if ($targetVolume) {
                     $oldVolume = $pair->volume;
-                
-                    // Convert target USDT to local volume
+    
                     if (strpos($symbol, 'USD') === 0) {
-                        // Symbol like USDHKD → local = USDT / rate
-                        $newVolume = $targetVolume / $volrate;
-                    } elseif (substr($symbol, -3) === 'USD') {
-                        // Symbol like HKDUSD → local = USDT * rate
+                        // USDXXX → local = USD * rate
                         $newVolume = $targetVolume * $volrate;
+                    } elseif (substr($symbol, -3) === 'USD') {
+                        // XXXUSD → local = USD / rate
+                        $newVolume = $targetVolume / $volrate;
                     } else {
-                        // Fallback (if symbol doesn’t follow USD prefix/suffix pattern)
                         $newVolume = $targetVolume;
                     }
-                
+    
                     $pair->volume = $newVolume;
                     $pair->save();
-                
-                    Log::channel('pair')->info('[CreatePairs] 🔄 Updated local pair volume from ECNFI (converted from USDT)', [
-                        'pair_id' => $pair->id,
-                        'symbol' => $symbol,
-                        'volrate' => $volrate,
+    
+                    Log::channel('pair')->info('[CreatePairs] 🔄 Updated pair volume from receiver (converted from USD)', [
+                        'pair_id'     => $pair->id,
+                        'symbol'      => $symbol,
+                        'volrate'     => $volrate,
                         'target_usdt' => $targetVolume,
-                        'old_volume' => $oldVolume,
-                        'new_volume' => $newVolume,
+                        'old_volume'  => $oldVolume,
+                        'new_volume'  => $newVolume,
                     ]);
                 }
-
             }
-
     
         } catch (\Throwable $e) {
             Log::channel('pair')->error('[CreatePairs] ❌ Exception sending to receiver', [
-                'error' => $e->getMessage(),
+                'error'   => $e->getMessage(),
                 'pair_id' => $pair->id ?? null,
             ]);
         }
     }
+    
+    protected function convertLocalToUsd($localVolume, $symbol, $rate)
+    {
+        // Symbol like USDTHB → USD base, local is THB
+        if (strpos($symbol, 'USD') === 0) {
+            // Example: USDTHB → 1 USD = X THB → USD = THB / rate
+            return $localVolume / $rate;
+        }
+    
+        // Symbol like THBUSD → local = THB, base = USD
+        if (substr($symbol, -3) === 'USD') {
+            // Example: THBUSD → 1 THB = X USD → USD = THB * rate
+            return $localVolume * $rate;
+        }
+    
+        // Fallback no conversion
+        return $localVolume;
+    }
+
+
 
 
 }
